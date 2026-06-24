@@ -1,1 +1,0 @@
-ETAT: [Pierre] → [Entré dans le bureau du Commandant Bertrand]

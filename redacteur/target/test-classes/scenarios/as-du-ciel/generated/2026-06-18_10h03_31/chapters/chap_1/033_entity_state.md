@@ -1,1 +1,0 @@
-ETAT: Jules Meca → se positionnant près du fuselage du Spitfire

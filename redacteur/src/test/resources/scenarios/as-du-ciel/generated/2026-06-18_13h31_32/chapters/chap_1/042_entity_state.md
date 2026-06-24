@@ -1,1 +1,0 @@
-ETAT: Pierre → Dans son dortoir, puis dans le couloir et la salle commune

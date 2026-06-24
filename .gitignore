@@ -1,0 +1,20 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Benchmark results
+bench/
+
+# Generated story outputs
+generated/
+
+# OS
+Thumbs.db
+.DS_Store
