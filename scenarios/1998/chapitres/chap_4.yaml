@@ -1,0 +1,71 @@
+comment: "Le Retour"
+
+title: "Le retour"
+type: imperative
+
+# description: synopsis narratif du chapitre → transmis au Planner
+description: >
+  Corinne et Christelle rentrent à Nantes. Catherine à Paris. Thierry reste seul pour la deuxième semaine
+  Thierry va abandonner sa deuxieme semaine et rejoindre Christelle
+
+# setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
+# Ex : "Le lendemain matin, dans la salle de mess de la base."
+# setting: "Moment et lieu de la scène — une phrase ou deux maximum."
+
+# goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
+goal: >
+  Ce chapitre raconte le retour à Nantes & Paris
+
+# defaults: héritées par toutes les séquences (merge additif)
+defaults:
+  # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
+  # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
+  character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
+  
+sequences:
+
+  # Séquence complète avec tous les champs
+  - type: explicit
+    directive: >
+      La semaine de Christelle, Corinne et Catherine est terminée.
+      Elles prennent le bus pour aller ver l'aéroport (Catherine) ou le train (Corinne et Christelle).
+      Thierry leur dit au revoir et les voit monter dans le bus
+      Le bus s'en va
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Scene avec Christelle seule chez elle à Nantes.
+      Le lundi, Christelle se fait opérer de la cheville à l'hopital
+      Elle rentre chez elle le soir après l'opération. 
+      Elle doit utiliser des béquilles dans son appartement.
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Scene avec Thierry seul
+      Thierry n'arrive plus à penser à autre chose qu'à Christelle.
+      Le centre UCPA lui parait vide ; aucune activité ne l'intéresse
+      Il réalise qu'il est tombé amoureux
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Le Mardi
+      Contexte : Thierry à l'UCPA Saint-Cyprien, Christelle dans son appartement à Nantes ; ils parlent au téléphone.
+      Thierry décide de faire une folie, il appelle Christelle et lui dit qu'il veut la retrouver.
+      Qu'il est prêt à tout quitter pour la rejoindre
+      D'une petite voix (elle est encore sous le coup de l'opération) elle accepte
+      Thierry range ses affaires en vitesse, quitte, l'UCPA et file à la gare
+      Il rentre dans son appartement à Paris pour préparer des affaires.
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Consigne : changement de décor:  la gare de Nantes
+      Thierry sort du TGV et se rend chez Christelle
+      Il sonne
+      Christelle ouvre
+      Ils se regardent
+      C'est le début d'une grande et belle histoire d'amour
+    min_words: 300

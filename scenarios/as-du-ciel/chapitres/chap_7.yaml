@@ -1,0 +1,45 @@
+# TEST dream — le rêve de Pierre la nuit avant la Chute (Jour 7→8)
+# Illustre : type dream, realism_level symbolic, memory_trace, dreamer
+
+title: "Le Rêve de la Paix"
+type: dream
+
+realism_level: symbolic
+dreamer: pierre_moreau
+memory_trace: "Pierre a rêvé cette nuit-là — une nuit agitée, un réveil difficile avant la dernière mission."
+
+description: >
+  Pierre s'endort après la dernière soirée. Il rêve. Lucie est là, dans un ciel
+  d'un bleu impossible. Ils sont tous les deux des oiseaux — pas des pilotes,
+  pas des soldats. Juste deux corps dans l'air calme. Pas de moteurs. Pas de radio.
+  Juste le vent, les ailes, et quelque chose qui ressemble à la paix.
+
+defaults:
+  character_sheets: ["pierre_moreau"]
+  focus: ["CIEL"]
+
+sequences:
+
+  - type: explicit
+    directive: >
+      Le rêve commence. Pierre est dans le ciel — mais ce n'est plus le même ciel.
+      Il n'y a pas de moteur sous lui, pas de tableau de bord. Il vole de lui-même,
+      comme si ses bras étaient des ailes. Lucie est là, à côté de lui. Pas de mots.
+      Juste la lumière, l'air, le bleu profond au-dessus du bleu.
+      Le ciel est impossible — trop silencieux, trop large, trop doux.
+    checks:
+      - "Pierre vole sans appareil mécanique — le corps seul dans le ciel"
+      - "Lucie est présente mais sans dialogue explicite"
+      - "L'atmosphère est onirique et symbolique, pas réaliste"
+
+  - type: explicit
+    directive: >
+      Quelque chose change dans le rêve — une couleur qui tourne, une distance
+      qui grandit entre Pierre et Lucie. Il tend la main. L'air entre eux devient épais.
+      Puis le bleu pâlit. Il y a un bruit lointain, grave, mécanique.
+      Pierre essaie de rester dans le ciel. Il ne peut plus.
+      Le réveil vient avant qu'il soit prêt.
+    checks:
+      - "La dissolution du rêve est progressive — pas un réveil brutal sans transition"
+      - "Le bruit mécanique qui revient signale le retour au réel sans nommer explicitement le Spitfire"
+      - "Aucun fait de ce rêve ne constitue un événement canonique de la trame"

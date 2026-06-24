@@ -1,0 +1,51 @@
+comment: "Exemple de chapitre impératif — toutes les fonctionnalités de base"
+
+title: "Titre du chapitre"
+type: imperative
+
+# description: synopsis narratif du chapitre -> transmis au Planner
+description: >
+  Résumé de ce qui se passe dans ce chapitre.
+  Ce texte aide le Planner à comprendre le contexte narratif global.
+
+# setting: courte didascalie spatio-temporelle -> injectée dans Planner + Writer (optionnel)
+# setting: "Moment et lieu de la scène — une phrase ou deux maximum."
+
+# goal: but dramatique du chapitre -> transmis au Planner + NarrativeGoalContext
+goal: >
+  Ce que ce chapitre doit accomplir narrativement.
+  Formulé comme un résultat attendu sur le lecteur ou sur la trame.
+
+# defaults: héritées par toutes les séquences (merge additif)
+defaults:
+  # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
+  character_sheets: ["personnage_un", "personnage_deux"]
+
+  # focus: tags ou texte libre transmis au Planner + Writer pour orienter la tonalité
+  focus: ["TAG_UN", "TAG_DEUX"]
+
+  # checks: vérifications transmises au SequenceChecker pour chaque séquence
+  checks:
+    - "Vérification applicable à toutes les séquences du chapitre"
+
+sequences:
+
+  # Séquence minimale
+  - type: explicit
+    directive: "Ce que le LLM doit rédiger pour cette séquence."
+
+  # Séquence complète avec tous les champs
+  - type: explicit
+    directive: >
+      Description détaillée de la scène à écrire.
+      Le LLM reçoit ce texte comme instruction de rédaction.
+    character_sheets: ["personnage_trois"]
+    focus: ["TAG_TROIS"]
+    checks:
+      - "Un élément précis qui doit être présent dans le texte rédigé"
+    min_words: 500
+
+  # Séquence avec rupture narrative intentionnelle (ellipse, saut temporel)
+  - type: explicit
+    no_transition: true
+    directive: "Le lendemain matin. Nouvelle scène sans lien direct avec ce qui précède."

@@ -1,0 +1,68 @@
+title: "Une rencontre dans un train"
+type: imperative
+
+setting: "Dans un compartiment de train, quelque part en France, un après-midi de fin d'été."
+
+goal: >
+  Deux inconnus se rencontrent, s'apprivoisent en silence, et s'embrassent.
+  Le lecteur doit sentir le temps suspendu, la douceur de l'imprévu.
+  Puis le départ chacun dans sa vie
+
+defaults:
+  character_sheets: ["eddie", "maya"]
+  focus: ["SILENCE"]
+  lore: [TRAIN]
+
+sequences:
+
+  - type: explicit
+    directive: >
+      Maya entre dans le compartiment. Eddie est seul, assis côté fenêtre.
+      Elle s'installe en face ou à côté. Elle range ses affaires. Aucune parole.
+      Décrire l'espace, les gestes, la conscience discrète de l'autre.
+      Cadre : vieux compartiment isolé, sièges en cuir défraîchis, rideaux séparant du couloir du wagon.
+      La gare de départ est une vieille gare de province.
+      LIMITE : s'arrêter à l'installation de Maya. Aucun mot, aucun regard appuyé, aucun événement.
+    focus: ["WAGON"]
+    lore: ["GARE"]
+    constraints: Pas de contact, pas de discussion, aucun regard direct entre les personnages.
+    checks: "Vérifie qu'il n'y a pas de contact ou discussion entre les personnages"
+    min_words: 300
+
+  - type: explicit
+    directive: >
+      Maya sort un livre et lit. Eddie regarde le paysage par la fenêtre.
+      Chacun dans son monde, mais conscient de l'autre. Silence complet.
+      Décrire la lumière, le roulement du train, les petits gestes involontaires.
+      LIMITE : coexistence silencieuse uniquement. Aucun mot échangé, aucun regard direct.
+    min_words: 300
+
+  - type: explicit
+    directive: >
+      Le train s'arrête en pleine voie. Par la fenêtre, un paysage magnifique — champs, collines, lumière rasante.
+      C'est Maya qui parle la première. Une remarque sur le paysage, rien de plus.
+      Eddie répond. Quelques répliques courtes, naturelles, sans chercher à séduire.
+      LIMITE : premiers mots seulement. Pas de tension amoureuse explicite encore — juste la surprise de la voix de l'autre.
+    min_words: 300
+
+  - type: explicit
+    directive: >
+      Le train repart. La conversation continue, légère. Le courant passe — dans les regards,
+      dans les sourires, dans ce qu'ils ne disent pas. La tension monte doucement, presque sans
+      qu'ils s'en rendent compte. La séquence se termine par un frôlement de main — accidentel ou non.
+      LIMITE : se terminer exactement au frôlement. Pas de baiser, pas de geste de plus.
+    min_words: 500
+
+  - type: explicit
+    directive: >
+      Le baiser. Ce qui suit naturellement le frôlement — une hésitation d'une seconde, puis leurs
+      lèvres se rejoignent. Lent, intense, torride. Le train, le paysage, tout disparaît.
+      LIMITE : rester dans le baiser. Ne pas aller au-delà.
+    min_words: 500
+
+  - type: explicit
+    directive: >
+      Le train entre en gare. Le quai apparaît. Ils se séparent. Chacun reprend ses affaires,
+      retrouve sa vie. Peut-être un dernier regard. Peut-être rien. Le compartiment se vide.
+      Doux-amer. La réalité reprend ses droits sans violence. Pas d'explication, pas de résolution.
+    min_words: 300

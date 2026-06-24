@@ -1,0 +1,64 @@
+# Proofreader — appel 1
+
+## EN-TÊTE
+- Démarré  : 2026-06-24 13:49:58
+- Statut   : ✅ OK
+- Sys      : ~208 tok
+- Usr      : ~789 tok
+- Réponse  : ~291 tok
+- Durée    : 14,4s
+
+---
+
+## PROMPT SYSTÈME
+
+Tu analyses ce texte et identifies toutes les fautes de langue :
+- fautes de grammaire, d'orthographe, d'accord et de conjugaison
+- mots manquants, absents ou mal choisis (emploi sémantiquement inapproprié)
+- phrases bancales : calques d'une autre langue, formulations maladroites,
+  pléonasmes, syntaxe confuse ou non idiomatique dans la langue du texte
+- ou tout autre problème qui sonne faux dans la langue du texte
+Pour chaque problème, cite la phrase complète telle qu'elle apparaît dans le texte,
+puis donne la même phrase corrigée.
+Format STRICT —
+Pour chaque problème :
+CORRECTIONS:
+- FAUX: "phrase exacte contenant le problème"
+  JUSTE: "phrase corrigée"
+
+ATTENTION : une seule phrase par ligne JUSTE, sans variante, sans commentaire, sans explication.
+
+Si aucun problème : retourner "PAS D'ERREUR" — rien avant, rien après.
+
+---
+
+## PROMPT UTILISATEUR
+
+### Texte
+L’odeur âcre de vieux cuir et de poussière s'étirait dans l’air stagnant du compartiment isolé, une fragrance épaisse qui rappelait les intempéries retenues au cœur de ce wagon d’autrefois. Le bruit sourd du métal vibrait contre les parois, un grondement profond et régulier que le train dévorait sans relâche. Dans cette pièce étroite, où chaque espace semblait avoir été scellé par des rideaux épais dont la matière usée ne créait qu'une illusion de séparation plutôt qu’un véritable cloisonnement, la lumière de fin d’après-midi filtrait à travers une vitre poussiéreuse, dessinant des traînées dorées et pâles sur les sièges.
+
+Un vieux wagon d’autrefois avec compartiments isolés dégageait cette atmosphère lourde, un lieu suspendu entre deux destinations oubliées de la vieille gare de province. Eddie était assis près de sa fenêtre, une silhouette immobile comme une statue sculptée par le temps et l'ennui. Les épaules larges du voyageur tranquille reposaient à plat sur les genoux, ses mains étant posées là, inertes, sans chercher à bouger malgré le vacillement sourd sous le poids incessant du train. Son regard, lorsqu’il était tourné vers l’extérieur, semblait s'épuiser dans la contemplation d'un vide indéfini, incapable de trouver une issue tangible à sa propre immobilité intérieure.
+
+Une silhouette s'approcha discrètement du compartiment. Maya entra silencieusement sans faire un bruit notable sur le plancher craquant, comme si elle avait anticipé chaque imperfection de l’espace. La lumière déclinante la dessinait d’abord en une ombre nette avant qu’elle ne devienne une silhouette aux contours définis contre la pénombre du compartiment. Les sièges en cuir défraîchis, témoins silencieux de vies passées, émettaient un léger gémissement sous la pression mécanique du mouvement incessant du train.
+
+Maya fit quelques pas mesurés vers le siège adjacent à celui occupé par Eddie. Ses mouvements étaient précis et économes ; elle déplaça son sac avec une légèreté calculée, chaque geste étant une évaluation de l’espace disponible. Le poids de ses affaires fut déposé sur le cuir rugueux, un bruit presque inaudible qui s'était immédiatement noyé dans la respiration du métal. Elle se fit ensuite assise, adoptant une posture détendue mais mesurée, épousant la disposition des lieux sans imposer sa présence par l’urgence ou la précipitation.
+
+Eddie observa alors la courbe de cette silhouette naissante dans l’obscurité relative qui enveloppait son propre siège. L'immobilité habituelle du voyageur se transforma en une observation plus focalisée, mais toujours passive. La lumière extérieure, déclinante et morne, sculptait les lignes fines et économes de ses gestes. Le rideau épais, sans jamais créer de véritable séparation physique entre le compartiment et le couloir alentour, agissait comme un filtre diffus, capturant et retenant la présence de Maya dans l'espace clos. La cadence lente du train continuait son œuvre hypnotique, tandis que le silence entre eux s’installait non pas comme une absence sonore, mais comme une substance palpable, lourde et chargée d'une attention discrète et profonde.
+
+Analyse les fautes.
+
+---
+
+## RÉPONSE
+
+CORRECTIONS:
+- FAUX: "Les épaules larges du voyageur tranquille reposaient à plat sur les genoux, ses mains étant posées là, inertes, sans chercher à bouger malgré le vacillement sourd sous le poids incessant du train."
+JUSTE: "Les épaules larges du voyageur tranquille reposaient à plat sur les genoux, ses mains étaient posées là, inertes, sans chercher à bouger malgré le vacillement sourd sous le poids incessant du train."
+
+CORRECTIONS:
+- FAUX: "Maya entra silencieusement sans faire un bruit notable sur le plancher craquant, comme si elle avait anticipé chaque imperfection de l’espace."
+JUSTE: "Maya entra silencieusement sans faire un bruit notable sur le plancher craquant, anticipant chaque imperfection de l’espace."
+
+CORRECTIONS:
+- FAUX: "Le rideau épais, sans jamais créer de véritable séparation physique entre le compartiment et le couloir alentour, agissait comme un filtre diffus, capturant et retenant la présence de Maya dans l'espace clos."
+JUSTE: "Le rideau épais, sans jamais créer de véritable séparation physique entre le compartiment et le couloir alentour, agissait comme un filtre diffus, capturant la présence de Maya dans l'espace clos."

@@ -1,0 +1,156 @@
+
+[13:49:01] [SCENARIO] Une rencontre — 1 chapitre(s)
+
+[13:49:01] [Chapitre 1/1] Une rencontre dans un train
+
+[13:49:01] [PLAN] tentative 1/4
+[13:49:23]   [LLM #  1]    21,158ms    1516 ->  1981 tok  93.6 tok/s  [sum in:1.5k out:2.0k]
+[13:49:23]   ChapterPlanner                    21 679ms
+[13:49:31]   [LLM #  2]     6,749ms    2182 ->   841 tok  124.6 tok/s  [sum in:3.7k out:2.8k]
+[13:49:40]   [LLM #  3]     8,702ms    2572 ->  1059 tok  121.7 tok/s  [sum in:6.3k out:3.9k]
+[13:49:46]   [LLM #  4]     5,485ms    1953 ->   672 tok  122.5 tok/s  [sum in:8.2k out:4.6k]
+[13:49:46]   PlanNarrativeCritic             10.00     7,446ms  OK
+[13:49:46]   PlanCoherenceCritic             10.00     9,475ms  OK
+[13:49:46]   GoalPlanChecker                 10.00     6,162ms  OK
+[13:49:46]   -> moy 10.00  PASS
+
+[13:49:46] [WRITE 1/6] imperative
+[13:49:58]   [LLM #  5]    10,937ms    2581 ->  1330 tok  121.6 tok/s  [sum in:10.8k out:5.9k]
+[13:49:58]   WriterStep                        11 661ms  -> 472 mots
+[13:50:12]   [LLM #  6]    13,895ms     957 ->  1705 tok  122.7 tok/s  [sum in:11.8k out:7.6k]
+[13:50:12]   ProofreaderStep                   14 430ms  -> 3 correction(s)
+[13:50:20]   [LLM #  7]     7,552ms    1399 ->   950 tok  125.8 tok/s  [sum in:13.2k out:8.5k]
+[13:50:20]   DeusInMachinaChecker            10.00     8,154ms  OK
+[13:50:32]   [LLM #  8]    11,164ms    1119 ->  1406 tok  125.9 tok/s  [sum in:14.3k out:9.9k]
+[13:50:32]   SequenceStyleChecker             7.00    11,708ms  OK
+[13:50:41]   [LLM #  9]     8,219ms    1132 ->  1045 tok  127.1 tok/s  [sum in:15.4k out:11.0k]
+[13:50:41]   SequenceChecker                 10.00     8,781ms  OK
+[13:50:45]   [LLM # 10]     3,582ms     416 ->   463 tok  129.2 tok/s  [sum in:15.8k out:11.5k]
+[13:50:45]   StateExtractorStep                 4 024ms  -> 1 changement(s)
+[13:50:54]   [LLM # 11]     8,794ms    1039 ->  1111 tok  126.3 tok/s  [sum in:16.9k out:12.6k]
+[13:50:54]   RepetitionTrackerStep              9 347ms
+[13:50:54]   RepetitionFilterStep                   0ms  -> 4 filtre(s)
+
+[13:50:54] [WRITE 2/6] imperative
+[13:51:14]   [LLM # 12]    19,097ms    2761 ->  2426 tok  127.0 tok/s  [sum in:19.6k out:15.0k]
+[13:51:14]   WriterStep                        19 872ms  -> 844 mots
+[13:51:30]   [LLM # 13]    15,426ms    1499 ->  1948 tok  126.3 tok/s  [sum in:21.1k out:16.9k]
+[13:51:30]   ProofreaderStep                   16 018ms
+[13:51:46]   [LLM # 14]    15,069ms    1948 ->  1882 tok  124.9 tok/s  [sum in:23.1k out:18.8k]
+[13:51:46]   DeusInMachinaChecker            10.00    15,684ms  OK
+[13:52:00]   [LLM # 15]    13,518ms    1668 ->  1703 tok  126.0 tok/s  [sum in:24.7k out:20.5k]
+[13:52:00]   SequenceStyleChecker             7.00    14,175ms  OK
+[13:52:10]   [LLM # 16]     9,568ms    1612 ->  1191 tok  124.5 tok/s  [sum in:26.4k out:21.7k]
+[13:52:10]   SequenceChecker                  9.00    10,189ms
+[13:52:10]     ! LIMITE : Coexistence silencieuse uniquement. Aucun mot échangé, aucun regard direct — présent mais non respecté (le texte contient des échanges verbaux et des regards directs).
+[13:52:20]   [LLM # 17]     9,061ms    2877 ->  1099 tok  121.3 tok/s  [sum in:29.2k out:22.8k]
+[13:52:20]   WriterStep (SeqCheckRetry 1)       9 874ms  -> 265 mots
+[13:52:30]   [LLM # 18]     9,490ms     735 ->  1183 tok  124.7 tok/s  [sum in:30.0k out:24.0k]
+[13:52:30]   SequenceChecker                 10.00     9,989ms  OK
+[13:52:36]   [LLM # 19]     5,859ms     405 ->   753 tok  128.5 tok/s  [sum in:30.4k out:24.7k]
+[13:52:36]   StateExtractorStep                 6 306ms  -> 4 changement(s)
+[13:52:49]   [LLM # 20]    11,764ms     838 ->  1513 tok  128.6 tok/s  [sum in:31.2k out:26.3k]
+[13:52:49]   RepetitionTrackerStep             12 273ms
+[13:52:49]   RepetitionFilterStep                   0ms  -> 3 filtre(s)
+
+[13:52:49] [WRITE 3/6] imperative
+[13:52:57]   [LLM # 21]     7,863ms    2875 ->   986 tok  125.4 tok/s  [sum in:34.1k out:27.2k]
+[13:52:57]   WriterStep                         8 644ms  -> 112 mots
+[13:53:06]   [LLM # 22]     7,747ms     409 ->   982 tok  126.8 tok/s  [sum in:34.5k out:28.2k]
+[13:53:06]   ProofreaderStep                    8 198ms  -> 2 correction(s)
+[13:53:13]   [LLM # 23]     6,518ms     853 ->   849 tok  130.2 tok/s  [sum in:35.3k out:29.1k]
+[13:53:13]   DeusInMachinaChecker            10.00     7,013ms  OK
+[13:53:21]   [LLM # 24]     8,170ms     573 ->  1042 tok  127.5 tok/s  [sum in:35.9k out:30.1k]
+[13:53:21]   SequenceStyleChecker             7.00     8,652ms  OK
+[13:53:29]   [LLM # 25]     7,428ms     541 ->   953 tok  128.3 tok/s  [sum in:36.5k out:31.1k]
+[13:53:29]   SequenceChecker                  5.00     7,895ms  OK
+[13:53:34]   [LLM # 26]     4,742ms     290 ->   617 tok  130.1 tok/s  [sum in:36.8k out:31.7k]
+[13:53:34]   StateExtractorStep                 5 173ms  -> 7 changement(s)
+[13:53:45]   [LLM # 27]    10,541ms     745 ->  1344 tok  127.5 tok/s  [sum in:37.5k out:33.0k]
+[13:53:45]   RepetitionTrackerStep             11 028ms
+[13:53:45]   RepetitionFilterStep                   0ms  -> 5 filtre(s)
+
+[13:53:45] [WRITE 4/6] imperative
+[13:53:59]   [LLM # 28]    13,217ms    2973 ->  1608 tok  121.7 tok/s  [sum in:40.5k out:34.6k]
+[13:53:59]   WriterStep                        14 015ms  -> 599 mots
+[13:54:14]   [LLM # 29]    14,017ms    1109 ->  1709 tok  121.9 tok/s  [sum in:41.6k out:36.4k]
+[13:54:14]   ProofreaderStep                   14 598ms
+[13:54:29]   [LLM # 30]    14,324ms    1558 ->  1753 tok  122.4 tok/s  [sum in:43.1k out:38.1k]
+[13:54:29]   DeusInMachinaChecker            10.00    14,849ms  OK
+[13:54:44]   [LLM # 31]    14,252ms    1278 ->  1756 tok  123.2 tok/s  [sum in:44.4k out:39.9k]
+[13:54:44]   SequenceStyleChecker             7.00    14,859ms  OK
+[13:54:50]   [LLM # 32]     6,012ms    1244 ->   738 tok  122.8 tok/s  [sum in:45.7k out:40.6k]
+[13:54:50]   SequenceChecker                  5.00     6,584ms  OK
+[13:54:56]   [LLM # 33]     5,485ms     403 ->   682 tok  124.3 tok/s  [sum in:46.1k out:41.3k]
+[13:54:56]   StateExtractorStep                 5 944ms  -> 5 changement(s)
+[13:55:09]   [LLM # 34]    11,922ms    1555 ->  1467 tok  123.0 tok/s  [sum in:47.6k out:42.7k]
+[13:55:09]   RepetitionTrackerStep             12 507ms
+[13:55:09]   RepetitionFilterStep                   0ms  -> 5 filtre(s)
+
+[13:55:09] [WRITE 5/6] imperative
+[13:55:29]   [LLM # 35]    19,399ms    3021 ->  2410 tok  124.2 tok/s  [sum in:50.6k out:45.2k]
+[13:55:29]   WriterStep                        20 235ms  -> 993 mots
+[13:55:46]   [LLM # 36]    16,437ms    1689 ->  2080 tok  126.5 tok/s  [sum in:52.3k out:47.2k]
+[13:55:46]   ProofreaderStep                   17 081ms
+[13:56:06]   [LLM # 37]    19,711ms    2138 ->  2431 tok  123.3 tok/s  [sum in:54.5k out:49.7k]
+[13:56:06]   DeusInMachinaChecker            10.00    20,413ms  OK
+[13:56:18]   [LLM # 38]    10,848ms    1858 ->  1342 tok  123.7 tok/s  [sum in:56.3k out:51.0k]
+[13:56:18]   SequenceStyleChecker             6.00    11,525ms
+[13:56:18]     ! Le texte est trop lourd et abstrait. Il utilise un vocabulaire excessif et des tournures nominales qui alourdissent le rythme. De nombreux clichés (discrétion d’un fantôme, tension invisible) sont employés sans apporter de nuance nouvelle. La description sensorielle, bien que présente (odeur du cuir), est souvent noyée sous une rhétorique excessivement philosophique ou métaphorique, rendant la prose artificielle et peu percutante. Les verbes physiques manquent parfois au profit d'adjectifs descriptifs inutiles.
+[13:56:32]   [LLM # 39]    13,167ms    3216 ->  1633 tok  124.0 tok/s  [sum in:59.5k out:52.6k]
+[13:56:32]   WriterStep (StyleRetry 1)         14 027ms  -> 544 mots
+[13:56:43]   [LLM # 40]    10,695ms    1239 ->  1367 tok  127.8 tok/s  [sum in:60.8k out:54.0k]
+[13:56:43]   SequenceStyleChecker             8.00    11,293ms  OK
+[13:56:51]   [LLM # 41]     6,806ms    1177 ->   872 tok  128.1 tok/s  [sum in:62.0k out:54.9k]
+[13:56:51]   SequenceChecker                  5.00     7,373ms  OK
+[13:56:56]   [LLM # 42]     4,471ms     408 ->   579 tok  129.5 tok/s  [sum in:62.4k out:55.5k]
+[13:56:56]   StateExtractorStep                 4 899ms  -> 6 changement(s)
+[13:57:06]   [LLM # 43]    10,175ms    1567 ->  1282 tok  126.0 tok/s  [sum in:63.9k out:56.7k]
+[13:57:06]   RepetitionTrackerStep             10 802ms
+[13:57:06]   RepetitionFilterStep                   0ms  -> 4 filtre(s)
+
+[13:57:06] [WRITE 6/6] imperative
+[13:57:17]   [LLM # 44]     9,584ms    3100 ->  1188 tok  123.9 tok/s  [sum in:67.0k out:57.9k]
+[13:57:17]   WriterStep                        10 417ms  -> 363 mots
+[13:57:26]   [LLM # 45]     8,618ms     782 ->  1097 tok  127.3 tok/s  [sum in:67.8k out:59.0k]
+[13:57:26]   ProofreaderStep                    9 170ms
+[13:57:35]   [LLM # 46]     8,933ms    1231 ->  1129 tok  126.4 tok/s  [sum in:69.0k out:60.2k]
+[13:57:35]   DeusInMachinaChecker            10.00     9,504ms  OK
+[13:57:48]   [LLM # 47]    12,172ms     951 ->  1552 tok  127.5 tok/s  [sum in:70.0k out:61.7k]
+[13:57:48]   SequenceStyleChecker             7.00    12,687ms  OK
+[13:58:00]   [LLM # 48]    11,105ms     895 ->  1415 tok  127.4 tok/s  [sum in:70.9k out:63.1k]
+[13:58:00]   SequenceChecker                 10.00    11,620ms  OK
+[13:58:05]   [LLM # 49]     5,244ms     403 ->   671 tok  127.9 tok/s  [sum in:71.3k out:63.8k]
+[13:58:05]   StateExtractorStep                 5 684ms  -> 8 changement(s)
+[13:58:14]   [LLM # 50]     8,029ms    1318 ->  1029 tok  128.2 tok/s  [sum in:72.6k out:64.8k]
+[13:58:14]   RepetitionTrackerStep              8 605ms
+[13:58:14]   RepetitionFilterStep                   0ms  -> 5 filtre(s)
+[13:58:21]   [LLM # 51]     6,024ms    3961 ->   742 tok  123.2 tok/s  [sum in:76.6k out:65.6k]
+[13:58:21]   TextNarrativeCritic             10.00     6,959ms  OK
+[13:58:31]   [LLM # 52]     9,382ms    4025 ->  1170 tok  124.7 tok/s  [sum in:80.6k out:66.7k]
+[13:58:31]   TextCoherenceCritic              3.50    10,378ms
+[13:58:31]     ! Une répétition exacte du paragraphe décrivant l'intensification de la connexion entre Eddie et Maya apparaît deux fois consécutives à la fin du chapitre.
+[13:58:38]   [LLM # 53]     5,914ms    3924 ->   733 tok  123.9 tok/s  [sum in:84.5k out:67.5k]
+[13:58:38]   GoalTextChecker                 10.00     6,877ms
+[13:58:38]     ! Aucune ligne PROBLEME:
+[13:58:38]   -> moy 7.83  PASS
+
+[13:58:38] [EVAL]
+[13:58:45]   [LLM # 54]     6,005ms    3782 ->   740 tok  123.2 tok/s  [sum in:88.3k out:68.2k]
+[13:58:45]   StoryCompressor                    6 953ms
+[13:58:55]   [LLM # 55]     9,117ms    3841 ->  1122 tok  123.1 tok/s  [sum in:92.1k out:69.3k]
+[13:58:55]   ChapterStyleChecker               10 075ms
+[13:59:06]   [LLM # 56]     9,213ms    3961 ->  1134 tok  123.1 tok/s  [sum in:96.1k out:70.5k]
+[13:59:06]   CharacterChecker                  10 201ms
+[13:59:14]   [LLM # 57]     8,249ms    1550 ->  1029 tok  124.7 tok/s  [sum in:97.7k out:71.5k]
+[13:59:14]   NarrativeArcAnalyzer               8 893ms
+[13:59:21]   [LLM # 58]     6,301ms    1566 ->   795 tok  126.2 tok/s  [sum in:99.2k out:72.3k]
+[13:59:21]   CausalAnalyzer                     6 918ms
+
+╔══════════════════════════════════════════════════════╗
+║  Appels LLM               : 58                          ║
+║  Tokens in                : 99 218 (~99,2k)             ║
+║  Tokens out               : 72 289 (~72,3k)             ║
+║  Duree totale             : 10m 21s                     ║
+╚══════════════════════════════════════════════════════╝
+

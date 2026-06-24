@@ -1,0 +1,60 @@
+comment: "L'arrivée à l'UCPA"
+
+title: "La Rencontre"
+type: imperative
+
+# description: synopsis narratif du chapitre → transmis au Planner
+description: >
+  Christelle et Corinne arrivent à l'UCPA en sortant du bus qui les as ammmené de l'aéroport et s'installent dans leur chambre partagée
+  Thierry & Catherine arrivent aussi à l'UCPA par le meme bus et s'installent dans une autre chambre.
+  Il ne se connaissent pas encore et ne se sont pas croisés.
+  Christelle et Thierry vont se rencontrer au tir à l'arc
+
+# setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
+# Ex : "Le lendemain matin, dans la salle de mess de la base."
+# setting: "Moment et lieu de la scène — une phrase ou deux maximum."
+
+# goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
+goal: >
+  Ce chapitre raconte l'arrivée à l'UCPA jusqu'au moment ou Christelle & Thierry se rencontrent
+
+# defaults: héritées par toutes les séquences (merge additif)
+defaults:
+  # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
+  # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
+  character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
+  lore: >
+    ["UCPA"]
+    "Un été magnifique et ensoleilé au bord de la mer"
+  
+sequences:
+
+  # Séquence complète avec tous les champs
+  - type: explicit
+    directive: >
+      La scene se passe dans le centre de l'UCPA de Saint-Cyprien : décrit le centre de l'UCPA de Saint-Cyprien
+      Christelle et Corinne arrivent à l'UCPA et s'installent dans la chambre qu'elles vont partager toutes les deux.
+      Thierry & Catherine arrivent aussi à l'UCPA et s'installent dans une autre chambre qui leur est attribuée.
+      Il ne se connaissent pas encore et ne se sont pas encore croisés.
+      IMPORTANT : aucune rencontre entre les 2 groupes pour le moment
+    min_words: 1000
+
+  # Séquence avec rupture narrative intentionnelle (ellipse, saut temporel)
+  # no_transition: true → supprime la continuité avec la séquence précédente
+  - type: explicit
+    directive: >
+      Le lendemain Christelle et Thierry vont chacun s'inscrire au tir à l'arc
+      L'heure arrivée ils se dirigent ver le pas de tir
+      IMPORTANT : aucune rencontre entre les 2 groupes pour le moment
+      RAPPEL : Ni Catherine ni Corinne dans cette scene
+    min_words: 500
+
+  - type: explicit
+    directive: >
+      Christelle et Thierry se rencontrent : ils partagent la même cible pour le tir à l'arc
+      Ils tirent chacun plusieurs volées de flèches et discutent
+      Pour Thierry Christelle ressemble à une guerrière amazone avec son arc (soit SUBTIL AVEC CETTE INFORMATION)
+      Ils discutent et le courant passent rapidement
+      Ils decident de se retrouver après le repas pour se promener
+      RAPPEL : Ni Catherine ni Corinne dans cette scene
+    min_words: 2000

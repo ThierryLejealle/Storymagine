@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: storymagine.testllm.coeur.domaine.BenchmarkRunnerTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.051 s -- in storymagine.testllm.coeur.domaine.BenchmarkRunnerTest

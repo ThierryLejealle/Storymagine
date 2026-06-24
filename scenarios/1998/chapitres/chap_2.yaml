@@ -1,0 +1,58 @@
+comment: "La semaine à l'UCPA"
+
+title: "La semaine à l'UCPA"
+type: imperative
+
+# description: synopsis narratif du chapitre → transmis au Planner
+description: >
+  Christelle & Thierry se sont rencontrés au tir à l'Arc.
+  Ils vont passer beaucoup de moments ensemble
+
+# setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
+# Ex : "Le lendemain matin, dans la salle de mess de la base."
+# setting: "Moment et lieu de la scène — une phrase ou deux maximum."
+
+# goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
+goal: >
+  Ce chapitre raconte la semaine à l'UCPA
+
+# defaults: héritées par toutes les séquences (merge additif)
+defaults:
+  # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
+  # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
+  character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
+  lore: >
+    ["UCPA"]
+    "Un été magnifique et ensoleilé au bord de la mer"
+  
+sequences:
+
+  # Séquence complète avec tous les champs
+  - type: explicit
+    directive: >
+      Christelle et Thierry vont manger ensemble le soir. Avec Corinne et Catherine
+      Corinne et Catherine se rencontrent et sympathisent aussi
+      Christelle et Thierry décide de se promener le soir sur la plage
+    min_words: 500
+
+  # Séquence avec rupture narrative intentionnelle (ellipse, saut temporel)
+  # no_transition: true → supprime la continuité avec la séquence précédente
+  - type: explicit
+    directive: >
+      Balade sur une plage de sable fin en fin de journée, par une belle soirée d'été pour Christelle et Thierry
+      Longue promenade sur le sable, les pieds dans l'eau
+      Repas tous les 4 avec Corinne et Catherine
+      Une scene potentiellement très romantique (mais attention : pas d'action romantique, ce sont juste des amis)
+      RAPPEL : Ni Catherine ni Corinne dans cette scene
+    min_words: 2000
+    lore: ["PLAGE"]
+
+  - type: explicit
+    directive: >
+      Christelle et Thierry se retrouvent tous les jours pour de nombreuses activités
+      Par exemple, profiter de la piscine
+      Ou retourner sur la plage
+      RAPPEL : Ni Catherine ni Corinne dans cette scene
+      Le dernier jour, Christelle et Thierry décident de s'inscrire pour une longue balade à Colioure organisée par l'UCPA
+    min_words: 1000
+    lore: ["PLAGE"]

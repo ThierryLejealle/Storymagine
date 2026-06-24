@@ -1,0 +1,2 @@
+- Le texte doit donner l'impression que le temps s'est arrêté dans le compartiment.
+- Chaque séquence a une seule chose qui se passe — pas deux.

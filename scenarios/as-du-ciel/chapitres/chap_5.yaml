@@ -1,0 +1,44 @@
+# TEST what_if — et si la mitrailleuse de Pierre s'était enraillée au Jour 6 ?
+# Illustre : type what_if, freedom, opening_frame, closing_frame
+
+title: "Et si... La Mitrailleuse"
+type: what_if
+
+freedom: moderate
+
+opening_frame: "Et si, ce matin-là, la mitrailleuse de Pierre s'était enraillée ?"
+
+closing_frame: "Mais ce n'est pas ce qui arriva."
+
+description: >
+  Au-dessus de Caen, la mitrailleuse de Pierre s'enraille au premier passage.
+  L'ennemi est là. Pierre ne peut pas tirer. Il doit protéger Henri avec les seules
+  ressources du vol pur — la manœuvre, la vitesse, la position.
+  Comment cette journée se serait-elle terminée ?
+
+defaults:
+  character_sheets: ["pierre_moreau", "henri_leclair"]
+  focus: ["CIEL", "MACHINE", "PEUR"]
+
+sequences:
+
+  - type: explicit
+    directive: >
+      Pierre appuie sur la détente. Rien. Il recommence. Rien. La mitrailleuse est enraillée.
+      En face, le FW190 de l'attaque surprise tourne déjà pour un second passage sur Henri.
+      Pierre n'a que la manœuvre. Il se place entre l'ennemi et son ailier.
+    checks:
+      - "La mitrailleuse enraillée est la prémisse centrale — explicitement présente"
+      - "Pierre ne peut pas tirer — aucun tir n'a lieu dans cette séquence"
+      - "La physique reste réaliste : Pierre manœuvre avec un vrai Spitfire MkIX"
+
+  - type: explicit
+    directive: >
+      Dix minutes de vol pur. Pierre couvre Henri par le positionnement seul.
+      Il interpose son appareil, il menace sans pouvoir tenir sa menace.
+      L'ennemi finit par décrocher — soit par prudence, soit par manque de carburant.
+      Pierre et Henri rentrent. La mitrailleuse se dégrippera au sol, une simple pièce coincée.
+    checks:
+      - "Le dénouement reste plausible dans les lois de la physique aérienne de 1944"
+      - "Les personnages agissent de façon cohérente avec leurs caractères habituels"
+      - "Aucun fait de cette digression ne devient un fait de la trame principale"

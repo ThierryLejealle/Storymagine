@@ -1,0 +1,10 @@
+- Corriger le Français en Anglais dans les specs et objets
+- Corriger les fiches personnage, lore, focus, .. selon le nouveau modèle (et impacter le code)
+- retirer toute mention à actionsText
+- faire le tableau qui explique quel agent utilise quelle donnée ?
+- le moteur reboucle sur le plan alors que les agents donnent 10/10 ?
+- les prompts disent : en français. On doit pouvoir rédiger dans une autre langue
+- le prompt plan mentionne état intérieur, mais ce n'est pas explicite avec les fiches personnages
+- vérifier qu'on accumulle pas les critiques à chaque retry
+- enregistrer le dernier profil de génération pour gagner du temps
+- passer les directives de séquences (type imperative, non vides) aux 3 agents critiques de plan (PlanNarrativeCritic, PlanCoherenceCritic, GoalPlanChecker) : afficher avant les beats avec label "Directives :", + note de cadrage dans le prompt user : "Le plan peut enrichir librement ces directives. Signale uniquement les violations de CONTRAINTE ou LIMITE explicites."

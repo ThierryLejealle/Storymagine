@@ -1,0 +1,51 @@
+package storymagine.redacteur.coeur.domaine.agent.global.causalanalyzer;
+
+import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.ModelCallPort;
+import storymagine.redacteur.coeur.domaine.agent.Agent;
+import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
+
+/**
+ * Analyses inter-chapter causal coherence across all chapter plans.
+ * Purely informational — run at end of book generation, not during writing.
+ * Source: NarrativeCritiqueContext.evalCausal.
+ */
+public class CausalAnalyzer implements Agent {
+
+    private static final String SYSTEM =
+        "Tu es un analyste de cohérence narrative. Tu examines les PLANS de tous les chapitres d'un roman.\n"
+        + "Tu vérifies UNIQUEMENT la cohérence causale entre chapitres :\n"
+        + "chaque événement important a-t-il une cause ? Chaque cause a-t-elle une conséquence ?\n"
+        + "Signale : événements sans cause, contradictions factuelles entre chapitres,\n"
+        + "conséquences importantes jamais exploitées.\n"
+        + "Si rien à signaler, écris SCORE: 10 sans PROBLEME.\n\n"
+        + "Format de sortie strict :\n"
+        + "PROBLEME: [description courte d'un problème réel]\n"
+        + "SCORE: N  (entier 0-10)\n"
+        + "En français.";
+
+    private static final String AGENT_NAME = "CausalAnalyzer";
+
+    private final ModelCallPort llm;
+
+    @Override
+    public String agentName() { return AGENT_NAME; }
+
+    public CausalAnalyzer(ModelCallPort llm) {
+        this.llm = llm;
+    }
+
+    public CausalAnalyzerOutput call(CausalAnalyzerInput input) {
+        int ctx = llm.contextWindow();
+        String plansText = trunc(input.plansText(), ctx * 4 / 3);
+        String user = "### Plans des chapitres du roman\n\n" + plansText
+            + "\n\nAnalyse la cohérence causale entre les chapitres. Conclus par SCORE: N.";
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        return new CausalAnalyzerOutput(ProblemScoreParser.parseProblems(raw), ProblemScoreParser.parseScoreInt(raw));
+    }
+
+    private static String trunc(String s, int maxChars) {
+        if (s == null || s.isBlank()) return "";
+        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
+    }
+}

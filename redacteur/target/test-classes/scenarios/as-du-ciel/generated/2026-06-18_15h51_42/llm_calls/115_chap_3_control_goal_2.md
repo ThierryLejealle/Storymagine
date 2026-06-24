@@ -1,0 +1,154 @@
+# chap_3_control_goal — appel 2
+
+## EN-TÊTE
+- Démarré  : 2026-06-18 16:19:23
+- Statut   : ✅ OK
+- Sys      : ~339 tok
+- Usr      : ~1374 tok
+- Réponse  : ~158 tok
+- Durée    : 9,8s
+
+---
+
+## PROMPT SYSTÈME
+
+Tu évalues si un PLAN DE CHAPITRE remplit son objectif narratif spécifique.
+Ne juge pas la qualité littéraire, ni la cohérence globale du roman.
+Uniquement : le plan avance-t-il clairement et concrètement vers l'objectif narratif ?
+
+Échelle de notation :
+10 = objectif pleinement couvert
+ 9 = excellent — objectif très bien couvert, quelques légères imperfections
+ 8 = très bien — objectif couvert, quelques séquences à affiner
+ 7 = bien — objectif couvert mais quelques séquences peuvent mieux le servir
+ 6 = correct — plusieurs séquences ne servent pas assez l'objectif
+ 5 = insuffisant — l'objectif est traité de façon trop superficielle
+ 4 = plusieurs lacunes — l'objectif est secondaire dans le plan
+ 3 = mauvais — l'objectif n'est qu'en partie adressé
+ 2 = très mauvais — l'objectif est absent du plan
+ 1 = inutilisable — à replanifier intégralement
+
+Procède dans cet ordre :
+1. Analyse le plan entier.
+2. Note tous les défauts et axes d'amélioration.
+3. Détermine la note en fonction de la qualité globale.
+4. Liste en sortie défauts et axes d'amélioration trouvés.
+
+Format obligatoire :
+PROBLEME: [défaut ou axe d'amélioration]
+PROBLEME: [défaut ou axe d'amélioration suivant]
+(une ligne PROBLEME: par défaut ou axe d'amélioration réellement constaté — ne pas en inventer)
+Si score = 10 : aucune ligne PROBLEME:
+SCORE: N  (entier 1-10)
+En français.
+
+---
+
+## PROMPT UTILISATEUR
+
+### Objectif narratif de ce chapitre
+Point de bascule moral : montrer que le lien humain entre Pierre et Henri devient plus fort que la discipline militaire. La décision doit être rapide, irréfléchie, viscérale — pas héroïque. Pas de justification longue. Juste un choix instinctif.
+
+
+### Objectif global du roman (contexte)
+# L'As du Ciel
+
+Juin 1944. Pierre Moreau, 24 ans, pilote de la FAFL (Forces Aériennes Françaises Libres),
+vole sur Spitfire depuis la base de Thorney Island, sur la Manche. Pendant sept jours il
+combat, survit, aime ses camarades en silence. Le huitième jour il ne rentre pas.
+
+Ce n'est pas l'histoire d'un héros. C'est l'histoire d'un homme ordinaire dans
+un monde extraordinairement violent, qui fait son travail aussi bien qu'il peut,
+et que la guerre finit par briser comme elle brise tout le monde — à son heure.
+
+## Ton et style
+
+Sobre et précis. Phrases courtes pour l'action, longues pour la contemplation.
+Le ciel est un personnage à part entière : lumière, altitude, silence entre les nuages.
+Les émotions ne sont jamais nommées — elles passent dans les gestes, les silences, les corps.
+Pas de glorification de la guerre. Pas de pathos facile. La mort est une chose ordinaire
+et terrible à la fois.
+
+S'inspirer de : Antoine de Saint-Exupéry (Vol de nuit), Romain Gary (La Promesse de l'aube),
+Sebastian Faulks (Birdsong pour la retenue émotionnelle).
+
+## Public cible
+
+Adultes. Amateurs de récits de guerre intimistes et de littérature française classique.
+Pas de lecteurs de techno-thrillers militaires — ici, le Spitfire est un outil de mort
+et un objet de beauté, pas une fiche technique.
+
+## Longueur cible
+
+~15 000 mots. Cinq chapitres. Dense et court, chaque phrase doit peser.
+
+
+### Plan à évaluer
+[
+  {
+    "sequence": 1,
+    "beats": [
+      "Le commandant Bertrand s'assied derrière son grand bureau en bois sombre.",
+      "Il déplie une carte topographique détaillée de la région pour le briefing du matin.",
+      "Bertrand désigne des zones spécifiques sur la carte où les renforts allemands sont positionnés.",
+      "L'escorte prévue est celle de bombardiers Mitchell, menant vers Caen.",
+      "Pierre écoute attentivement les instructions données par Bertrand concernant les axes de vol et les points de contact.",
+      "Bertrand énonce le plan d'action avec une voix calme qui ne monte jamais, malgré la tension palpable dans la pièce."
+    ],
+    "sensoriels": "L'odeur du papier ancien mélangée au tabac froid des officiers. Le bruit sec et régulier de la plume sur le carnet de Bertrand.",
+    "ton_et_rythme": "Formel, structuré, une cadence posée qui contraste avec l'urgence sous-jacente."
+  },
+  {
+    "sequence": 2,
+    "beats": [
+      "L'escadrille survole la zone de Caen au zénith du jour.",
+      "Le soleil, haut dans le ciel, éblouit les pilotes par instants, créant une lumière aveuglante qui demande d'ajuster son regard.",
+      "Une vague d'avions ennemis surgit brusquement des nuages, engageant l'attaque de manière imprévue.",
+      "Au premier passage, Henri Leclair est touché et perd immédiatement sa trajectoire ascendante.",
+      "Pierre réagit instantanément pour engager un adversaire ennemi qui arrive en pleine approche.",
+      "Le bruit assourdissant des moteurs Spitfire se mêle au crissement métallique du combat."
+    ],
+    "sensoriels": "La chaleur intense et sèche du soleil sur le visage. Le grondement puissant des moteurs Merlin sous stress. La vibration violente de la cellule lors d'un tir.",
+    "ton_et_rythme": "Dynamique, rapide, un rythme saccadé dicté par les mouvements soudains."
+  },
+  {
+    "sequence": 3,
+    "beats": [
+      "Pierre observe Henri piquer en perte de contrôle et prend une décision immédiate.",
+      "Le temps semble se dilater pendant ces deux secondes cruciales avant l'intervention.",
+      "Il rompt la formation serrée pour descendre vers son équipier blessé.",
+      "La radio hurle le nom de Pierre, exigeant sa présence dans le combat principal.",
+      "Pierre remarque la tension extrême et la vulnérabilité d'Henri (sa trajectoire instable) et décide d'intervenir personnellement.",
+      "Il agit avec une rapidité accrue et prend plus de risques que son profil habituel ne le laisserait croire."
+    ],
+    "sensoriels": "La tension dans les muscles du cockpit. Le bruit strident des communications radio. La sensation physique d'une accélération brutale.",
+    "ton_et_rythme": "Intensif, décisif, une cadence effrénée due à l'urgence de la situation."
+  },
+  {
+    "sequence": 4,
+    "beats": [
+      "Pierre ramène finalement Henri en toute sécurité jusqu'à la base.",
+      "Jules Meca se tient sur le tarmac et commence immédiatement une inspection silencieuse de l'appareil d'Henri.",
+      "Le Commandant Bertrand attend Pierre près du bureau avec ses mains posées derrière son dos, immobile.",
+      "Un long moment de silence s'installe entre les hommes dans la cour après le vol.",
+      "Bertrand brise ce calme par une phrase unique et mesurée adressée à Pierre.",
+      "Pierre échange un bref regard avec Henri qui confirme, sans mots, que l'aide a été nécessaire."
+    ],
+    "sensoriels": "L'odeur de l'huile brûlée sur le tarmac. Le bruit des moteurs qui s'arrêtent en fin de vol. La lumière vive du jour contrastant avec les ombres portées.",
+    "ton_et_rythme": "Pesante, observatrice, une cadence lente et solennelle après la tempête."
+  }
+]
+
+
+
+Analyse si ce plan remplit l'objectif narratif, puis conclus avec tes PROBLEME: et SCORE: N.
+
+---
+
+## RÉPONSE
+
+Le plan est très efficace et atteint son objectif de manière concise. L'objectif narratif — montrer le lien humain prenant le pas sur la discipline militaire par une décision rapide et viscérale — est parfaitement intégré dans la séquence 3.
+
+La structure (Briefing -> Incident -> Décision Instinctive -> Conséquence Silencieuse) permet d'atteindre ce point de bascule sans nécessiter de longues justifications ou de pathos excessif, respectant ainsi le ton sobre et précis demandé pour le roman. La décision est présentée comme une réaction immédiate à la vulnérabilité d'un camarade plutôt qu'une "héroïsation" du geste.
+
+SCORE: 10

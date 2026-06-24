@@ -1,0 +1,67 @@
+comment: "Colioure"
+
+title: "La balade à Colioure"
+type: imperative
+
+# description: synopsis narratif du chapitre → transmis au Planner
+description: >
+  Christelle & Thierry visitent Colioure : balade à pied. Temps magnifique, ville magnifique. Ambiance magique
+  Corinne est est eux
+
+# setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
+# Ex : "Le lendemain matin, dans la salle de mess de la base."
+# setting: "Moment et lieu de la scène — une phrase ou deux maximum."
+
+# goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
+goal: >
+  Ce chapitre raconte une jolie balade dans une ville superbe de la méditérannée
+
+# defaults: héritées par toutes les séquences (merge additif)
+defaults:
+  # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
+  # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
+  character_sheets: ["Christelle", "Thierry", "Corinne"]
+  lore: >
+    ["UCPA", "COLIOURE"]
+    "Un été magnifique et ensoleilé au bord de la mer"
+  
+sequences:
+
+  # Séquence complète avec tous les champs
+  - type: explicit
+    directive: >
+      Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
+      Le port et les barques catalanes
+      La promenade débute sur le quai du port. Les barques colorées se balancent doucement sur une eau transparente où dansent les reflets des façades ocre et rose. L'air porte l'odeur du sel, des filets de pêche et du bois chauffé par le soleil. Au loin, le clocher de l'église semble émerger de la mer comme un phare immobile.
+      RAPPEL : Pas Catherine dans cette scene
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
+      Les ruelles du vieux village
+      En quittant le front de mer, on s'enfonce dans un dédale de ruelles étroites. Les murs chaulés alternent avec des pierres anciennes couvertes de bougainvilliers. Des volets colorés entrouverts laissent échapper des éclats de vie, tandis que les pavés résonnent sous les pas. La lumière se faufile entre les maisons et dessine des ombres fraîches et mouvantes.
+      RAPPEL : Pas Catherine dans cette scene
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
+      Le château et les remparts
+      Le chemin mène ensuite vers le Château Royal de Collioure. Depuis les remparts, le regard embrasse la baie entière : la mer scintillante, les toits de tuiles rouges et les collines couvertes de vignes. Le vent marin souffle plus fort ici, apportant un sentiment d'espace et d'histoire.
+      RAPPEL : Pas Catherine dans cette scene
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
+      Le sentier vers les hauteurs
+      La promenade s'achève sur un chemin qui s'élève au-dessus de la ville. Peu à peu, le bruit des terrasses s'estompe. Entre les murets de pierre sèche et les vignes accrochées à la pente, Collioure apparaît en contrebas comme une miniature colorée. Au coucher du soleil, les façades s'embrasent de teintes orangées et la Méditerranée devient une immense plaque d'argent, offrant un dernier tableau avant le retour.
+      RAPPEL : Pas Catherine dans cette scene
+    min_words: 1000
+
+  - type: explicit
+    directive: >
+      Retour en bus à l'UCPA pour Christelle, Corinne et Thierry
+      RAPPEL : Pas Catherine dans cette scene
+    min_words: 250

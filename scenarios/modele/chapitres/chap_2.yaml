@@ -1,0 +1,34 @@
+comment: "Exemple de chapitre interlude — pivot de perspective canonique"
+
+title: "Titre de l'interlude"
+type: interlude
+
+# perspective: point de vue / lieu de la scène pivot
+perspective: "Du côté de [autre faction / autre lieu]"
+
+# timeline: relation temporelle avec la trame principale
+# Valeurs suggérées : "simultané" | "peu après" | "le lendemain" | texte libre
+timeline: "simultané"
+
+# bridge_back: instruction injectée dans le planificateur du CHAPITRE SUIVANT pour faciliter le retour.
+# bridge_back: >
+#   Retour sur [personnage principal] sans mentionner [l'autre faction] explicitement.
+
+description: >
+  Ce qui se passe dans l'interlude — du point de vue de la perspective déclarée.
+  L'interlude est CANONIQUE : il enrichit la mémoire normalement.
+
+defaults:
+  character_sheets: ["personnage_de_lautre_perspective"]
+  focus: ["TAG_UN"]
+
+sequences:
+
+  # L'interlude doit toujours terminer sur un état stable
+  - type: explicit
+    directive: >
+      Ce que la perspective alternative vit / observe / fait dans cette scène.
+      Terminer sur un moment de calme ou de clôture — pas un cliffhanger ouvert.
+    checks:
+      - "La scène reste dans la perspective déclarée — pas de retour à la trame principale"
+      - "L'état final est stable : la scène se ferme proprement"

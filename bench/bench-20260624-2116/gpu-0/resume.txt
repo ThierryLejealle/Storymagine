@@ -1,0 +1,35 @@
+=== Passe 1/3 : haiku  (3 appels) ===
+
+Modèle                                                                     | Think | car min/moy/max    | tps moy (s) | t/s moy | RAM (Mo) |   ctx/max | Err
+──────────────────────────────────────────────────────────────────────────-+-─────-+-──────────────────-+-───────────-+-───────-+-────────-+-─────────-+-───
+hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M | N     |   67 /   69 /   71 |         3,9 |   110,4 | 1717     |  32k/128k |    
+
+=== Passe 2/3 : moyen  (3 appels) ===
+
+Modèle                                                                     | Think | car min/moy/max    | tps moy (s) | t/s moy | RAM (Mo) |   ctx/max | Err
+──────────────────────────────────────────────────────────────────────────-+-─────-+-──────────────────-+-───────────-+-───────-+-────────-+-─────────-+-───
+hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M | N     | 3400 / 4169 / 4873 |        13,6 |   129,5 | 1717     |  32k/128k |    
+
+=== Passe 3/3 : grand  (3 appels) ===
+
+Modèle                                                                     | Think | car min/moy/max    | tps moy (s) | t/s moy | RAM (Mo) |   ctx/max | Err
+──────────────────────────────────────────────────────────────────────────-+-─────-+-──────────────────-+-───────────-+-───────-+-────────-+-─────────-+-───
+hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M | N     | 5447 / 5906 / 6631 |        16,6 |   134,7 | 1717     |  32k/128k |    
+
+=== SYNTHÈSE GLOBALE ===
+
+Modèle                                                                     | Think | Famille | Params | Quant  |   ctx/max | RAM (Mo) | t/s moy global | GPU0% | GPU1% |  CPU% | Err
+──────────────────────────────────────────────────────────────────────────-+-─────-+-───────-+-──────-+-──────-+-─────────-+-────────-+-──────────────-+-─────-+-─────-+-─────-+-───
+hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M | N     | gemma4  | 4.63B  | Q4_K_M |  32k/128k |     1717 |          124,9 |   80% |    0% |   16% |    
+
+=== PAR MODÈLE ===
+
+--- hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M ---
+hw avg : GPU0=80%  GPU1= 0%  CPU=16%
+Passe | car min/moy/max    | tps moy (s) | t/s moy | Err
+─────-+-──────────────────-+-───────────-+-───────-+-───
+haiku |   67 /   69 /   71 |         3,9 |   110,4 |    
+moyen | 3400 / 4169 / 4873 |        13,6 |   129,5 |    
+grand | 5447 / 5906 / 6631 |        16,6 |   134,7 |    
+
+

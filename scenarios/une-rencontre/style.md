@@ -1,0 +1,4 @@
+- Phrases courtes et économes. Passé simple pour l'action, imparfait pour l'atmosphère.
+- Aucune pensée intérieure explicite — tout par les gestes, les détails, les silences.
+- Dialogues rares et courts. Le non-dit pèse plus que les mots.
+- Sensorialité : lumière, chaleur, texture. Le train est un cocon.

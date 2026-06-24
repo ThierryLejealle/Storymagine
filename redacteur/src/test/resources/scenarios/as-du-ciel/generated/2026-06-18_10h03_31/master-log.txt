@@ -1,0 +1,443 @@
+╔══════════════════════════════════════════════════════╗
+║  L'As du Ciel
+║  Modèle  : hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M
+║  Contexte: 131072 tokens
+║  Démarré : 2026-06-18 10:03:31
+╠══════════════════════════════════════════════════════╣
+║    Modèle      : hf.co/mradermacher/gemma-4-E2B-it-qat-q4_0-unquantized-heretic-GGUF:Q4_K_M
+║    Paramètres  : 4.63B
+║    Quantization: Q4_K_M
+║    Architecture: gemma4
+║    Contexte cfg: 131072 tokens  (natif modèle: 131072)
+║    Couches     : 35  |  Têtes: 8  |  Embedding: 1536
+║    Thinking    : non
+║    Taille disque: 1,62 Go
+║    VRAM occupée : 1,62 Go
+╚══════════════════════════════════════════════════════╝
+
+=== Profil de generation : CRITIQUE_NARRATIVE
+  COMPLET + critique narrative globale post-generation (arcs, causalite).
+
+  Agents actifs
+    [+] ScenarioPlanner    - plan du chapitre
+    [+] Writer             - redaction de la prose
+    [+] Compressor         - memoire narrative
+    [+] StateExtractor     - etat des entites
+    [+] RepetitionTracker  - phrases distinctives
+
+  Critique & controle
+    [+] Critique plan      - max 3 passe(s), correction si score <=5/10
+    [+] Critique texte     - max 3 passe(s)
+    [+] DeusInMachina      - fuites 4e mur
+    [+] Correcteur         - 2 passe(s) Java
+    [+] Personnages        - hallucinations
+    [+] Style              - conformite guide
+    [+] Critique narrative - arcs + causalite (post-generation)
+============================================================
+
+
+═══ Chapitre 1/8 — Jour 1 — Thorney Island (chap_1) ═══
+
+  Séquences : 4
+[10:03:41] [chap_1_planner]
+  planChapter — "Jour 1 — Thorney Island"
+  chars PLAN: pierre_moreau, commandant_bertrand, jules_meca
+  chars     : 3754 car. / 16800
+  focus     : 1140 car. / 4800
+  lore      : 399 car. / 4800
+  contraintes: 861 car. / 6000
+  état      : vide
+  cohérence : vide
+  historique: 26 car. / 14400
+  objectif  : 517 car. / 4800
+  format    : structuré (4 séquences)
+  → llm_calls/001_chap_1_planner_1.md (10,8s | 2517→1392 tok)
+[10:03:48] [chap_1_plan_narrative]
+  evalPlanNarrative
+  plan: 2553 car. / 67200 | objectif: 1394 car. / 4320
+  → llm_calls/002_chap_1_plan_narrative_1.md (6,2s | 1719→793 tok)
+    ↳ Narratif   : 10.0/10
+[10:03:56] [chap_1_plan_coherence]
+  evalPlanCoherence
+  plan: 2553 car. / 67200 | checks: 535 car. / 6720 | contraintes: 861 car. / 4320 | focus: 1140 car. / 5280
+  → llm_calls/003_chap_1_plan_coherence_2.md (8,3s | 2103→1093 tok)
+    ↳ Cohérence  : 10.0/10
+[10:04:05] [chap_1_control_goal]
+  evaluatePlan (but) — Installer Pierre comme un étranger dans un groupe soudé depuis des mois. Le lec…
+  → llm_calls/004_chap_1_control_goal_1.md (9,1s | 1433→1199 tok)
+  Plan retenu : original (score 10.0/10) — original: 10.0
+  Plan :   638 tok  (2 553 car)
+[10:04:18] [chap_1_s1_writer]
+  writeSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne au loin. Sur le tar…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 567 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : vide
+  ancre     : (aucune)
+  → llm_calls/005_chap_1_s1_writer_1.md (12,5s | 3488→1625 tok)
+[10:04:30] [chap_1_s1_proofreader]
+  analyze — 3871 car. / 131072
+  → llm_calls/006_chap_1_s1_proofreader_1.md (12,0s | 1149→1626 tok)
+  ✏ Correction 1 : 1/1 faute(s)
+[10:04:41] [chap_1_s1_proofreader]
+  analyze — 3877 car. / 131072
+  → llm_calls/007_chap_1_s1_proofreader_2.md (11,0s | 1152→1487 tok)
+[10:04:52] [chap_1_s1_control_deusExMachina]
+  deusCheck
+  → llm_calls/008_chap_1_s1_control_deusExMachina_1.md (10,9s | 2463→1440 tok)
+[10:05:05] [chap_1_s1_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 3877 car. / 174760
+  → llm_calls/009_chap_1_s1_critic_style_seq_1.md (13,2s | 3367→1735 tok)
+  ✦ Style seq.1 : style:10/10  ✓ OK
+[10:05:12] [chap_1_s1_seq_checker]
+  checkSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne…
+  3 éléments à vérifier
+  → llm_calls/010_chap_1_s1_seq_checker_1.md (6,8s | 1306→888 tok)
+  ✎ SeqCheck seq.1 : 10/10  ✓
+[10:05:21] [chap_1_s1_motifs_extract]
+  extract — texte: 3877 car. [tronqué → 2500 max] | phrases déjà: 0 | schémas déjà: 0
+  → llm_calls/011_chap_1_s1_motifs_extract_1.md (9,2s | 955→1238 tok)
+[10:05:27] [chap_1_s1_motifs_filter]
+  repFilter — 6 candidats | keep_phrases: 494 car.
+  → llm_calls/012_chap_1_s1_motifs_filter_1.md (5,8s | 396→766 tok)
+[10:05:33] [chap_1_s1_motifs_filter]
+  repFilter — 4 candidats | keep_phrases: 494 car.
+  → llm_calls/013_chap_1_s1_motifs_filter_2.md (6,3s | 411→852 tok)
+  ↳ motifs_extract : +4 expr. / +4 schemas  [memoire : 4 expr., 4 schemas]
+[10:05:37] [chap_1_s1_entity_state]
+  extract — séquence: 3877 car. [tronqué → 1200 max]
+  → llm_calls/014_chap_1_s1_entity_state_1.md (3,7s | 434→466 tok)
+[10:05:51] [chap_1_s2_writer]
+  writeSequence — Le commandant Bertrand reçoit Pierre dans son bureau. Deux minutes. Peu de mots. Le poids du comman…
+  action    : vide  [—]
+  focus     : 353 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1316 car. / 16800
+  plan      : 623 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : vide
+  ancre     : Une odeur âcre de combustible brûlé envahit le cockpit minu…
+  ban       : 4 phrases
+  schémas   : 4 schémas
+  → llm_calls/015_chap_1_s2_writer_2.md (14,1s | 3579→1848 tok)
+[10:06:03] [chap_1_s2_proofreader]
+  analyze — 3876 car. / 131072
+  → llm_calls/016_chap_1_s2_proofreader_3.md (12,6s | 1133→1712 tok)
+  ✏ Correction 1 : 2/2 faute(s)
+[10:06:18] [chap_1_s2_proofreader]
+  analyze — 3909 car. / 131072
+  → llm_calls/017_chap_1_s2_proofreader_4.md (15,0s | 1145→2050 tok)
+  ✏ Correction 2 : 3/3 faute(s)
+[10:06:31] [chap_1_s2_control_deusExMachina]
+  deusCheck
+  → llm_calls/018_chap_1_s2_control_deusExMachina_1.md (12,3s | 2518→1651 tok)
+  ⚠ Deus seq.2 : 1 fuite(s) -> reecriture
+    - "Le regard jauge la gravité sans chercher à la nommer, ne cherche jamais à la nommer" → type 3 — Cette tournure est une correction de style ou un commentaire sur l'infinitif/participe présent qui appartient au script de fabrication (ou à une note d'édition), et non à la fiction.
+[10:06:44] [chap_1_s2_writer]
+  writeSequence — Le commandant Bertrand reçoit Pierre dans son bureau. Deux minutes. Peu de mots. Le poids du comman…
+  action    : vide  [—]
+  focus     : 353 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 716 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1316 car. / 16800
+  plan      : 623 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : vide
+  ancre     : Une odeur âcre de combustible brûlé envahit le cockpit minu…
+  ban       : 4 phrases
+  schémas   : 4 schémas
+  → llm_calls/019_chap_1_s2_writer_3.md (13,4s | 3671→1745 tok)
+[10:06:57] [chap_1_s2_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 4164 car. / 174760
+  → llm_calls/020_chap_1_s2_critic_style_seq_1.md (12,8s | 3425→1708 tok)
+  ✦ Style seq.2 : style:7/10  ✓ OK
+[10:07:03] [chap_1_s2_seq_checker]
+  checkSequence — Le commandant Bertrand reçoit Pierre dans son bureau. Deux minutes. Peu de mots…
+  3 éléments à vérifier
+  → llm_calls/021_chap_1_s2_seq_checker_2.md (6,6s | 1337→856 tok)
+  ✎ SeqCheck seq.2 : 5/10  ✓
+[10:07:13] [chap_1_s2_motifs_extract]
+  extract — texte: 4164 car. [tronqué → 2500 max] | phrases déjà: 4 | schémas déjà: 4
+  → llm_calls/022_chap_1_s2_motifs_extract_2.md (9,7s | 1013→1296 tok)
+[10:07:20] [chap_1_s2_motifs_filter]
+  repFilter — 6 candidats | keep_phrases: 494 car.
+  → llm_calls/023_chap_1_s2_motifs_filter_3.md (7,0s | 409→941 tok)
+[10:07:26] [chap_1_s2_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/024_chap_1_s2_motifs_filter_4.md (5,7s | 412→766 tok)
+  ↳ motifs_extract : +4 expr. / +4 schemas  [memoire : 8 expr., 8 schemas]
+[10:07:30] [chap_1_s2_entity_state]
+  extract — séquence: 4164 car. [tronqué → 1200 max]
+  → llm_calls/025_chap_1_s2_entity_state_2.md (4,3s | 405→552 tok)
+[10:07:44] [chap_1_s3_writer]
+  writeSequence — Jules le mécanicien présente le Spitfire à Pierre pour la première fois. Il lui explique ses habitu…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 516 car. / 16800
+  plan      : 592 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : vide
+  ancre     : La guerre ne se résumait pas à la mécanique ou aux manœuvre…
+  ban       : 8 phrases
+  schémas   : 8 schémas
+  → llm_calls/026_chap_1_s3_writer_4.md (13,6s | 3660→1769 tok)
+[10:07:54] [chap_1_s3_proofreader]
+  analyze — 3900 car. / 131072
+  → llm_calls/027_chap_1_s3_proofreader_5.md (10,4s | 1143→1393 tok)
+[10:08:03] [chap_1_s3_control_deusExMachina]
+  deusCheck
+  → llm_calls/028_chap_1_s3_control_deusExMachina_1.md (8,8s | 2419→1147 tok)
+[10:08:16] [chap_1_s3_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 3900 car. / 174760
+  → llm_calls/029_chap_1_s3_critic_style_seq_1.md (13,3s | 3358→1741 tok)
+  ✦ Style seq.3 : style:7/10  ✓ OK
+  ✎ Séquence 3 : 622 mots rédigés
+[10:08:29] [chap_1_s3_motifs_extract]
+  extract — texte: 3900 car. [tronqué → 2500 max] | phrases déjà: 8 | schémas déjà: 8
+  → llm_calls/030_chap_1_s3_motifs_extract_3.md (13,1s | 1144→1776 tok)
+[10:08:35] [chap_1_s3_motifs_filter]
+  repFilter — 6 candidats | keep_phrases: 494 car.
+  → llm_calls/031_chap_1_s3_motifs_filter_5.md (5,9s | 446→798 tok)
+[10:08:42] [chap_1_s3_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/032_chap_1_s3_motifs_filter_6.md (6,7s | 445→908 tok)
+  ↳ motifs_extract : +5 expr. / +5 schemas  [memoire : 13 expr., 10 schemas]
+[10:08:46] [chap_1_s3_entity_state]
+  extract — séquence: 3900 car. [tronqué → 1200 max]
+  → llm_calls/033_chap_1_s3_entity_state_3.md (4,3s | 422→556 tok)
+[10:08:59] [chap_1_s4_writer]
+  writeSequence — La première nuit à la base. Pierre ne dort pas. Un moment de vie ordinaire parmi les pilotes dans l…
+  action    : vide  [—]
+  focus     : 1108 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 709 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 57 car. / 3600
+  ancre     : Jules décrivit ensuite les rituels : la façon dont le Spitf…
+  ban       : 13 phrases
+  schémas   : 10 schémas
+  → llm_calls/034_chap_1_s4_writer_5.md (12,9s | 4220→1656 tok)
+[10:09:11] [chap_1_s4_proofreader]
+  analyze — 4078 car. / 131072
+  → llm_calls/035_chap_1_s4_proofreader_6.md (12,0s | 1202→1600 tok)
+[10:09:18] [chap_1_s4_control_deusExMachina]
+  deusCheck
+  → llm_calls/036_chap_1_s4_control_deusExMachina_1.md (6,9s | 2541→878 tok)
+[10:09:35] [chap_1_s4_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 4078 car. / 174760
+  → llm_calls/037_chap_1_s4_critic_style_seq_1.md (16,6s | 3417→2229 tok)
+  ✦ Style seq.4 : style:7/10  ✓ OK
+  ✎ Séquence 4 : 669 mots rédigés
+[10:09:46] [chap_1_s4_motifs_extract]
+  extract — texte: 4078 car. [tronqué → 2500 max] | phrases déjà: 13 | schémas déjà: 10
+  → llm_calls/038_chap_1_s4_motifs_extract_4.md (11,6s | 1247→1561 tok)
+[10:09:53] [chap_1_s4_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/039_chap_1_s4_motifs_filter_7.md (6,5s | 394→872 tok)
+[10:10:00] [chap_1_s4_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/040_chap_1_s4_motifs_filter_8.md (7,3s | 435→981 tok)
+  ↳ motifs_extract : +4 expr. / +4 schemas  [memoire : 17 expr., 10 schemas]
+[10:10:05] [chap_1_s4_entity_state]
+  extract — séquence: 4078 car. [tronqué → 1200 max]
+  → llm_calls/041_chap_1_s4_entity_state_4.md (5,1s | 418→656 tok)
+  ★ Vérif. séquences : score moyen 7/10
+[10:10:13] [chap_1_critic_narrative]
+  evalNarrative
+  texte: 16027 car. / 67200 | objectif: 1394 car. / 4320
+  → llm_calls/042_chap_1_critic_narrative_3.md (7,5s | 4977→894 tok)
+[10:10:20] [chap_1_critic_coherence]
+  evalCoherence
+  texte: 16027 car. / 67200 | checks: 488 car. / 6720 | contraintes: 357 car. / 4320 | focus: 1140 car. / 5280
+  → llm_calls/043_chap_1_critic_coherence_4.md (7,6s | 5105→896 tok)
+[10:10:27] [chap_1_control_goal]
+  evaluateText (but) — Installer Pierre comme un étranger dans un groupe soudé depuis des mois. Le lec…
+  → llm_calls/044_chap_1_control_goal_2.md (7,1s | 4657→845 tok)
+  ★ But narratif (texte) : 10.0/10  ✗ → réécriture
+  ★ Texte critique pass 1 : critic_narrative:6.0/10  critic_coherence:10.0/10  →moy:8.0/10  ✗ → réécriture (critique + but narratif)
+[10:10:41] [chap_1_s1_writer]
+  writeSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne au loin. Sur le tar…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 1240 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 379 car. / 3600
+  ancre     : (aucune)
+  ban       : 17 phrases
+  schémas   : 10 schémas
+  → llm_calls/045_chap_1_s1_writer_6.md (13,1s | 4256→1679 tok)
+[10:10:52] [chap_1_s1_proofreader]
+  analyze — 3358 car. / 131072
+  → llm_calls/046_chap_1_s1_proofreader_7.md (11,0s | 1042→1493 tok)
+  ✏ Correction 1 : 1/1 faute(s)
+[10:11:04] [chap_1_s1_proofreader]
+  analyze — 3355 car. / 131072
+  → llm_calls/047_chap_1_s1_proofreader_8.md (12,5s | 1042→1699 tok)
+  ✏ Correction 2 : 2/2 faute(s)
+[10:11:18] [chap_1_s1_control_deusExMachina]
+  deusCheck
+  → llm_calls/048_chap_1_s1_control_deusExMachina_1.md (13,5s | 2515→1809 tok)
+  ⚠ Deus seq.1 : 2 fuite(s) -> reecriture
+    - "Chaque geste à sa place dans son ordre, appris jusqu'à ce que les mains le fassent sans cerveau, sans consentement." → type 3 — Cette phrase décrit une procédure technique (l'enfilage des sangles) qui appartient au script de fabrication plutôt à la fiction.
+    - "une expiration mécanique" et "réactivité aérodynamique minime" → type 3 — Ces tournures sont trop techniques et décrivent directement le fonctionnement physique ou structurel de l'objet (le moteur, la machine) plutôt qu'une observation narrative fluide.
+[10:11:28] [chap_1_s1_writer]
+  writeSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne au loin. Sur le tar…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 952 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 1240 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 379 car. / 3600
+  ancre     : (aucune)
+  ban       : 17 phrases
+  schémas   : 10 schémas
+  → llm_calls/049_chap_1_s1_writer_7.md (10,8s | 4336→1361 tok)
+[10:11:42] [chap_1_s1_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 2763 car. / 174760
+  → llm_calls/050_chap_1_s1_critic_style_seq_1.md (13,9s | 3099→1833 tok)
+  ✦ Style seq.1 : style:6/10  ✗ → réécriture style
+[10:11:54] [chap_1_s1_writer]
+  writeSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne au loin. Sur le tar…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 659 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 1240 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 379 car. / 3600
+  ancre     : (aucune)
+  ban       : 17 phrases
+  schémas   : 10 schémas
+  → llm_calls/051_chap_1_s1_writer_8.md (11,4s | 4268→1467 tok)
+[10:12:01] [chap_1_s1_seq_checker]
+  checkSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne…
+  3 éléments à vérifier
+  → llm_calls/052_chap_1_s1_seq_checker_3.md (7,6s | 1157→1009 tok)
+  ✎ SeqCheck seq.1 : 2 manquant(s) → réécriture
+    - L'escadrille est présente mais distante, Pierre n'est pas intégré dans le groupe — présent mais non développé
+    - Le Spitfire est nommé 'Grey Ghost' ou 'Spitfire' — absent
+[10:12:14] [chap_1_s1_writer]
+  writeSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne au loin. Sur le tar…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 592 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1834 car. / 16800
+  plan      : 1240 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 379 car. / 3600
+  ancre     : (aucune)
+  ban       : 17 phrases
+  schémas   : 10 schémas
+  → llm_calls/053_chap_1_s1_writer_9.md (12,9s | 4260→1666 tok)
+[10:12:19] [chap_1_s1_seq_checker]
+  checkSequence — Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin résonne…
+  3 éléments à vérifier
+  → llm_calls/054_chap_1_s1_seq_checker_4.md (4,7s | 1370→579 tok)
+  ✎ SeqCheck seq.1 : 10/10  ✓
+[10:12:31] [chap_1_s1_motifs_extract]
+  extract — texte: 4179 car. [tronqué → 2500 max] | phrases déjà: 17 | schémas déjà: 10
+  → llm_calls/055_chap_1_s1_motifs_extract_5.md (12,4s | 1309→1671 tok)
+[10:12:37] [chap_1_s1_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/056_chap_1_s1_motifs_filter_9.md (5,8s | 423→762 tok)
+[10:12:42] [chap_1_s1_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/057_chap_1_s1_motifs_filter_10.md (5,2s | 444→685 tok)
+  ↳ motifs_extract : +3 expr. / +5 schemas  [memoire : 20 expr., 10 schemas]
+[10:12:46] [chap_1_s1_entity_state]
+  extract — séquence: 4179 car. [tronqué → 1200 max]
+  → llm_calls/058_chap_1_s1_entity_state_5.md (3,5s | 516→440 tok)
+[10:12:58] [chap_1_s2_writer]
+  writeSequence — Le commandant Bertrand reçoit Pierre dans son bureau. Deux minutes. Peu de mots. Le poids du comman…
+  action    : vide  [—]
+  focus     : 353 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 1316 car. / 16800
+  plan      : 1296 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 523 car. / 3600
+  ancre     : Il vérifie les jauges : huile, carburant, température. L'al…
+  ban       : 20 phrases
+  schémas   : 10 schémas
+  → llm_calls/059_chap_1_s2_writer_10.md (12,4s | 4281→1586 tok)
+[10:13:11] [chap_1_s2_proofreader]
+  analyze — 3493 car. / 131072
+  → llm_calls/060_chap_1_s2_proofreader_9.md (12,4s | 1068→1695 tok)
+[10:13:19] [chap_1_s2_control_deusExMachina]
+  deusCheck
+  → llm_calls/061_chap_1_s2_control_deusExMachina_1.md (8,0s | 2525→1039 tok)
+[10:13:32] [chap_1_s2_critic_style_seq]
+  seqStyleCheck — guide: 2198 car. / 43688 | critères: 1650 car. / 43688 | texte: 3493 car. / 174760
+  → llm_calls/062_chap_1_s2_critic_style_seq_1.md (12,8s | 3283→1709 tok)
+  ✦ Style seq.2 : style:9/10  ✓ OK
+[10:13:36] [chap_1_s2_seq_checker]
+  checkSequence — Le commandant Bertrand reçoit Pierre dans son bureau. Deux minutes. Peu de mots…
+  3 éléments à vérifier
+  → llm_calls/063_chap_1_s2_seq_checker_5.md (4,8s | 1195→604 tok)
+  ✎ SeqCheck seq.2 : 5/10  ✓
+[10:13:47] [chap_1_s2_motifs_extract]
+  extract — texte: 3493 car. [tronqué → 2500 max] | phrases déjà: 20 | schémas déjà: 10
+  → llm_calls/064_chap_1_s2_motifs_extract_6.md (10,5s | 1395→1404 tok)
+[10:13:53] [chap_1_s2_motifs_filter]
+  repFilter — 5 candidats | keep_phrases: 494 car.
+  → llm_calls/065_chap_1_s2_motifs_filter_11.md (6,6s | 462→865 tok)
+[10:13:57] [chap_1_s2_motifs_filter]
+  repFilter — 1 candidats | keep_phrases: 494 car.
+  → llm_calls/066_chap_1_s2_motifs_filter_12.md (3,2s | 364→402 tok)
+  ↳ motifs_extract : +4 expr. / +1 schemas  [memoire : 24 expr., 10 schemas]
+[10:14:02] [chap_1_s2_entity_state]
+  extract — séquence: 3493 car. [tronqué → 1200 max]
+  → llm_calls/067_chap_1_s2_entity_state_6.md (5,6s | 577→733 tok)
+[10:14:15] [chap_1_s3_writer]
+  writeSequence — Jules le mécanicien présente le Spitfire à Pierre pour la première fois. Il lui explique ses habitu…
+  action    : vide  [—]
+  focus     : 1140 car. / 4800
+  lore      : 1136 car. / 4800
+  règles    : 357 car. / 6000
+  style     : 2198 car. / 4800
+  chars     : 516 car. / 16800
+  plan      : 1265 car. / 14400
+  historique: vide
+  exemple   : 3469 car. / 12000
+  état      : 510 car. / 3600
+  ancre     : La structure du Spitfire vibrait violemment sous le virage …
+  ban       : 24 phrases
+  schémas   : 10 schémas
+  → llm_calls/068_chap_1_s3_writer_11.md (12,5s | 4368→1588 tok)

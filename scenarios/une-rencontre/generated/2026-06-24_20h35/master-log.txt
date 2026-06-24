@@ -1,0 +1,22 @@
+
+[20:35:00] [SCENARIO] Une rencontre — 1 chapitre(s)
+
+[20:35:00] [Chapitre 1/1] Une rencontre dans un train
+
+[20:35:00] [PLAN] tentative 1/4
+[20:35:30]   [LLM #  1]    24,440ms    1518 ->  2311 tok  94.6 tok/s  [sum in:1.5k out:2.3k]
+[20:35:30]   ChapterPlanner                    29 814ms
+[20:35:41]   [LLM #  2]     9,554ms    1953 ->   904 tok  94.6 tok/s  [sum in:3.5k out:3.2k]
+[20:35:50]   [LLM #  3]     8,572ms    2469 ->   810 tok  94.5 tok/s  [sum in:5.9k out:4.0k]
+[20:35:57]   [LLM #  4]     6,580ms    1724 ->   625 tok  95.0 tok/s  [sum in:7.7k out:4.7k]
+[20:35:57]   PlanNarrativeCritic              9.50    10,307ms
+[20:35:57]     ! Le passage du silence total de la séquence 2 à l'échange spontané dans la séquence 3 pourrait être rendu plus fluide par une observation partagée ou un détail qui attire leur attention simultanément.
+[20:35:57]   PlanCoherenceCritic             10.00     9,452ms  OK
+[20:35:57]   GoalPlanChecker                  9.00     7,283ms  OK
+[20:35:57]   -> moy 9.50  RETRY 2/4
+
+[20:35:57] [PLAN] tentative 2/4
+[20:36:17]   [LLM #  5]    18,995ms    2480 ->  1787 tok  94.1 tok/s  [sum in:10.1k out:6.4k]
+[20:36:17]   ChapterPlanner                    19 861ms
+[20:36:26]   [LLM #  6]     8,026ms    2020 ->   760 tok  94.7 tok/s  [sum in:12.2k out:7.2k]
+[20:36:35]   [LLM #  7]     8,721ms    2536 ->   824 tok  94.5 tok/s  [sum in:14.7k out:8.0k]

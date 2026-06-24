@@ -1,0 +1,1 @@
+ETAT: [Pierre] → [éveillé et observant le dortoir]
