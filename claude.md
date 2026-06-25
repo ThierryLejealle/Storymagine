@@ -46,6 +46,15 @@ Exception autorisée : le coeur peut importer /commun/coeur.
 6. Les beans des ports sont /ports avec le port
 7. Un fichier propriétes par module à la racine du module et un fichier propriétés à la racine du projet pour les propriétés vraiment communes (pas dans /commun)
 
+# Intégrité inter-modules — OBLIGATOIRE
+
+Tout déplacement ou modification d'une classe publique dans un module DOIT s'accompagner de la mise à jour de TOUS les modules qui l'utilisent dans la même opération.
+Avant de valider un changement :
+1. Identifier tous les modules qui importent la classe modifiée/déplacée (grep sur le package + nom de classe)
+2. Mettre à jour les imports dans chaque module impacté
+3. Vérifier la compilation depuis la racine du projet (pas seulement le module modifié) : `mvn compile` sur le parent
+Ne jamais considérer un refactoring terminé si un seul module est cassé.
+
 # Règles spécifiques
 Claude ne doit JAMAIS modifier un prompt d'un agent sans explicitement demander à l'utilisateur.
 Toutes les séances de modification doivent faire l'objet d'une fiche d'évolution dans /evols qui contient 1. Le description de l'évolution demandée 2. Ce qui a été touché. 3. Le résultat. 4. La fiche d'évol est horodatée et contient un mini descript de l'évol dans son texte. Ex : 2026-03-25 14h23 12s - Construction de l'adapteur Ollama
@@ -60,3 +69,7 @@ Les .bat doivent être STUPIDES : la CLI codée en java dans /cli dans chaque mo
 L'hexagonal doit permettre de tester le coeur correctement.
 Eviter les tests triviaux : un test doit avoir de la valeur
 Si besoin d'un scenario pour tester, il doit etre dans le package test
+
+# STYLE
+Privilégie la programmation fonctionelle
+Utilise les """ pour les chaines sur plusieurs lignes, comme les prompts

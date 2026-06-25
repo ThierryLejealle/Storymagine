@@ -140,17 +140,17 @@ public class RedacteurCli {
         // 4. Profil de generation
         System.out.println();
         System.out.println("Profil de generation :");
-        System.out.println("  1. BROUILLON — plan + redaction, sans critiques  (rapide)");
-        System.out.println("  2. STANDARD  — plan critique + redaction critique (qualite)");
-        System.out.println("  3. FULL      — STANDARD + evaluation globale      (complet)");
+        System.out.println("  1. BROUILLON — plan + redaction, agents minimum          (rapide)");
+        System.out.println("  2. SIMPLE    — plan critique + redaction critique         (qualite)");
+        System.out.println("  3. FULL      — SIMPLE + evaluation globale, plus de retry (complet)");
         System.out.print("Choix [1] : ");
         String profInput = scanner.nextLine().trim();
         GenerationConfig config = switch (profInput) {
-            case "2"  -> GenerationConfig.standard();
+            case "2"  -> GenerationConfig.simple();
             case "3"  -> GenerationConfig.full();
-            default   -> GenerationConfig.draft();
+            default   -> GenerationConfig.brouillon();
         };
-        System.out.println(">> Profil : " + config.mode()
+        System.out.println(">> Profil : " + config.qualityLevel()
             + " (jsonMode=" + config.jsonMode() + ")");
 
         // 5. Confirmation
@@ -158,7 +158,7 @@ public class RedacteurCli {
         System.out.println("-----------------------------------");
         System.out.printf("  Modele   : %s%n", selectedModel);
         System.out.printf("  Scenario : %s%n", selectedScenario.getFileName());
-        System.out.printf("  Profil   : %s%n", config.mode());
+        System.out.printf("  Profil   : %s%n", config.qualityLevel());
         System.out.println("-----------------------------------");
         System.out.print("Lancer la generation ? [O/n] : ");
         String confirm = scanner.nextLine().trim();

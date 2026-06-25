@@ -43,7 +43,7 @@ public class EvaluateWorkflow {
         story.currentChapter().orElseThrow().setSummary(compressorOut.summary());
         log.step("StoryCompressor", ms(t0), null);
 
-        if (!config.mode().runsEvaluation()) return;
+        if (!config.qualityLevel().runsEvaluation()) return;
 
         t0 = System.nanoTime();
         chapterStyleCheckerStep.run(story, scenario);

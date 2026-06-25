@@ -41,7 +41,7 @@ class WorkflowLogTest {
             .build();
 
         RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
-            .generate(scenarioRoot, GenerationConfig.standard());
+            .generate(scenarioRoot, GenerationConfig.simple());
 
         assertTrue(log.hasPhase("PLAN"),                 "Expected PLAN phase header");
         assertTrue(log.hasStep("ChapterPlanner"),        "Expected ChapterPlanner step");
@@ -70,7 +70,7 @@ class WorkflowLogTest {
             .build();
 
         RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
-            .generate(scenarioRoot, GenerationConfig.draft());
+            .generate(scenarioRoot, GenerationConfig.brouillon());
 
         assertTrue(log.hasPhase("WRITE"),                "Expected WRITE phase header");
         assertTrue(log.hasStep("WriterStep"),            "Expected WriterStep logged");
@@ -93,7 +93,7 @@ class WorkflowLogTest {
             .build();
 
         RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
-            .generate(scenarioRoot, GenerationConfig.draft());
+            .generate(scenarioRoot, GenerationConfig.brouillon());
 
         assertTrue(log.hasStep("StoryCompressor"), "Expected StoryCompressor in EVAL phase");
     }
@@ -114,7 +114,7 @@ class WorkflowLogTest {
             .build();
 
         RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
-            .generate(scenarioRoot, new GenerationConfig(GenerationMode.PLAN_ONLY, false));
+            .generate(scenarioRoot, GenerationConfig.planOnly());
 
         assertTrue(log.hasPhase("PLAN"),              "Expected PLAN logged in PLAN_ONLY mode");
         assertTrue(log.hasPhase("EVAL"),              "Expected EVAL (StoryCompressor always runs)");

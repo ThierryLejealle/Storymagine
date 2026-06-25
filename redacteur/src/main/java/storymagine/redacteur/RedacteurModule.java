@@ -27,7 +27,6 @@ import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.Text
 import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic.TextWhatIfCritic;
-import storymagine.redacteur.coeur.domaine.orchestrator.EngineConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.StoryOrchestrator;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.CausalAnalyzerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.ChapterStyleCheckerStep;
@@ -58,43 +57,36 @@ import storymagine.redacteur.coeur.ports.HtmlExportPort;
 import storymagine.redacteur.coeur.ports.ScenarioReaderPort;
 import storymagine.redacteur.coeur.service.RedacteurService;
 import storymagine.redacteur.coeur.service.RedacteurServiceImpl;
-import storymagine.redacteur.infra.EngineConfigLoader;
 import storymagine.redacteur.infra.scenario.ScenarioFileAdapter;
-
-import java.nio.file.Path;
 
 /** Wires the redacteur domain with its infrastructure adapters. */
 public class RedacteurModule {
 
     public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName) {
-        LogPort       log    = new ConsoleLogAdapter();
-        OllamaAdapter llm    = ollamaConfig.adapter(modelName, log);
-        EngineConfig  engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, new ScenarioFileAdapter(), log, HtmlExportPort.NOOP, engine);
+        LogPort       log = new ConsoleLogAdapter();
+        OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
+        return assemble(llm, new ScenarioFileAdapter(), log, HtmlExportPort.NOOP);
     }
 
     public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
                                             LogPort log, HtmlExportPort htmlExport) {
-        OllamaAdapter llm    = ollamaConfig.adapter(modelName, log);
-        EngineConfig  engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, engine);
+        OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport);
     }
 
     public static RedacteurService assemble(OllamaAdapter llm, ScenarioReaderPort scenarioReader) {
-        EngineConfig engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), HtmlExportPort.NOOP, engine);
+        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), HtmlExportPort.NOOP);
     }
 
-    /** Test-friendly overload — uses EngineConfig.defaults(), no file I/O. */
+    /** Test-friendly overload. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log) {
-        return assemble(llm, scenarioReader, log, HtmlExportPort.NOOP, EngineConfig.defaults());
+        return assemble(llm, scenarioReader, log, HtmlExportPort.NOOP);
     }
 
     /** Full assembly — all parameters explicit. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
-                                            LogPort log, HtmlExportPort htmlExport,
-                                            EngineConfig engineConfig) {
+                                            LogPort log, HtmlExportPort htmlExport) {
         // --- Plan agents ---
         var chapterPlanner      = new ChapterPlanner(llm);
         var planNarrativeCritic = new PlanNarrativeCritic(llm);
@@ -154,7 +146,7 @@ public class RedacteurModule {
         // --- Workflows ---
         var planWorkflow = new PlanWorkflow(
             chapterPlannerStep, planNarrativeCriticStep, planCoherenceCriticStep,
-            goalPlanCheckerStep, engineConfig, log);
+            goalPlanCheckerStep, log);
 
         var writeWorkflow = new WriteWorkflow(
             writerStep,
@@ -163,7 +155,7 @@ public class RedacteurModule {
             textNarrativeCriticStep, textCoherenceCriticStep,
             textDreamCriticStep, textWhatIfCriticStep,
             deusInMachinaStep, goalTextCheckerStep,
-            engineConfig, htmlExport, log);
+            htmlExport, log);
 
         var evaluateWorkflow = new EvaluateWorkflow(
             storyCompressorStep, chapterStyleCheckerStep, characterCheckerStep,

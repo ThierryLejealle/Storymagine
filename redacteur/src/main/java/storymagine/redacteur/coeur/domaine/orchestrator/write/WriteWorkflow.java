@@ -14,7 +14,6 @@ import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.Text
 import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic.TextWhatIfCriticOutput;
-import storymagine.redacteur.coeur.domaine.orchestrator.EngineConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.StoryFormatters;
@@ -64,7 +63,6 @@ public class WriteWorkflow {
     private final TextWhatIfCriticStep     textWhatIfCriticStep;
     private final DeusInMachinaCheckerStep deusInMachinaCheckerStep;
     private final GoalTextCheckerStep      goalTextCheckerStep;
-    private final EngineConfig             engineConfig;
     private final HtmlExportPort           htmlExport;
     private final LogPort                  log;
 
@@ -81,7 +79,6 @@ public class WriteWorkflow {
                          TextWhatIfCriticStep textWhatIfCriticStep,
                          DeusInMachinaCheckerStep deusInMachinaCheckerStep,
                          GoalTextCheckerStep goalTextCheckerStep,
-                         EngineConfig engineConfig,
                          HtmlExportPort htmlExport,
                          LogPort log) {
         this.writerStep               = writerStep;
@@ -97,7 +94,6 @@ public class WriteWorkflow {
         this.textWhatIfCriticStep     = textWhatIfCriticStep;
         this.deusInMachinaCheckerStep = deusInMachinaCheckerStep;
         this.goalTextCheckerStep      = goalTextCheckerStep;
-        this.engineConfig             = engineConfig;
         this.htmlExport               = htmlExport;
         this.log                      = log;
     }
@@ -108,8 +104,8 @@ public class WriteWorkflow {
         WorldState.Snapshot snapshot = isolated ? story.worldState().snapshot() : null;
 
         List<Sequence> sequences       = chapter.sequences();
-        boolean        runCritique     = config.mode().runsSequenceCheckers();
-        int            chapMaxAttempts = runCritique ? 1 + engineConfig.chapitreMaxRetry() : 1;
+        boolean        runCritique     = config.qualityLevel().runsSequenceCheckers();
+        int            chapMaxAttempts = runCritique ? 1 + config.qualityLevel().chapitreMaxRetry() : 1;
 
         List<WrittenSequence> bestSequences = null;
         double                bestScore     = -1.0;
@@ -132,7 +128,7 @@ public class WriteWorkflow {
             // ── Chapter-level critique on full text ───────────────────────────
             ChapterCritiqueResult critique = runChapterCritique(chapter, scenario,
                                                                 wc.fullText(), story, config);
-            boolean passed        = critique.avg() > engineConfig.chapitreThreshold();
+            boolean passed        = critique.avg() > config.qualityLevel().chapitreThreshold();
             boolean isLastAttempt = chapPass == chapMaxAttempts - 1;
 
             if (bestSequences == null || critique.avg() > bestScore) {
@@ -185,16 +181,18 @@ public class WriteWorkflow {
         log.step("WriterStep", ms(t0), "-> " + countWords(text) + " mots");
 
         // ── Proofreader ───────────────────────────────────────────────────────
-        t0 = System.nanoTime();
-        ProofreaderOutput proofOut = proofreaderStep.run(text);
-        text = applyCorrections(text, proofOut);
-        String proofNote = proofOut.corrections().isEmpty() ? null
-                : "-> " + proofOut.corrections().size() + " correction(s)";
-        log.step("ProofreaderStep", ms(t0), proofNote);
+        if (config.qualityLevel().runsProofreader()) {
+            t0 = System.nanoTime();
+            ProofreaderOutput proofOut = proofreaderStep.run(text);
+            text = applyCorrections(text, proofOut);
+            String proofNote = proofOut.corrections().isEmpty() ? null
+                    : "-> " + proofOut.corrections().size() + " correction(s)";
+            log.step("ProofreaderStep", ms(t0), proofNote);
+        }
 
-        if (config.mode().runsSequenceCheckers()) {
+        if (config.qualityLevel().runsSequenceCheckers()) {
             text = runSequenceCheckers(scenario, chapter, seq, story, sequencePlan,
-                                       actionsText, text, seqIdx, seqTotal);
+                                       actionsText, text, seqIdx, seqTotal, config);
         }
 
         // ── Memory updates (after all per-sequence rewrites) ──────────────────
@@ -231,13 +229,14 @@ public class WriteWorkflow {
      * 1. DeusInMachina   — retry if mechanical leaks detected
      * 2. SequenceStyleChecker — retry if score < STYLE_THRESHOLD
      * 3. SequenceChecker — retry if required elements missing
-     * Each loop is capped at engineConfig.sequenceMaxRetry().
+     * Each loop is capped at qualityLevel.sequenceMaxRetry().
      */
     private String runSequenceCheckers(Scenario scenario, Chapter chapter, Sequence seq,
                                         Story story, String sequencePlan, String actionsText,
-                                        String text, int seqIdx, int seqTotal) {
+                                        String text, int seqIdx, int seqTotal,
+                                        GenerationConfig config) {
 
-        int maxRetry = engineConfig.sequenceMaxRetry();
+        int maxRetry = config.qualityLevel().sequenceMaxRetry();
 
         // 1. DeusInMachina
         for (int r = 0; r < 1 + maxRetry; r++) {

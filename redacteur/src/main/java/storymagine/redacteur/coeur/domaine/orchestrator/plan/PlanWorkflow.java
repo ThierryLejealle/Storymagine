@@ -4,7 +4,6 @@ import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanCheckerOutput;
 import storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic.PlanCoherenceCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic.PlanNarrativeCriticOutput;
-import storymagine.redacteur.coeur.domaine.orchestrator.EngineConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
@@ -27,27 +26,24 @@ public class PlanWorkflow {
     private final PlanNarrativeCriticStep planNarrativeCriticStep;
     private final PlanCoherenceCriticStep planCoherenceCriticStep;
     private final GoalPlanCheckerStep     goalPlanCheckerStep;
-    private final EngineConfig            engineConfig;
     private final LogPort                 log;
 
     public PlanWorkflow(ChapterPlannerStep chapterPlannerStep,
                         PlanNarrativeCriticStep planNarrativeCriticStep,
                         PlanCoherenceCriticStep planCoherenceCriticStep,
                         GoalPlanCheckerStep goalPlanCheckerStep,
-                        EngineConfig engineConfig,
                         LogPort log) {
         this.chapterPlannerStep      = chapterPlannerStep;
         this.planNarrativeCriticStep = planNarrativeCriticStep;
         this.planCoherenceCriticStep = planCoherenceCriticStep;
         this.goalPlanCheckerStep     = goalPlanCheckerStep;
-        this.engineConfig            = engineConfig;
         this.log                     = log;
     }
 
     /** Plans the current chapter in Story. Mutates Story via WrittenChapter.setPlan/setCoherence. */
     public void run(Scenario scenario, Chapter chapter, Story story, GenerationConfig config) {
         WrittenChapter wc          = story.currentChapter().orElseThrow();
-        int            maxAttempts = 1 + engineConfig.planMaxRetry();
+        int            maxAttempts = 1 + config.qualityLevel().planMaxRetry();
 
         String       bestPlan          = null;
         List<String> bestSequencePlans = List.of();
@@ -64,7 +60,7 @@ public class PlanWorkflow {
             wc.setPlan(planOut.fullPlan());
             log.step("ChapterPlanner", ms(t0), null);
 
-            if (!config.mode().runsPlanCritics()) {
+            if (!config.qualityLevel().runsPlanCritics()) {
                 bestPlan          = planOut.fullPlan();
                 bestSequencePlans = planOut.sequencePlans();
                 break;

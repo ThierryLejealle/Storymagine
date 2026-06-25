@@ -50,7 +50,7 @@ public class StoryOrchestrator {
 
             planWorkflow.run(scenario, chapter, story, config);
 
-            if (config.mode() != GenerationMode.PLAN_ONLY) {
+            if (config.qualityLevel().runsWriting()) {
                 writeWorkflow.run(scenario, chapter, story, config);
             }
 
