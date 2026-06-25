@@ -9,7 +9,7 @@ if "%1"=="" (
     set MODE=%1
 )
 
-powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; mvn -q -pl testllm compile exec:java '-Dexec.mainClass=storymagine.testllm.ui.cli.TestLlmCli' '-Dexec.args=%MODE%'; exit $LASTEXITCODE"
+powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; mvn -q -pl testllm -am compile exec:java '-Dexec.mainClass=storymagine.testllm.ui.cli.TestLlmCli' '-Dexec.args=%MODE%'; exit $LASTEXITCODE"
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
