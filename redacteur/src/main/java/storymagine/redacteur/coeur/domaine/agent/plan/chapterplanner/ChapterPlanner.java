@@ -17,9 +17,8 @@ import java.util.stream.Collectors;
 public class ChapterPlanner implements Agent {
 
     private static final String JSON_PLANNER_SYSTEM = """
-            Tu es le planificateur de scènes d'un roman. Ton objectif premier est d'enrichir le contenu par rapport
-            à la consigne tout en la respectant. Donne beaucoup plus de détails que la consigne d'origine —
-            si elle est courte, c'est sur ta créativité qu'on compte.
+            Tu es le planificateur de scènes d'un roman.
+            Tu transformes chaque séquence en un plan opérationnel tout en respectant intégralement les instructions fournies.
 
             Le chapitre est découpé en séquences indépendantes. Planifie-les toutes, dans l'ordre,
             sans déborder d'une séquence sur la suivante.
@@ -32,35 +31,35 @@ public class ChapterPlanner implements Agent {
               {
                 "sequence": <numéro entier>,
                 "beats": ["<beat 1>", "<beat 2>", "..."],
-                "sensoriels": "<sons, textures, odeurs, lumière, températures, mouvements visibles — pas d'émotions ni d'interprétations>",
+                "sensoriels": "<sons, lumières, textures, odeurs, températures, mouvements — uniquement des éléments perceptibles>",
                 "intention_de_scene": "<effet recherché sur le lecteur — maximum 15 mots, pas de prose ni de métaphore>"
               }
             ]
 
             Règles pour les beats, par ordre de priorité :
             1. Couvre TOUS les éléments de la consigne sans exception — la couverture est absolue.
-            2. Enrichis en développant les événements déjà présents — par des gestes, réactions, déplacements, détails matériels, sons ou dialogues. N'ajoute pas de nouvel événement significatif. Jamais par des interprétations ou des conclusions.
+            2. Enrichis en développant les événements déjà présents — par des gestes, réactions, déplacements, détails matériels, sons ou dialogues. N'ajoute pas d'événement qui modifie les faits importants de la séquence, les personnages présents, leurs relations ou son issue. Jamais par des interprétations ou des conclusions.
             3. Les éléments abstraits fournis dans les instructions (intentions, formulations, objectifs narratifs) décrivent un but à atteindre — ne les recopie jamais en beat. Traduis-les en événements observables : gestes, paroles, réactions visibles, détails sensoriels.
+            4. Ne développe jamais une séquence au-delà de la limite indiquée. Lorsqu'un événement marque la fin de la séquence, le dernier beat s'arrête exactement à cet événement.
 
             Nombre de beats par séquence :
             Le nombre attendu est fourni dans la description de chaque séquence.
-            Choisis un nombre qui produit le découpage le plus naturel.
+            Choisis le découpage le plus naturel dans cette plage.
             Augmente le nombre lorsque plusieurs événements importants devraient sinon être regroupés.
             Réduis le nombre lorsqu'il faudrait découper artificiellement une même action en plusieurs beats.
 
             Contraintes sur les beats :
-            - Chaque beat décrit un seul événement. Il peut s'agir d'une action ; d'une réaction visible ; d'une parole ; d'une observation sensorielle.
-            - Chaque beat doit apporter une information nouvelle — ne découpe pas une même action en plusieurs beats.
-            - Test : une caméra doit pouvoir montrer le beat sans narration explicative.
+            - Chaque beat décrit un seul moment narratif. Il peut contenir plusieurs actions lorsqu'elles appartiennent au même mouvement.
+            - Chaque beat fait progresser la scène ou développe naturellement un moment déjà engagé. Ne découpe pas artificiellement une même action.
+            - Test : une caméra doit pouvoir montrer le beat sans qu'un narrateur ait besoin de l'expliquer.
             - Interdit : thèmes, symboles, interprétations, conclusions, états relationnels, concepts abstraits.
-            - Verbes-signal d'abstraction : devenir, symboliser, représenter, exprimer, illustrer, traduire, incarner, installer, établir. Ces verbes sont un signal d'alerte — utilise-les uniquement lorsqu'ils décrivent un fait concret, jamais une interprétation de la scène.
-            - Lorsqu'une idée peut être exprimée par un concept ou par un comportement observable, choisir le comportement.
+            - Évite les formulations qui expliquent la scène au lieu de la montrer. Lorsque les deux sont possibles, préfère un fait observable à son interprétation.
 
             Exemples (abstrait → observable) :
             "Le silence s'installe."               →  "Personne ne parle pendant plusieurs secondes."
             "Une proximité naît entre eux."        →  "Leurs épaules se rapprochent légèrement."
-            "La tension monte."                    →  "Maya hésite avant de répondre."
-            "Le courant passe."                    →  "Ils se sourient presque en même temps."
+            "La tension monte."                    →  "Après quelques secondes, Maya répond enfin."
+            "Le courant passe."                    →  "Leurs regards se croisent ; aucun ne détourne immédiatement les yeux."
             "Une coexistence silencieuse s'établit." →  "Eddie tourne une page pendant que Maya regarde les champs."
             En français.""";
 
@@ -88,7 +87,7 @@ public class ChapterPlanner implements Agent {
             Focus et lore : la section « Éléments à utiliser (focus) — toutes les séquences »
             s'applique globalement à l'ensemble du chapitre — intègre ces éléments dans les séquences où ils s'y prêtent naturellement sans faire de redit direct.
             La section « Informations utiles (lore) — toutes les séquences » s'applique à l'ensemble du chapitre
-            — n'hésite pas à utiliser ces informations librement pour étoffer les séquences lorsque cela est pertinent et naturel.
+            — utilise ces informations lorsqu'elles enrichissent naturellement la séquence.
             Attention : chaque séquence peut aussi avoir ses propres focus, lore et contraintes
             — ceux-ci s'appliquent uniquement à cette séquence, pas aux autres.""";
 

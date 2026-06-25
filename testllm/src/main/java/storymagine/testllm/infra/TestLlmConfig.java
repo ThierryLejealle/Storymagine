@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -24,6 +25,7 @@ public class TestLlmConfig {
 
     public static TestLlmConfig load(Path propsFile) {
         Properties p = new Properties();
+        loadIfExists(p, Paths.get("storymagine.properties"));
         if (Files.exists(propsFile)) {
             try (InputStream in = Files.newInputStream(propsFile)) {
                 p.load(in);
@@ -32,6 +34,13 @@ public class TestLlmConfig {
             }
         }
         return new TestLlmConfig(p);
+    }
+
+    private static void loadIfExists(Properties p, Path path) {
+        if (!Files.exists(path)) return;
+        try (InputStream in = Files.newInputStream(path)) {
+            p.load(in);
+        } catch (IOException ignored) {}
     }
 
     public List<String> favoris() {

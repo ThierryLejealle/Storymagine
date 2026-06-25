@@ -20,6 +20,7 @@ import storymagine.redacteur.infra.StoryExporter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -216,6 +217,11 @@ public class RedacteurCli {
 
     private static Properties loadProperties() {
         Properties props = new Properties();
+        Path global = Paths.get("storymagine.properties");
+        if (Files.exists(global)) {
+            try (InputStream is = Files.newInputStream(global)) { props.load(is); }
+            catch (IOException ignored) {}
+        }
         try (InputStream is = RedacteurCli.class.getResourceAsStream("/redacteur.properties")) {
             if (is != null) props.load(is);
         } catch (IOException ignored) {}
