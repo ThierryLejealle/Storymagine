@@ -55,4 +55,18 @@ public final class ProblemScoreParser {
     public static int parseScoreInt(String response) {
         return (int) Math.round(parseScore(response));
     }
+
+    /** Computes a score from the number of problems: 0→10, 1→8, 2→6, 3→5, 4→4, 5→3, 6→2, 7+→1. */
+    public static int scoreFromProblemCount(int n) {
+        return switch (n) {
+            case 0  -> 10;
+            case 1  -> 8;
+            case 2  -> 6;
+            case 3  -> 5;
+            case 4  -> 4;
+            case 5  -> 3;
+            case 6  -> 2;
+            default -> 1;
+        };
+    }
 }

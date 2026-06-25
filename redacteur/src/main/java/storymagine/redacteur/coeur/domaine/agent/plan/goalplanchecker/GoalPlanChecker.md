@@ -8,20 +8,25 @@ Distinct des critiques : les critiques évaluent la qualité/cohérence, ce chec
 ```
 PROBLEME: [défaut ou axe d'amélioration]
 ...
-SCORE: N  (entier 1-10)
 ```
+ou `PROBLEME: [RIEN]` si aucun problème trouvé.
 
-## Échelle de notation
-| Note | Signification |
-|------|---------------|
-| 10 | Objectif pleinement couvert |
-| 8-9 | Très bien couvert |
-| 6-7 | Objectif couvert mais plusieurs séquences à renforcer |
-| 4-5 | Insuffisant — objectif secondaire |
-| 1-3 | Mauvais / Inutilisable |
+## Score — calculé en Java (pas par le LLM)
+| Problèmes | Score |
+|-----------|-------|
+| 0  | 10 |
+| 1  | 8  |
+| 2  | 6  |
+| 3  | 5  |
+| 4  | 4  |
+| 5  | 3  |
+| 6  | 2  |
+| 7+ | 1  |
+
+Méthode : `GoalPlanChecker.scoreFromProblemCount(int)`.
 
 ## Parsing
-Utilise `ProblemScoreParser` (format PROBLEME:/SCORE:).
+Utilise `ProblemScoreParser.parseProblems()` (tag PROBLEME:). Le score n'est pas parsé depuis la réponse LLM.
 
 ## Différence avec les critics
 - Critics → qualité/cohérence (AMELIORATION/DEFAUT tiers)

@@ -1,5 +1,7 @@
 package storymagine.redacteur.coeur.domaine.agent.writer.goaltextchecker;
 
+import java.util.List;
+
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
@@ -17,31 +19,16 @@ public class GoalTextChecker implements Agent {
         Ne juge pas la qualité littéraire ni la cohérence avec l'ensemble du roman.
         Uniquement : le texte produit-il l'effet narratif ou émotionnel requis par l'objectif ?
 
-        Echelle de notation :
-        10 = objectif pleinement couvert
-         9 = excellent — objectif tres bien couvert, quelques legeres imperfections
-         8 = tres bien — objectif couvert, quelques sequences a affiner
-         7 = bien — objectif couvert mais quelques sequences peuvent mieux le servir
-         6 = correct — plusieurs sequences ne servent pas assez l'objectif
-         5 = insuffisant — l'objectif est traite de facon trop superficielle
-         4 = plusieurs lacunes — l'objectif est secondaire dans le plan
-         3 = mauvais — l'objectif n'est qu'en partie adresse
-         2 = tres mauvais — l'objectif est absent du plan
-         1 = inutilisable — a replanifier integralement
-
         FORMAT STRICT :
         PROBLEME: une ligne par probleme, ou [RIEN] si aucun probleme.
-        SCORE: la note que tu as determinee (entier 1-10)
-        Rien d'autre : ni texte avant ni texte apres ces lignes.
+        Rien d'autre : ni texte avant ni texte apres.
 
-        Exemple 1 — deux problemes, note 7 :
+        Exemple 1 — deux problemes :
         PROBLEME: Le personnage n'exprime pas de doute alors que l'objectif l'exige.
         PROBLEME: La resolution arrive trop tot, sans tension prealable.
-        SCORE: 7
 
-        Exemple 2 — aucun probleme, note 10 :
+        Exemple 2 — aucun probleme :
         PROBLEME: [RIEN]
-        SCORE: 10
 
         En francais.""";
 
@@ -61,9 +48,10 @@ public class GoalTextChecker implements Agent {
         String user = section("Objectif narratif de ce chapitre", input.chapterGoal())
                 + section("Objectif global du roman (contexte)", trunc(input.bookGoal(), 1600))
                 + section("Texte à évaluer",                     trunc(input.text(),     ctx * 4 / 2))
-                + "\n\nAnalyse si ce texte atteint l'objectif narratif, puis conclus avec tes PROBLEME: et SCORE: N.";
+                + "\n\nAnalyse si ce texte atteint l'objectif narratif, puis liste tes PROBLEME:.";
         String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
-        return new GoalTextCheckerOutput(ProblemScoreParser.parseProblems(raw), ProblemScoreParser.parseScore(raw));
+        List<String> problems = ProblemScoreParser.parseProblems(raw);
+        return new GoalTextCheckerOutput(problems, ProblemScoreParser.scoreFromProblemCount(problems.size()));
     }
 
     private static String section(String title, String content) {

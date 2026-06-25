@@ -11,6 +11,9 @@ import java.util.List;
  * Evaluates the stylistic quality of a single sequence.
  * Strict grader: reserves high scores for genuinely good prose.
  * Source: SequenceStyleCheckerContext.evaluate.
+ *
+ * TODO: décider si le SCORE LLM est remplacé par scoreFromProblemCount (comme GoalPlanChecker)
+ *       ou conservé — ici l'échelle est qualitative ("plat mais sans défaut" = 7 avec 0 PROBLEME:).
  */
 public class SequenceStyleChecker implements Agent {
 

@@ -1,5 +1,7 @@
 package storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker;
 
+import java.util.List;
+
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
@@ -12,44 +14,28 @@ import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
  */
 public class GoalPlanChecker implements Agent {
 
-    private static final String SYSTEM = 
+    private static final String SYSTEM =
     """
 Tu évalues si un PLAN DE CHAPITRE remplit son objectif narratif spécifique.
 Ne juge pas la qualité littéraire, ni la cohérence globale du roman.
 Uniquement : le plan avance-t-il clairement et concrètement vers l'objectif narratif ?
 
-Échelle de notation :
-10 = objectif pleinement couvert
- 9 = excellent — objectif très bien couvert, quelques légères imperfections
- 8 = très bien — objectif couvert, quelques séquences à affiner
- 7 = bien — objectif couvert mais quelques séquences peuvent mieux le servir
- 6 = correct — plusieurs séquences ne servent pas assez l'objectif
- 5 = insuffisant — l'objectif est traité de façon trop superficielle
- 4 = plusieurs lacunes — l'objectif est secondaire dans le plan
- 3 = mauvais — l'objectif n'est qu'en partie adressé
- 2 = très mauvais — l'objectif est absent du plan
- 1 = inutilisable — à replanifier intégralement
-
 Procède dans cet ordre :
 1. Analyse le plan entier.
 2. Note tous les défauts et axes d'amélioration.
-3. Détermine la note en fonction de la qualité globale.
-4. Liste en sortie défauts et axes d'amélioration trouvés.
+3. Liste en sortie les défauts trouvés.
 
-Écris UNIQUEMENT le FORMAT STRICT ci-dessous — ne produis pas les étapes intermédiaires 1, 2 et 3 dans ta réponse.
+Écris UNIQUEMENT le FORMAT STRICT ci-dessous — ne produis pas les étapes intermédiaires 1 et 2 dans ta réponse.
 FORMAT STRICT :
 PROBLEME: une ligne par problème, ou [RIEN] si aucun problème.
-SCORE: la note que tu as déterminée  (entier 1-10)
-Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+Rien d'autre : ni texte avant ni texte apres.
 
-Exemple 1 - deux problèmes et une note de 8 :
+Exemple 1 - deux problèmes :
 PROBLEME: "L'ours n'a pas de chemise"
 PROBLEME: "Le lapin est vert"
-SCORE: 8
 
-Exemple 2 - aucun probleme trouve et note de 10 :
+Exemple 2 - aucun probleme trouve :
 PROBLEME: [RIEN]
-SCORE: 10
 
 En français.
 """;
@@ -70,9 +56,10 @@ En français.
         String user = section("Objectif narratif de ce chapitre", input.chapterGoal())
                 + section("Objectif global du roman (contexte)", trunc(input.bookGoal(), 1600))
                 + section("Plan à évaluer",                      trunc(input.plan(),     ctx * 4 / 2))
-                + "\n\nAnalyse si ce plan remplit l'objectif narratif, puis conclus avec tes PROBLEME: et SCORE: N.";
+                + "\n\nAnalyse si ce plan remplit l'objectif narratif, puis liste tes PROBLEME:.";
         String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
-        return new GoalPlanCheckerOutput(ProblemScoreParser.parseProblems(raw), ProblemScoreParser.parseScore(raw));
+        List<String> problems = ProblemScoreParser.parseProblems(raw);
+        return new GoalPlanCheckerOutput(problems, ProblemScoreParser.scoreFromProblemCount(problems.size()));
     }
 
     private static String section(String title, String content) {
