@@ -35,55 +35,68 @@ public class SequenceStyleChecker implements Agent {
     }
 
     private String buildSystem(SequenceStyleCheckerInput in) {
-        StringBuilder sys = new StringBuilder(
-            "Tu es un éditeur littéraire exigeant et sans concession.\n");
-        if (in.styleGuide() != null && !in.styleGuide().isBlank()) {
-            sys.append("\n## Consigne de style\n")
-               .append("Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n")
-               .append("Ne signale jamais comme défaut ce que le guide prescrit explicitement.\n");
-        }
-        sys.append("\n## Qualité stylistique\n")
-           .append("Identifie sans pitié tout ce qui trahit une écriture artificielle ou de faible qualité :\n")
-           .append("- Verbes faibles ou abstraits là où un verbe physique suffirait\n")
-           .append("- Constructions nominalisées ou passives inutiles\n")
-           .append("- Répétitions de structure ou de tournure dans le même passage\n")
-           .append("- Formules génériques ou clichés de style (\"un sourire triste\", \"le cœur lourd\")\n")
-           .append("- Adjectifs de remplissage sans pouvoir évocateur\n")
-           .append("- Transitions mécaniques ou coutures visibles entre séquences\n")
-           .append("- Phrases qui sonnent fabriquées plutôt que vécues\n");
-        if (in.styleGuide() != null && !in.styleGuide().isBlank())
-            sys.append("Si un de ces défauts est imposé par la consigne de style, ne le mentionne pas.\n");
-        sys.append("\n## Échelle de notation\n")
-           .append("10 = texte publiable tel quel — irréprochable\n")
-           .append(" 8 = bon texte, défauts mineurs sans impact réel sur la lecture\n")
-           .append(" 7 = correct mais plat ou sans relief — manque d'ambition stylistique\n")
-           .append(" 6 = problèmes qui nuisent à la lecture ou cassent l'immersion\n")
-           .append(" 5 = plusieurs défauts sérieux — réécriture partielle nécessaire\n")
-           .append(" 3 = à réécrire intégralement sur le plan stylistique\n")
-           .append(" 1 = texte qui trahit visiblement sa fabrication\n")
-           .append("Un texte moyen ne mérite pas plus de 6. Réserve 8+ à l'exceptionnel.\n\n")
-           .append("Format de sortie strict :\n")
-           .append("PROBLEME: [description courte et précise]\n")
-           .append("SCORE: N  (entier 0-10)\n")
-           .append("En français. Sois précis et sévère — une note indulgente est inutile.");
-        return sys.toString();
+        boolean hasStyle = in.styleGuide() != null && !in.styleGuide().isBlank();
+
+        // Section optionnelle : consigne de style (avant les critères qualité pour que le modèle la lise en premier)
+        String styleGuideSection = !hasStyle ? "" : "\n\n## Consigne de style\n"
+                + "Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n"
+                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement.";
+
+        String qualitySection = """
+
+                ## Qualité stylistique
+                Identifie sans pitié tout ce qui trahit une écriture artificielle ou de faible qualité :
+                - Verbes faibles ou abstraits là où un verbe physique suffirait
+                - Constructions nominalisées ou passives inutiles
+                - Répétitions de structure ou de tournure dans le même passage
+                - Formules génériques ou clichés de style ("un sourire triste", "le cœur lourd")
+                - Adjectifs de remplissage sans pouvoir évocateur
+                - Transitions mécaniques ou coutures visibles entre séquences
+                - Phrases qui sonnent fabriquées plutôt que vécues""";
+
+        // Note optionnelle : exception si un défaut est imposé par la consigne de style
+        String styleException = !hasStyle ? ""
+                : "\nSi un de ces défauts est imposé par la consigne de style, ne le mentionne pas.";
+
+        String notationSection = """
+
+                ## Échelle de notation
+                10 = texte publiable tel quel — irréprochable
+                 8 = bon texte, défauts mineurs sans impact réel sur la lecture
+                 7 = correct mais plat ou sans relief — manque d'ambition stylistique
+                 6 = problèmes qui nuisent à la lecture ou cassent l'immersion
+                 5 = plusieurs défauts sérieux — réécriture partielle nécessaire
+                 3 = à réécrire intégralement sur le plan stylistique
+                 1 = texte qui trahit visiblement sa fabrication
+                Un texte moyen ne mérite pas plus de 6. Réserve 8+ à l'exceptionnel.
+
+                Format de sortie strict :
+                PROBLEME: [description courte et précise]
+                SCORE: N  (entier 0-10)
+                En français. Sois précis et sévère — une note indulgente est inutile.""";
+
+        return "Tu es un éditeur littéraire exigeant et sans concession."
+                + styleGuideSection
+                + qualitySection
+                + styleException
+                + notationSection;
     }
 
     private String buildUser(SequenceStyleCheckerInput in) {
-        int ctx      = llm.contextWindow();
-        int textSlot = ctx * 4 * 50 / 100;
+        int ctx       = llm.contextWindow();
+        int textSlot  = ctx * 4 * 50 / 100;
         int guideSlot = ctx * 4 / 8;
         int exSlot    = ctx * 4 / 6;
-        StringBuilder usr = new StringBuilder();
-        if (in.styleGuide() != null && !in.styleGuide().isBlank())
-            usr.append("### Guide de style\n").append(trunc(in.styleGuide(), guideSlot)).append("\n\n");
-        if (in.qualityCriteria() != null && !in.qualityCriteria().isBlank())
-            usr.append("### Critères de qualité\n").append(trunc(in.qualityCriteria(), guideSlot)).append("\n\n");
-        if (in.writingExample() != null && !in.writingExample().isBlank())
-            usr.append("### Exemple de référence (style attendu)\n").append(trunc(in.writingExample(), exSlot)).append("\n\n");
-        usr.append("### Texte à évaluer\n").append(trunc(in.text(), textSlot))
-           .append("\n\nÉvalue ce texte. Conclus par SCORE: N.");
-        return usr.toString();
+
+        String styleSection    = (in.styleGuide()      != null && !in.styleGuide().isBlank())      ? "### Guide de style\n"                       + trunc(in.styleGuide(),      guideSlot) + "\n\n" : "";
+        String criteriaSection = (in.qualityCriteria() != null && !in.qualityCriteria().isBlank()) ? "### Critères de qualité\n"                  + trunc(in.qualityCriteria(), guideSlot) + "\n\n" : "";
+        String exampleSection  = (in.writingExample()  != null && !in.writingExample().isBlank())  ? "### Exemple de référence (style attendu)\n" + trunc(in.writingExample(),  exSlot)    + "\n\n" : "";
+
+        return styleSection
+                + criteriaSection
+                + exampleSection
+                + "### Texte à évaluer\n" + trunc(in.text(), textSlot)
+                + "\n\nÉvalue ce texte. Conclus par SCORE: N.";
     }
 
     private static String trunc(String s, int maxChars) {

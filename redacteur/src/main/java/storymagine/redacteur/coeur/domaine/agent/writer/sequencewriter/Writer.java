@@ -32,63 +32,65 @@ public class Writer implements Agent {
     }
 
     private String buildSystem(WriterInput in) {
+        // 1. Préfixe réécriture (optionnel — apparaît en tête du prompt)
+        String rewritePrefix = !in.isRewrite() ? ""
+                : "RÉÉCRITURE — Un texte précédent a été jugé insuffisant par les critiques.\n"
+                  + "Corrige impérativement les problèmes listés dans la section \"### Problèmes à corriger\" de la trame, avant toute autre considération.\n"
+                  + "Chaque problème doit être traité dans ce nouveau texte.\n";
+
+        // 2. Contrainte de longueur (suit le rôle de base)
         String lengthConstraint = in.minWords() > 0
-            ? "Chaque séquence fait au minimum " + in.minWords() + " mots — développe les scènes avec profondeur et précision sensorielles."
-            : "Chaque séquence fait entre 300 et 800 mots.";
+                ? "Chaque séquence fait au minimum " + in.minWords() + " mots — développe les scènes avec profondeur et précision sensorielles."
+                : "Chaque séquence fait entre 300 et 800 mots.";
 
+        // 3. Règle d'ouverture selon présence du texte précédent (suite de la contrainte de longueur)
         boolean hasPrev = in.prevSentences() != null && !in.prevSentences().isBlank();
-        String defaultStitch = hasPrev
-            ? "Raccorde au texte précédent sans le résumer ni le paraphraser — "
-              + "ces phrases sont déjà écrites, ta première phrase est la suivante dans le récit : poursuis l'action. "
-              + "Ne repose pas le décor ni l'ambiance générale déjà établis — "
-              + "sauf si la trame te le demande explicitement."
-            : "La première phrase de chaque séquence utilise un point d'entrée "
-              + "différent de la séquence précédente : action physique, fragment de dialogue, "
-              + "détail sensoriel, pensée intérieure, objet ou geste isolé. "
-              + "Ne commence ni par le prénom d'un personnage seul ni par un pronom sujet nu "
-              + "('Il', 'Elle', 'Ils') — montre d'abord ce qui se passe, le personnage en est le sujet implicite.";
-        String openingRule = (in.stitch() != null && !in.stitch().isBlank()) ? in.stitch() : defaultStitch;
+        String openingRule = (in.stitch() != null && !in.stitch().isBlank()) ? in.stitch()
+                : hasPrev
+                        ? "Raccorde au texte précédent sans le résumer ni le paraphraser — "
+                          + "ces phrases sont déjà écrites, ta première phrase est la suivante dans le récit : poursuis l'action. "
+                          + "Ne repose pas le décor ni l'ambiance générale déjà établis — "
+                          + "sauf si la trame te le demande explicitement."
+                        : "La première phrase de chaque séquence utilise un point d'entrée "
+                          + "différent de la séquence précédente : action physique, fragment de dialogue, "
+                          + "détail sensoriel, pensée intérieure, objet ou geste isolé. "
+                          + "Ne commence ni par le prénom d'un personnage seul ni par un pronom sujet nu "
+                          + "('Il', 'Elle', 'Ils') — montre d'abord ce qui se passe, le personnage en est le sujet implicite.";
 
-        StringBuilder banBuilder = new StringBuilder();
-        if (!in.forbiddenPhrases().isEmpty()) {
-            banBuilder.append("\n\nEXPRESSIONS À NE PAS RÉPÉTER (déjà utilisées dans ce livre) :\n")
-                .append(in.forbiddenPhrases().stream().map(p -> "- " + p).collect(Collectors.joining("\n")));
-        }
-        if (!in.forbiddenThemes().isEmpty()) {
-            banBuilder.append("\n\nSCHÉMAS NARRATIFS USÉS — à reformuler différemment ou à omettre :\n")
-                .append(in.forbiddenThemes().stream().map(p -> "- " + p).collect(Collectors.joining("\n")));
-        }
-
-        String rewritePrefix = in.isRewrite()
-            ? "RÉÉCRITURE — Un texte précédent a été jugé insuffisant par les critiques. "
-              + "Corrige impérativement les problèmes listés dans la section "
-              + "\"### Problèmes à corriger\" de la trame, avant toute autre considération. "
-              + "Chaque problème doit être traité dans ce nouveau texte.\n"
-            : "";
+        // 4. Expressions et schémas interdits (en fin de prompt, depuis le bean d'entrée)
+        String bannedPhrases = in.forbiddenPhrases().isEmpty() ? ""
+                : "\n\nEXPRESSIONS À NE PAS RÉPÉTER (déjà utilisées dans ce livre) :\n"
+                  + in.forbiddenPhrases().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
+        String bannedThemes = in.forbiddenThemes().isEmpty() ? ""
+                : "\n\nSCHÉMAS NARRATIFS USÉS — à reformuler différemment ou à omettre :\n"
+                  + in.forbiddenThemes().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
 
         return rewritePrefix
-            + "Tu es un écrivain littéraire. "
-            + "Tu suis la trame générale dans l'ordre indiqué — chaque élément de la trame DOIT apparaître dans le texte. "
-            + "La trame est découpée en séquences numérotées : checks, contraintes, focus ou lore propres à une séquence ne s'appliquent qu'à cette séquence. "
-            + "Tu respectes intégralement les directives détaillées de l'auteur pour cette séquence : "
-            + "elles précisent et enrichissent la trame, et ont priorité sur elle si les deux divergent. "
-            + "Tu ne prends aucune décision narrative : ton seul rôle est de transformer ces instructions en prose française de haute qualité. "
-            + "Tu ne produis QUE le texte narratif — aucun commentaire, aucun méta-texte.\n"
-            + lengthConstraint + "\n" + openingRule + "\n"
-            + "Tu n'écris que les événements de cette séquence — "
-            + "aucune allusion aux séquences suivantes, aucun indice sur la suite, "
-            + "aucune anticipation des événements à venir.\n"
-            + "Si la fiche d'un personnage précise un article et un pronom "
-            + "(ligne 'Article : X — pronom'), respecte-les strictement dans tout le texte.\n"
-            + "Les traits visibles d'un personnage (tenue, apparence physique, gestes récurrents) "
-            + "et son tempérament sont des faits non négociables. "
-            + "Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose."
-            + banBuilder;
+                + """
+                Tu es un écrivain littéraire.
+                Tu suis la trame générale dans l'ordre indiqué — chaque élément de la trame DOIT apparaître dans le texte.
+                La trame est découpée en séquences numérotées : checks, contraintes, focus ou lore propres à une séquence ne s'appliquent qu'à cette séquence.
+                Tu respectes intégralement les directives détaillées de l'auteur pour cette séquence :
+                elles précisent et enrichissent la trame, et ont priorité sur elle si les deux divergent.
+                Tu ne prends aucune décision narrative : ton seul rôle est de transformer ces instructions en prose française de haute qualité.
+                Tu ne produis QUE le texte narratif — aucun commentaire, aucun méta-texte.
+                """
+                + lengthConstraint + "\n" + openingRule + "\n"
+                + """
+                Tu n'écris que les événements de cette séquence —
+                aucune allusion aux séquences suivantes, aucun indice sur la suite,
+                aucune anticipation des événements à venir.
+                Si la fiche d'un personnage précise un article et un pronom
+                (ligne 'Article : X — pronom'), respecte-les strictement dans tout le texte.
+                Les traits visibles d'un personnage (tenue, apparence physique, gestes récurrents)
+                et son tempérament sont des faits non négociables.
+                Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose."""
+                + bannedPhrases
+                + bannedThemes;
     }
 
     private String buildUser(WriterInput in) {
         int ctx  = llm.contextWindow();
-        int base = ctx * 4 * 3 / 5; // 60% of context in chars
 
         // Slot sizes (chars)
         int sState       = ctx * 4 / 16;

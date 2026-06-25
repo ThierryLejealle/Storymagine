@@ -28,36 +28,47 @@ public class TextDreamCritic implements Agent {
 
     public TextDreamCriticOutput call(TextDreamCriticInput input) {
         String level = (input.realismLevel() != null && !input.realismLevel().isBlank())
-            ? input.realismLevel() : "symbolic";
+                ? input.realismLevel() : "symbolic";
+
+        int ctx = llm.contextWindow();
+        String user = "### Texte du rêve\n"                                 + trunc(input.text(),     ctx * 4 * 55 / 100)
+                + "\n\n### Psychologie du personnage (objectif du livre)\n" + trunc(input.bookGoal(), ctx * 4 / 8)
+                + "\n\nÉvalue la qualité onirique. Conclus par SCORE: N.";
+
+        String raw = llm.generate(buildSystem(level), user, 0.3, LlmCallContext.of(agentName())).text();
+        List<String> problems = ProblemScoreParser.parseProblems(raw);
+        double score = ProblemScoreParser.parseScore(raw);
+        return new TextDreamCriticOutput(problems, score);
+    }
+
+    private static String buildSystem(String level) {
+        // Critères selon le niveau de réalisme du rêve
         String levelCriteria = switch (level) {
             case "realistic" -> "Critères UNIQUEMENT : intensité émotionnelle (angoisses et désirs transparaissent dans des images familières légèrement décalées), cohérence distordue propre au rêve, résonance psychologique avec le personnage.";
             case "surreal"   -> "Critères UNIQUEMENT : originalité radicale des images (rien de banal ni de prévisible), logique interne propre au rêve (même absurde, il a sa cohérence), puissance sensorielle et émotionnelle.";
             default          -> "Critères UNIQUEMENT : puissance symbolique des images (archétypes, métaphores), résonance émotionnelle avec la psychologie du personnage, cohérence interne du rêve (sa propre logique).";
         };
 
-        String system = "Tu évalues une SÉQUENCE DE RÊVE — niveau de réalisme : " + level + ".\n"
-            + levelCriteria + "\n"
-            + "Ignore totalement les lois physiques, la vraisemblance historique et la cohérence\n"
-            + "avec la trame principale du roman — c'est un rêve, rien de cela n'est évalué.\n\n"
-            + "Échelle de notation :\n"
-            + "10 = rêve parfaitement évocateur\n 9 = excellent\n 8 = bon\n"
-            + " 7 = atmosphère onirique présente mais images banales\n"
-            + " 6 = rêve trop rationnel ou trop littéral\n"
-            + " 5 = faible évocation\n 3 = à réécrire\n\n"
-            + "Format de sortie strict :\n"
-            + "PROBLEME: [défaut ou axe d'amélioration]\n"
-            + "SCORE: N  (entier 0-10)\n"
-            + "En français.";
+        return "Tu évalues une SÉQUENCE DE RÊVE — niveau de réalisme : " + level + ".\n"
+                + levelCriteria
+                + """
 
-        int ctx = llm.contextWindow();
-        String user = "### Texte du rêve\n"                      + trunc(input.text(),    ctx * 4 * 55 / 100)
-            + "\n\n### Psychologie du personnage (objectif du livre)\n" + trunc(input.bookGoal(), ctx * 4 / 8)
-            + "\n\nÉvalue la qualité onirique. Conclus par SCORE: N.";
+                Ignore totalement les lois physiques, la vraisemblance historique et la cohérence
+                avec la trame principale du roman — c'est un rêve, rien de cela n'est évalué.
 
-        String raw = llm.generate(system, user, 0.3, LlmCallContext.of(agentName())).text();
-        List<String> problems = ProblemScoreParser.parseProblems(raw);
-        double score = ProblemScoreParser.parseScore(raw);
-        return new TextDreamCriticOutput(problems, score);
+                Échelle de notation :
+                10 = rêve parfaitement évocateur
+                 9 = excellent
+                 8 = bon
+                 7 = atmosphère onirique présente mais images banales
+                 6 = rêve trop rationnel ou trop littéral
+                 5 = faible évocation
+                 3 = à réécrire
+
+                Format de sortie strict :
+                PROBLEME: [défaut ou axe d'amélioration]
+                SCORE: N  (entier 0-10)
+                En français.""";
     }
 
     private static String trunc(String s, int maxChars) {

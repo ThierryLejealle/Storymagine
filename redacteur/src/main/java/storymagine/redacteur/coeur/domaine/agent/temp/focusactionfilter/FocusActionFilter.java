@@ -42,21 +42,29 @@ public class FocusActionFilter implements Agent {
     }
 
     public FocusActionFilterOutput call(FocusActionFilterInput input) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("### Séquence à écrire\n").append(input.sequenceDescription()).append("\n\n");
-        if (input.condition() != null && !input.condition().isBlank())
-            sb.append("### Condition narrative\n").append(input.condition()).append("\n\n");
-        if (input.avoidRepetition() && !input.alreadyUsed().isEmpty())
-            sb.append("### Déjà utilisé dans ce livre (évite la répétition)\n")
-              .append(String.join(", ", input.alreadyUsed())).append("\n\n");
-        if (!input.groupsText().isBlank())
-            sb.append("### Groupes de focus disponibles\n").append(input.groupsText()).append("\n\n");
-        if (!input.actionsText().isBlank())
-            sb.append("### Catégories d'action disponibles\n")
-              .append(String.join(", ", input.actionCategories())).append("\n\n");
-        sb.append("Filtre et retiens uniquement les éléments pertinents.");
+        String sequenceSection   = "### Séquence à écrire\n" + input.sequenceDescription() + "\n\n";
 
-        String raw = llm.generate(SYSTEM, sb.toString(), 0.3, LlmCallContext.of(agentName())).text();
+        String conditionSection  = (input.condition() != null && !input.condition().isBlank())
+                ? "### Condition narrative\n" + input.condition() + "\n\n" : "";
+
+        String repetitionSection = (input.avoidRepetition() && !input.alreadyUsed().isEmpty())
+                ? "### Déjà utilisé dans ce livre (évite la répétition)\n"
+                  + String.join(", ", input.alreadyUsed()) + "\n\n" : "";
+
+        String focusSection      = input.groupsText().isBlank() ? ""
+                : "### Groupes de focus disponibles\n" + input.groupsText() + "\n\n";
+
+        String actionsSection    = input.actionsText().isBlank() ? ""
+                : "### Catégories d'action disponibles\n" + String.join(", ", input.actionCategories()) + "\n\n";
+
+        String user = sequenceSection
+                + conditionSection
+                + repetitionSection
+                + focusSection
+                + actionsSection
+                + "Filtre et retiens uniquement les éléments pertinents.";
+
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
         return parseResponse(raw, input.groupNames(), input.actionCategories());
     }
 

@@ -12,17 +12,18 @@ import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
  */
 public class CausalAnalyzer implements Agent {
 
-    private static final String SYSTEM =
-        "Tu es un analyste de cohérence narrative. Tu examines les PLANS de tous les chapitres d'un roman.\n"
-        + "Tu vérifies UNIQUEMENT la cohérence causale entre chapitres :\n"
-        + "chaque événement important a-t-il une cause ? Chaque cause a-t-elle une conséquence ?\n"
-        + "Signale : événements sans cause, contradictions factuelles entre chapitres,\n"
-        + "conséquences importantes jamais exploitées.\n"
-        + "Si rien à signaler, écris SCORE: 10 sans PROBLEME.\n\n"
-        + "Format de sortie strict :\n"
-        + "PROBLEME: [description courte d'un problème réel]\n"
-        + "SCORE: N  (entier 0-10)\n"
-        + "En français.";
+    private static final String SYSTEM = """
+            Tu es un analyste de cohérence narrative. Tu examines les PLANS de tous les chapitres d'un roman.
+            Tu vérifies UNIQUEMENT la cohérence causale entre chapitres :
+            chaque événement important a-t-il une cause ? Chaque cause a-t-elle une conséquence ?
+            Signale : événements sans cause, contradictions factuelles entre chapitres,
+            conséquences importantes jamais exploitées.
+            Si rien à signaler, écris SCORE: 10 sans PROBLEME.
+
+            Format de sortie strict :
+            PROBLEME: [description courte d'un problème réel]
+            SCORE: N  (entier 0-10)
+            En français.""";
 
     private static final String AGENT_NAME = "CausalAnalyzer";
 

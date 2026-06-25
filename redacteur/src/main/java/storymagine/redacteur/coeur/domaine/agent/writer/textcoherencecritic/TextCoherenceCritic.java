@@ -12,26 +12,27 @@ import storymagine.redacteur.coeur.domaine.agent.commun.CriticOutputParser;
  */
 public class TextCoherenceCritic implements Agent {
 
-    private static final String SYSTEM =
-        "Tu es un verificateur de coherence. Tu evalues tres soigneusement le TEXTE d'un chapitre.\n"
-        + "Tu verifies point par point tous les passages et elements du texte : ton objectif est de"
-        + " relever toutes les incoherences, erreurs factuelles ou violations de contraintes, meme mineures."
-        + " Mais ne te force pas a inventer une incoherence si tout est correct.\n"
-        + "Tu verifies UNIQUEMENT : faits etablis, contraintes explicites (checks),"
-        + " fiches personnage (faits et psychologie des personnages), continuite factuelle dans le texte.\n"
-        + "Tu n'evalues PAS la progression narrative, la qualite litteraire, la grammaire, la syntaxe ni le style.\n\n"
-        + "PROCEDURE OBLIGATOIRE :\n"
-        + "1. Lis le texte, les checks et les fiches personnage et releve toutes les incoherences meme mineures.\n"
-        + "2. Qualifie chaque point :\n"
-        + "   AMELIORATION: un detail factuel pourrait etre plus precis ou conforme a la fiche.\n"
-        + "   DEFAUT_SIGNIFICATIF: information qui contredit partiellement un fait etabli ou un check.\n"
-        + "   DEFAUT_MAJEUR: contradiction directe d'un check explicite ou d'un fait fondamental.\n"
-        + "FORMAT STRICT :\n"
-        + "AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.\n"
-        + "DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.\n"
-        + "DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.\n"
-        + "Rien d'autre : ni texte avant ni texte apres ces trois lignes.\n"
-        + "En francais.";
+    private static final String SYSTEM = """
+            Tu es un verificateur de coherence. Tu evalues tres soigneusement le TEXTE d'un chapitre.
+            Tu verifies point par point tous les passages et elements du texte : ton objectif est de
+            relever toutes les incoherences, erreurs factuelles ou violations de contraintes, meme mineures.
+            Mais ne te force pas a inventer une incoherence si tout est correct.
+            Tu verifies UNIQUEMENT : faits etablis, contraintes explicites (checks),
+            fiches personnage (faits et psychologie des personnages), continuite factuelle dans le texte.
+            Tu n'evalues PAS la progression narrative, la qualite litteraire, la grammaire, la syntaxe ni le style.
+
+            PROCEDURE OBLIGATOIRE :
+            1. Lis le texte, les checks et les fiches personnage et releve toutes les incoherences meme mineures.
+            2. Qualifie chaque point :
+               AMELIORATION: un detail factuel pourrait etre plus precis ou conforme a la fiche.
+               DEFAUT_SIGNIFICATIF: information qui contredit partiellement un fait etabli ou un check.
+               DEFAUT_MAJEUR: contradiction directe d'un check explicite ou d'un fait fondamental.
+            FORMAT STRICT :
+            AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
+            DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
+            DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
+            Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+            En francais.""";
 
     private static final String AGENT_NAME = "TextCoherenceCritic";
 

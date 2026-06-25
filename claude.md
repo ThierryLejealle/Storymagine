@@ -73,3 +73,19 @@ Si besoin d'un scenario pour tester, il doit etre dans le package test
 # STYLE
 Privilégie la programmation fonctionelle
 Utilise les """ pour les chaines sur plusieurs lignes, comme les prompts
+Privilégie la maintenance et la lisibilité du code
+Explique ce que fait chaque classe dans un petit commentaire dans la classe
+
+# PROMPT
+On cible des petits modèles
+- Donner des exemples
+- Une meme consigne ne doit pas être dupliquée
+  - Par exemple en positif / negatic : - tous les beats doivent être utilisés + aucun beats ne doit être ignoré
+  - Ou en synthétisant, rappeleant un règle
+- Les formats de sortie doivent être strictement encadrés. Les modèles ajoutent parfois des commentaires ou ne savent pas comment traiter une liste vide (donner une consigne et exemple) ce qui casse des sorties sous forme de listes
+- Trouve l'équilibre entre précision et synthèse
+Les prompts doivent être facile à modifier : quand tu dois fabrique un prompt, met le code de génération du prompt dans l'ordre du prompt (s'il y a des parties conditionnelles et de l'assemblage par exemple)
+Quand tu fabriques un prompt, optimise pour la lisibilité humaine : le lecteur doit voir le contenu du prompt directement dans le code, dans l'ordre. Utilise `"""` pour les parties fixes. Choisis la concaténation la plus lisible selon le contexte — pas la plus "efficace".
+
+# Efficience
+Si tu as besoin de trouver facilement des éléments dans le projet, tu peux générer des fichiers raccourcis pour faire gagner des tokens. Ex : ou trouver les agents ?

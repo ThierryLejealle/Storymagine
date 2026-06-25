@@ -14,24 +14,28 @@ import java.util.List;
  */
 public class TextWhatIfCritic implements Agent {
 
-    private static final String SYSTEM =
-        "Tu évalues un SCÉNARIO ALTERNATIF (what-if), pas la trame réelle du roman.\n"
-        + "Critères UNIQUEMENT : plausibilité physique et causale de l'hypothèse\n"
-        + "(les conséquences découlent-elles logiquement de la prémisse ?),\n"
-        + "cohérence des lois physiques et de la réalité matérielle dans ce monde alternatif,\n"
-        + "crédibilité psychologique des personnages face à la nouvelle situation.\n"
-        + "Ignore toute incohérence avec les événements réels du roman —\n"
-        + "la divergence par rapport à la trame principale est intentionnelle et non un problème.\n\n"
-        + "Échelle de notation :\n"
-        + "10 = hypothèse parfaitement plausible\n 9 = excellent\n 8 = bon\n"
-        + " 7 = globalement plausible mais une incohérence causale notable\n"
-        + " 6 = hypothèse acceptable mais conséquences manquent de rigueur causale\n"
-        + " 5 = incohérences causales qui brisent la suspension d'incrédulité\n"
-        + " 3 = à réécrire\n\n"
-        + "Format de sortie strict :\n"
-        + "PROBLEME: [défaut ou axe d'amélioration]\n"
-        + "SCORE: N  (entier 0-10)\n"
-        + "En français.";
+    private static final String SYSTEM = """
+            Tu évalues un SCÉNARIO ALTERNATIF (what-if), pas la trame réelle du roman.
+            Critères UNIQUEMENT : plausibilité physique et causale de l'hypothèse
+            (les conséquences découlent-elles logiquement de la prémisse ?),
+            cohérence des lois physiques et de la réalité matérielle dans ce monde alternatif,
+            crédibilité psychologique des personnages face à la nouvelle situation.
+            Ignore toute incohérence avec les événements réels du roman —
+            la divergence par rapport à la trame principale est intentionnelle et non un problème.
+
+            Échelle de notation :
+            10 = hypothèse parfaitement plausible
+             9 = excellent
+             8 = bon
+             7 = globalement plausible mais une incohérence causale notable
+             6 = hypothèse acceptable mais conséquences manquent de rigueur causale
+             5 = incohérences causales qui brisent la suspension d'incrédulité
+             3 = à réécrire
+
+            Format de sortie strict :
+            PROBLEME: [défaut ou axe d'amélioration]
+            SCORE: N  (entier 0-10)
+            En français.""";
 
     private static final String AGENT_NAME = "TextWhatIfCritic";
 

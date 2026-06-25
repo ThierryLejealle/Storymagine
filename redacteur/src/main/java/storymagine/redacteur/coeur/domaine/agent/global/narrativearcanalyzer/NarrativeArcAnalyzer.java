@@ -12,16 +12,17 @@ import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
  */
 public class NarrativeArcAnalyzer implements Agent {
 
-    private static final String SYSTEM =
-        "Tu es un analyste de structure narrative. Tu examines les PLANS de tous les chapitres d'un roman.\n"
-        + "Tu vérifies UNIQUEMENT les arcs narratifs des personnages : introduction, évolution, résolution.\n"
-        + "Signale : arcs ouverts sans résolution, personnages qui disparaissent sans explication,\n"
-        + "arcs redondants entre personnages, tournants promis et jamais tenus.\n"
-        + "Si rien à signaler, écris SCORE: 10 sans PROBLEME.\n\n"
-        + "Format de sortie strict :\n"
-        + "PROBLEME: [description courte d'un problème réel]\n"
-        + "SCORE: N  (entier 0-10)\n"
-        + "En français.";
+    private static final String SYSTEM = """
+            Tu es un analyste de structure narrative. Tu examines les PLANS de tous les chapitres d'un roman.
+            Tu vérifies UNIQUEMENT les arcs narratifs des personnages : introduction, évolution, résolution.
+            Signale : arcs ouverts sans résolution, personnages qui disparaissent sans explication,
+            arcs redondants entre personnages, tournants promis et jamais tenus.
+            Si rien à signaler, écris SCORE: 10 sans PROBLEME.
+
+            Format de sortie strict :
+            PROBLEME: [description courte d'un problème réel]
+            SCORE: N  (entier 0-10)
+            En français.""";
 
     private static final String AGENT_NAME = "NarrativeArcAnalyzer";
 

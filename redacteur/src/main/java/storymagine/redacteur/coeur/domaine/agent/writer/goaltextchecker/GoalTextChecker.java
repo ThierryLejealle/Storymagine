@@ -46,19 +46,17 @@ public class GoalTextChecker implements Agent {
 
     public GoalTextCheckerOutput call(GoalTextCheckerInput input) {
         int ctx = llm.contextWindow();
-        StringBuilder sb = new StringBuilder();
-        appendOpt(sb, "Objectif narratif de ce chapitre",      input.chapterGoal());
-        appendOpt(sb, "Objectif global du roman (contexte)",   trunc(input.bookGoal(), 1600));
-        appendOpt(sb, "Texte à évaluer",                       trunc(input.text(),     ctx * 4 / 2));
-        sb.append("\n\nAnalyse si ce texte atteint l'objectif narratif, puis conclus avec tes PROBLEME: et SCORE: N.");
-        String raw = llm.generate(SYSTEM, sb.toString(), 0.3, LlmCallContext.of(agentName())).text();
+        String user = section("Objectif narratif de ce chapitre", input.chapterGoal())
+                + section("Objectif global du roman (contexte)", trunc(input.bookGoal(), 1600))
+                + section("Texte à évaluer",                     trunc(input.text(),     ctx * 4 / 2))
+                + "\n\nAnalyse si ce texte atteint l'objectif narratif, puis conclus avec tes PROBLEME: et SCORE: N.";
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
         return new GoalTextCheckerOutput(ProblemScoreParser.parseProblems(raw), ProblemScoreParser.parseScore(raw));
     }
 
-    private static void appendOpt(StringBuilder sb, String title, String content) {
-        if (content == null || content.isBlank()) return;
-        if (sb.length() > 0) sb.append("\n\n");
-        sb.append("### ").append(title).append("\n").append(content);
+    private static String section(String title, String content) {
+        if (content == null || content.isBlank()) return "";
+        return "\n\n### " + title + "\n" + content;
     }
 
     private static String trunc(String s, int maxChars) {

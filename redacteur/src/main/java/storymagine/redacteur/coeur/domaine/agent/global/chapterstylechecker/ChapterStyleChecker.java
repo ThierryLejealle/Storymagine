@@ -35,49 +35,68 @@ public class ChapterStyleChecker implements Agent {
     }
 
     private String buildSystem(ChapterStyleCheckerInput in) {
-        StringBuilder sys = new StringBuilder("Tu es un éditeur littéraire exigeant et sans concession.\n");
-        if (in.styleGuide() != null && !in.styleGuide().isBlank()) {
-            sys.append("\n## Consigne de style\n")
-               .append("Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n")
-               .append("Ne signale jamais comme défaut ce que le guide prescrit explicitement.\n");
-        }
-        sys.append("\n## Qualité stylistique\n")
-           .append("Identifie tout ce qui trahit une écriture artificielle ou de faible qualité :\n")
-           .append("- Verbes faibles ou abstraits là où un verbe physique suffirait\n")
-           .append("- Constructions nominalisées ou passives inutiles\n")
-           .append("- Répétitions de structure ou de tournure dans le même passage\n")
-           .append("- Formules génériques ou clichés de style\n")
-           .append("- Adjectifs de remplissage sans pouvoir évocateur\n")
-           .append("- Transitions mécaniques ou coutures visibles\n")
-           .append("- Phrases qui sonnent fabriquées plutôt que vécues\n");
-        if (in.styleGuide() != null && !in.styleGuide().isBlank())
-            sys.append("Si un de ces défauts est imposé par la consigne de style, ne le mentionne pas.\n");
-        sys.append("\n## Échelle de notation\n")
-           .append("10 = parfait, rien à retoucher sur le plan stylistique\n")
-           .append(" 9 = excellent\n 8 = bon\n 7 = lisible mais plusieurs maladresses\n")
-           .append(" 6 = correct mais largement améliorable\n 5 = moyen\n 3 = à réécrire intégralement\n")
-           .append("Sois strict : réserve 8+ à un texte vraiment bon.\n\n")
-           .append("Format de sortie strict :\n")
-           .append("PROBLEME: [défaut ou axe d'amélioration stylistique]\n")
-           .append("SCORE: N  (entier 0-10)\nEn français. Sois précis et sévère.");
-        return sys.toString();
+        boolean hasStyle = in.styleGuide() != null && !in.styleGuide().isBlank();
+
+        // Section optionnelle : consigne de style (avant les critères qualité pour que le modèle la lise en premier)
+        String styleGuideSection = !hasStyle ? "" : "\n\n## Consigne de style\n"
+                + "Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n"
+                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement.";
+
+        String qualitySection = """
+
+                ## Qualité stylistique
+                Identifie tout ce qui trahit une écriture artificielle ou de faible qualité :
+                - Verbes faibles ou abstraits là où un verbe physique suffirait
+                - Constructions nominalisées ou passives inutiles
+                - Répétitions de structure ou de tournure dans le même passage
+                - Formules génériques ou clichés de style
+                - Adjectifs de remplissage sans pouvoir évocateur
+                - Transitions mécaniques ou coutures visibles
+                - Phrases qui sonnent fabriquées plutôt que vécues""";
+
+        // Note optionnelle : exception si un défaut est imposé par la consigne de style
+        String styleException = !hasStyle ? ""
+                : "\nSi un de ces défauts est imposé par la consigne de style, ne le mentionne pas.";
+
+        String notationSection = """
+
+                ## Échelle de notation
+                10 = parfait, rien à retoucher sur le plan stylistique
+                 9 = excellent
+                 8 = bon
+                 7 = lisible mais plusieurs maladresses
+                 6 = correct mais largement améliorable
+                 5 = moyen
+                 3 = à réécrire intégralement
+                Sois strict : réserve 8+ à un texte vraiment bon.
+
+                Format de sortie strict :
+                PROBLEME: [défaut ou axe d'amélioration stylistique]
+                SCORE: N  (entier 0-10)
+                En français. Sois précis et sévère.""";
+
+        return "Tu es un éditeur littéraire exigeant et sans concession."
+                + styleGuideSection
+                + qualitySection
+                + styleException
+                + notationSection;
     }
 
     private String buildUser(ChapterStyleCheckerInput in) {
-        int ctx      = llm.contextWindow();
-        int textSlot = ctx * 4 * 55 / 100;
+        int ctx       = llm.contextWindow();
+        int textSlot  = ctx * 4 * 55 / 100;
         int guideSlot = ctx * 4 / 8;
         int exSlot    = ctx * 4 / 6;
-        StringBuilder usr = new StringBuilder();
-        if (in.styleGuide() != null && !in.styleGuide().isBlank())
-            usr.append("### Guide de style\n").append(trunc(in.styleGuide(), guideSlot)).append("\n\n");
-        if (in.qualityCriteria() != null && !in.qualityCriteria().isBlank())
-            usr.append("### Critères de qualité\n").append(trunc(in.qualityCriteria(), guideSlot)).append("\n\n");
-        if (in.writingExample() != null && !in.writingExample().isBlank())
-            usr.append("### Exemple de référence (style attendu)\n").append(trunc(in.writingExample(), exSlot)).append("\n\n");
-        usr.append("### Texte à évaluer\n").append(trunc(in.text(), textSlot))
-           .append("\n\nÉvalue ce texte. Conclus par SCORE: N.");
-        return usr.toString();
+
+        String styleSection    = (in.styleGuide()      != null && !in.styleGuide().isBlank())      ? "### Guide de style\n"                       + trunc(in.styleGuide(),      guideSlot) + "\n\n" : "";
+        String criteriaSection = (in.qualityCriteria() != null && !in.qualityCriteria().isBlank()) ? "### Critères de qualité\n"                  + trunc(in.qualityCriteria(), guideSlot) + "\n\n" : "";
+        String exampleSection  = (in.writingExample()  != null && !in.writingExample().isBlank())  ? "### Exemple de référence (style attendu)\n" + trunc(in.writingExample(),  exSlot)    + "\n\n" : "";
+
+        return styleSection
+                + criteriaSection
+                + exampleSection
+                + "### Texte à évaluer\n" + trunc(in.text(), textSlot)
+                + "\n\nÉvalue ce texte. Conclus par SCORE: N.";
     }
 
     private static String trunc(String s, int maxChars) {

@@ -12,28 +12,29 @@ import storymagine.redacteur.coeur.domaine.agent.commun.CriticOutputParser;
  */
 public class TextNarrativeCritic implements Agent {
 
-    private static final String SYSTEM =
-        "Tu es un editeur narratif. Tu evalues tres soigneusement le TEXTE d'un chapitre.\n"
-        + "Tu verifies point par point tous les passages et elements du texte, en te focalisant"
-        + " exclusivement sur la progression de l'arc narratif : ton objectif est de lister"
-        + " tous les problemes, defauts ou faiblesses par rapport a la progression de l'arc narratif."
-        + " Mais ne te force pas a inventer un defaut ou une amelioration si tout est correct.\n"
-        + "Tu n'evalues PAS la coherence factuelle.\n"
-        + "Si l'objectif du chapitre est fourni, tout element qui en decoule directement"
-        + " n'est pas un defaut — ne le signale pas.\n\n"
-        + "PROCEDURE OBLIGATOIRE :\n"
-        + "1. Lis attentivement le texte et l'objectif du chapitre et trouve tous les defauts"
-        + " meme mineurs par rapport a l'arc narratif.\n"
-        + "2. Qualifie chaque point :\n"
-        + "   AMELIORATION: point qui pourrait etre affine ; la faiblesse est quasi imperceptible.\n"
-        + "   DEFAUT_SIGNIFICATIF: faiblesse plus marquee qui affaiblit l'arc sans le contredire.\n"
-        + "   DEFAUT_MAJEUR: element qui CONTREDIT DIRECTEMENT l'objectif du chapitre.\n"
-        + "FORMAT STRICT :\n"
-        + "AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.\n"
-        + "DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.\n"
-        + "DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.\n"
-        + "Rien d'autre : ni texte avant ni texte apres ces trois lignes.\n"
-        + "En francais.";
+    private static final String SYSTEM = """
+            Tu es un editeur narratif. Tu evalues tres soigneusement le TEXTE d'un chapitre.
+            Tu verifies point par point tous les passages et elements du texte, en te focalisant
+            exclusivement sur la progression de l'arc narratif : ton objectif est de lister
+            tous les problemes, defauts ou faiblesses par rapport a la progression de l'arc narratif.
+            Mais ne te force pas a inventer un defaut ou une amelioration si tout est correct.
+            Tu n'evalues PAS la coherence factuelle.
+            Si l'objectif du chapitre est fourni, tout element qui en decoule directement
+            n'est pas un defaut — ne le signale pas.
+
+            PROCEDURE OBLIGATOIRE :
+            1. Lis attentivement le texte et l'objectif du chapitre et trouve tous les defauts
+               meme mineurs par rapport a l'arc narratif.
+            2. Qualifie chaque point :
+               AMELIORATION: point qui pourrait etre affine ; la faiblesse est quasi imperceptible.
+               DEFAUT_SIGNIFICATIF: faiblesse plus marquee qui affaiblit l'arc sans le contredire.
+               DEFAUT_MAJEUR: element qui CONTREDIT DIRECTEMENT l'objectif du chapitre.
+            FORMAT STRICT :
+            AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
+            DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
+            DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
+            Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+            En francais.""";
 
     private static final String AGENT_NAME = "TextNarrativeCritic";
 

@@ -18,56 +18,66 @@ public class ChapterPlanner implements Agent {
 
     public static final int DEFAULT_PLANNER_EFFORT_IN_LINES = 25;
 
-    private static final String JSON_PLANNER_SYSTEM =
-        "Tu es le planificateur de scènes d'un roman. Ton objectif premier est d'enrichir le contenu par rapport "
-        + "à la consigne tout en la respectant. Donne beaucoup plus de détails que la consigne d'origine — "
-        + "si elle est courte, c'est sur ta créativité qu'on compte.\n\n"
-        + "Le chapitre est découpé en séquences indépendantes. Planifie-les toutes, dans l'ordre, "
-        + "sans déborder d'une séquence sur la suivante.\n\n"
-        + "Ta sortie est un tableau JSON strictement valide, sans markdown, sans commentaire, "
-        + "sans texte avant ou après.\n\n"
-        + "Format obligatoire :\n[\n  {\n    \"sequence\": <numéro entier>,\n"
-        + "    \"beats\": [\"<beat 1>\", \"<beat 2>\", \"...\"],\n"
-        + "    \"sensoriels\": \"<détails concrets : son, vue, toucher, odorat>\",\n"
-        + "    \"ton_et_rythme\": \"<couleur émotionnelle et cadence des phrases>\"\n  }\n]\n\n"
-        + "Règles pour les beats, par ordre de priorité :\n"
-        + "1. Ne perds jamais une action explicitement présente dans la consigne — la couverture est absolue.\n"
-        + "2. Couvre tous les éléments de la consigne sans en omettre aucun.\n"
-        + "3. Enrichis librement au-delà de la consigne — rends la séquence riche et intéressante.\n\n"
-        + "Contraintes sur les beats :\n"
-        + "- Au moins %d par séquence, autant que la séquence l'exige\n"
-        + "- Chaque beat = une action concrète ou un événement perceptible — pas un thème ni un état psychologique\n"
-        + "- Bon : \"Pierre pose sa main sur le fuselage froid.\"\n"
-        + "- Mauvais : \"Pierre ressent un ancrage intérieur dans l'environnement.\"\n"
-        + "En français.";
+    private static final String JSON_PLANNER_SYSTEM = """
+            Tu es le planificateur de scènes d'un roman. Ton objectif premier est d'enrichir le contenu par rapport
+            à la consigne tout en la respectant. Donne beaucoup plus de détails que la consigne d'origine —
+            si elle est courte, c'est sur ta créativité qu'on compte.
 
-    private static final String FREE_PLANNER_SYSTEM =
-        "Tu es un architecte narratif. Ton rôle : décider avec précision CE QUI SE PASSE dans ce chapitre.\n"
-        + "Produis un plan impératif — chaque point est une instruction que le rédacteur DOIT exécuter à la lettre.\n"
-        + "Structure : événements dans l'ordre chronologique, réactions des personnages, tournant dramatique, fin du chapitre.\n"
-        + "Ne t'occupe pas de la prose — seulement de ce qui se passe, pourquoi, et dans quel ordre.\n"
-        + "En français.";
+            Le chapitre est découpé en séquences indépendantes. Planifie-les toutes, dans l'ordre,
+            sans déborder d'une séquence sur la suivante.
 
-    private static final String CORRECTION_SYSTEM =
-        "Tu es le planificateur de scènes d'un roman. Tu dois corriger un plan JSON existant.\n"
-        + "Corrige impérativement les problèmes listés — chaque problème doit être traité.\n"
-        + "Pour les séquences non concernées par un problème, conserve les beats à l'identique.\n"
-        + "Produis un tableau JSON strictement valide, même format que le plan précédent, "
-        + "sans markdown, sans commentaire, sans texte avant ou après.\n"
-        + "En français.";
+            Ta sortie est un tableau JSON strictement valide, sans markdown, sans commentaire,
+            sans texte avant ou après.
 
-    private static final String INNER_STATE_NOTE =
-        "Si des éléments intérieurs ([État intérieur]) sont fournis, "
-        + "ils peuvent orienter les tensions et tournants narratifs — "
-        + "ne pas les mentionner explicitement dans le plan produit.";
+            Format obligatoire :
+            [
+              {
+                "sequence": <numéro entier>,
+                "beats": ["<beat 1>", "<beat 2>", "..."],
+                "sensoriels": "<détails concrets : son, vue, toucher, odorat>",
+                "ton_et_rythme": "<couleur émotionnelle et cadence des phrases>"
+              }
+            ]
 
-    private static final String FOCUS_LORE_NOTE =
-        "Focus et lore : la section « Éléments à utiliser (focus) — toutes les séquences » "
-        + "s'applique à l'ensemble du chapitre — efforce-toi de les intégrer dans chaque séquence concernée. "
-        + "La section « Informations utiles (lore) — toutes les séquences » s'applique à l'ensemble du chapitre "
-        + "— n'hésite pas à les piocher pour étoffer chaque séquence. "
-        + "Chaque séquence peut aussi avoir ses propres focus, lore et contraintes "
-        + "— ceux-ci s'appliquent uniquement à cette séquence, pas aux autres.";
+            Règles pour les beats, par ordre de priorité :
+            1. Ne perds jamais une action explicitement présente dans la consigne — la couverture est absolue.
+            2. Couvre tous les éléments de la consigne sans en omettre aucun.
+            3. Enrichis librement au-delà de la consigne — rends la séquence riche et intéressante.
+
+            Contraintes sur les beats :
+            - Au moins %d par séquence, autant que la séquence l'exige
+            - Chaque beat = une action concrète ou un événement perceptible — pas un thème ni un état psychologique
+            - Bon : "Pierre pose sa main sur le fuselage froid."
+            - Mauvais : "Pierre ressent un ancrage intérieur dans l'environnement."
+            En français.""";
+
+    private static final String FREE_PLANNER_SYSTEM = """
+            Tu es un architecte narratif. Ton rôle : décider avec précision CE QUI SE PASSE dans ce chapitre.
+            Produis un plan impératif — chaque point est une instruction que le rédacteur DOIT exécuter à la lettre.
+            Structure : événements dans l'ordre chronologique, réactions des personnages, tournant dramatique, fin du chapitre.
+            Ne t'occupe pas de la prose — seulement de ce qui se passe, pourquoi, et dans quel ordre.
+            En français.""";
+
+    private static final String CORRECTION_SYSTEM = """
+            Tu es le planificateur de scènes d'un roman. Tu dois corriger un plan JSON existant.
+            Corrige impérativement les problèmes listés — chaque problème doit être traité.
+            Pour les séquences non concernées par un problème, conserve les beats à l'identique.
+            Produis un tableau JSON strictement valide, même format que le plan précédent,
+            sans markdown, sans commentaire, sans texte avant ou après.
+            En français.""";
+
+    private static final String INNER_STATE_NOTE = """
+            Si des éléments intérieurs ([État intérieur]) sont fournis,
+            ils peuvent orienter les tensions et tournants narratifs —
+            ne pas les mentionner explicitement dans le plan produit.""";
+
+    private static final String FOCUS_LORE_NOTE = """
+            Focus et lore : la section « Éléments à utiliser (focus) — toutes les séquences »
+            s'applique à l'ensemble du chapitre — efforce-toi de les intégrer dans chaque séquence concernée.
+            La section « Informations utiles (lore) — toutes les séquences » s'applique à l'ensemble du chapitre
+            — n'hésite pas à les piocher pour étoffer chaque séquence.
+            Chaque séquence peut aussi avoir ses propres focus, lore et contraintes
+            — ceux-ci s'appliquent uniquement à cette séquence, pas aux autres.""";
 
     private static final String AGENT_NAME = "ChapterPlanner";
 
@@ -90,28 +100,27 @@ public class ChapterPlanner implements Agent {
     }
 
     private String buildSystem(ChapterPlannerInput in, boolean isCorrection) {
-        String base;
         if (isCorrection) {
-            base = CORRECTION_SYSTEM;
-        } else if (in.jsonMode()) {
-            String prefix = in.isRewrite()
-                ? "RÉVISION — Un précédent plan a été jugé insuffisant. "
-                  + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n"
-                : "";
-            base = prefix + String.format(JSON_PLANNER_SYSTEM, in.plannerEffortInLines()) + "\n" + INNER_STATE_NOTE;
-        } else {
-            String prefix = in.isRewrite()
-                ? "RÉVISION — Un précédent plan a été jugé insuffisant. "
-                  + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n"
-                : "";
-            base = prefix + FREE_PLANNER_SYSTEM + "\n" + INNER_STATE_NOTE;
+            return CORRECTION_SYSTEM + "\n" + FOCUS_LORE_NOTE + buildForbiddenPhrases(in);
         }
-        base += "\n" + FOCUS_LORE_NOTE;
-        if (!in.forbiddenPhrases().isEmpty()) {
-            base += "\nÉVITE ces formulations déjà utilisées dans les chapitres précédents :\n"
+
+        // Préfixe de réécriture commun aux deux modes (JSON et libre)
+        String rewritePrefix = !in.isRewrite() ? ""
+                : "RÉVISION — Un précédent plan a été jugé insuffisant.\n"
+                  + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n";
+
+        String mainSystem = in.jsonMode()
+                ? String.format(JSON_PLANNER_SYSTEM, in.plannerEffortInLines())
+                : FREE_PLANNER_SYSTEM;
+
+        return rewritePrefix + mainSystem + "\n" + INNER_STATE_NOTE + "\n" + FOCUS_LORE_NOTE
+                + buildForbiddenPhrases(in);
+    }
+
+    private static String buildForbiddenPhrases(ChapterPlannerInput in) {
+        if (in.forbiddenPhrases().isEmpty()) return "";
+        return "\nÉVITE ces formulations déjà utilisées dans les chapitres précédents :\n"
                 + in.forbiddenPhrases().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
-        }
-        return base;
     }
 
     private String buildUser(ChapterPlannerInput in, boolean isCorrection) {
