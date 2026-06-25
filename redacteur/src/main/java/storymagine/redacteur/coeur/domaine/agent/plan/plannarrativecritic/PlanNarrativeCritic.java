@@ -27,11 +27,13 @@ PROCEDURE OBLIGATOIRE :
    Exemple : Le lien entre la tension du Debarquement (S1) et l'insomnie de Pierre (S4) est absent — la progression thematique de l'arc est interrompue.
    Si un element CONTREDIT DIRECTEMENT l'objectif du chapitre, meme si le reste du plan est bien construit, c'est un DEFAUT_MAJEUR.
    Exemple : La S3 montre Pierre s'integrant chaleureusement dans l'escadrille, ce qui contredit directement l'objectif : pas de chaleur, pas d'integration.
+
 FORMAT STRICT :
 AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
 DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
 DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
-Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+Rien d'autre : ni texte avant ni texte apres ces trois sections.
+
 Exemple 1 - deux defauts significatifs, rien d'autre :
 AMELIORATION : [RIEN]
 DEFAUT_SIGNIFICATIF : Le heros n'a pas d'epee

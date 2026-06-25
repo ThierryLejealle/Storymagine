@@ -16,8 +16,6 @@ import java.util.stream.Collectors;
  */
 public class ChapterPlanner implements Agent {
 
-    public static final int DEFAULT_PLANNER_EFFORT_IN_LINES = 25;
-
     private static final String JSON_PLANNER_SYSTEM = """
             Tu es le planificateur de scènes d'un roman. Ton objectif premier est d'enrichir le contenu par rapport
             à la consigne tout en la respectant. Donne beaucoup plus de détails que la consigne d'origine —
@@ -34,21 +32,36 @@ public class ChapterPlanner implements Agent {
               {
                 "sequence": <numéro entier>,
                 "beats": ["<beat 1>", "<beat 2>", "..."],
-                "sensoriels": "<détails concrets : son, vue, toucher, odorat>",
-                "ton_et_rythme": "<couleur émotionnelle et cadence des phrases>"
+                "sensoriels": "<sons, textures, odeurs, lumière, températures, mouvements visibles — pas d'émotions ni d'interprétations>",
+                "intention_de_scene": "<effet recherché sur le lecteur — maximum 15 mots, pas de prose ni de métaphore>"
               }
             ]
 
             Règles pour les beats, par ordre de priorité :
-            1. Ne perds jamais une action explicitement présente dans la consigne — la couverture est absolue.
-            2. Couvre tous les éléments de la consigne sans en omettre aucun.
-            3. Enrichis librement au-delà de la consigne — rends la séquence riche et intéressante.
+            1. Couvre TOUS les éléments de la consigne sans exception — la couverture est absolue.
+            2. Enrichis en développant les événements déjà présents — par des gestes, réactions, déplacements, détails matériels, sons ou dialogues. N'ajoute pas de nouvel événement significatif. Jamais par des interprétations ou des conclusions.
+            3. Les éléments abstraits fournis dans les instructions (intentions, formulations, objectifs narratifs) décrivent un but à atteindre — ne les recopie jamais en beat. Traduis-les en événements observables : gestes, paroles, réactions visibles, détails sensoriels.
+
+            Nombre de beats par séquence :
+            Le nombre attendu est fourni dans la description de chaque séquence.
+            Choisis un nombre qui produit le découpage le plus naturel.
+            Augmente le nombre lorsque plusieurs événements importants devraient sinon être regroupés.
+            Réduis le nombre lorsqu'il faudrait découper artificiellement une même action en plusieurs beats.
 
             Contraintes sur les beats :
-            - Au moins %d par séquence, autant que la séquence l'exige
-            - Chaque beat = une action concrète ou un événement perceptible — pas un thème ni un état psychologique
-            - Bon : "Pierre pose sa main sur le fuselage froid."
-            - Mauvais : "Pierre ressent un ancrage intérieur dans l'environnement."
+            - Chaque beat décrit un seul événement. Il peut s'agir d'une action ; d'une réaction visible ; d'une parole ; d'une observation sensorielle.
+            - Chaque beat doit apporter une information nouvelle — ne découpe pas une même action en plusieurs beats.
+            - Test : une caméra doit pouvoir montrer le beat sans narration explicative.
+            - Interdit : thèmes, symboles, interprétations, conclusions, états relationnels, concepts abstraits.
+            - Verbes-signal d'abstraction : devenir, symboliser, représenter, exprimer, illustrer, traduire, incarner, installer, établir. Ces verbes sont un signal d'alerte — utilise-les uniquement lorsqu'ils décrivent un fait concret, jamais une interprétation de la scène.
+            - Lorsqu'une idée peut être exprimée par un concept ou par un comportement observable, choisir le comportement.
+
+            Exemples (abstrait → observable) :
+            "Le silence s'installe."               →  "Personne ne parle pendant plusieurs secondes."
+            "Une proximité naît entre eux."        →  "Leurs épaules se rapprochent légèrement."
+            "La tension monte."                    →  "Maya hésite avant de répondre."
+            "Le courant passe."                    →  "Ils se sourient presque en même temps."
+            "Une coexistence silencieuse s'établit." →  "Eddie tourne une page pendant que Maya regarde les champs."
             En français.""";
 
     private static final String FREE_PLANNER_SYSTEM = """
@@ -73,10 +86,10 @@ public class ChapterPlanner implements Agent {
 
     private static final String FOCUS_LORE_NOTE = """
             Focus et lore : la section « Éléments à utiliser (focus) — toutes les séquences »
-            s'applique à l'ensemble du chapitre — efforce-toi de les intégrer dans chaque séquence concernée.
+            s'applique globalement à l'ensemble du chapitre — intègre ces éléments dans les séquences où ils s'y prêtent naturellement sans faire de redit direct.
             La section « Informations utiles (lore) — toutes les séquences » s'applique à l'ensemble du chapitre
-            — n'hésite pas à les piocher pour étoffer chaque séquence.
-            Chaque séquence peut aussi avoir ses propres focus, lore et contraintes
+            — n'hésite pas à utiliser ces informations librement pour étoffer les séquences lorsque cela est pertinent et naturel.
+            Attention : chaque séquence peut aussi avoir ses propres focus, lore et contraintes
             — ceux-ci s'appliquent uniquement à cette séquence, pas aux autres.""";
 
     private static final String AGENT_NAME = "ChapterPlanner";
@@ -109,9 +122,7 @@ public class ChapterPlanner implements Agent {
                 : "RÉVISION — Un précédent plan a été jugé insuffisant.\n"
                   + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n";
 
-        String mainSystem = in.jsonMode()
-                ? String.format(JSON_PLANNER_SYSTEM, in.plannerEffortInLines())
-                : FREE_PLANNER_SYSTEM;
+        String mainSystem = in.jsonMode() ? JSON_PLANNER_SYSTEM : FREE_PLANNER_SYSTEM;
 
         return rewritePrefix + mainSystem + "\n" + INNER_STATE_NOTE + "\n" + FOCUS_LORE_NOTE
                 + buildForbiddenPhrases(in);
@@ -205,12 +216,12 @@ public class ChapterPlanner implements Agent {
                 if (depth == 0 && objStart >= 0) {
                     String obj = json.substring(objStart, i + 1);
                     int seqNum = extractInt(obj, "sequence");
-                    String beats     = extractBeats(obj);
-                    String sensoriels = extractString(obj, "sensoriels");
-                    String tonRythme  = extractString(obj, "ton_et_rythme");
-                    String directive  = (seqDescriptions != null && seqNum >= 1 && seqNum <= seqDescriptions.size())
+                    String beats          = extractBeats(obj);
+                    String sensoriels     = extractString(obj, "sensoriels");
+                    String intentionScene = extractString(obj, "intention_de_scene");
+                    String directive      = (seqDescriptions != null && seqNum >= 1 && seqNum <= seqDescriptions.size())
                         ? seqDescriptions.get(seqNum - 1) : "";
-                    result.add(formatForWriter(directive, beats, sensoriels, tonRythme));
+                    result.add(formatForWriter(directive, beats, sensoriels, intentionScene));
                     objStart = -1;
                 }
             }
@@ -218,7 +229,7 @@ public class ChapterPlanner implements Agent {
         return result;
     }
 
-    private static String formatForWriter(String directive, String beats, String sensoriels, String tonRythme) {
+    private static String formatForWriter(String directive, String beats, String sensoriels, String intentionScene) {
         StringBuilder sb = new StringBuilder();
         if (directive != null && !directive.isBlank())
             sb.append("Consigne : ").append(directive.trim()).append("\n\n");
@@ -226,8 +237,8 @@ public class ChapterPlanner implements Agent {
             sb.append("BEATS :\n").append(beats).append("\n");
         if (sensoriels != null && !sensoriels.isBlank())
             sb.append("\nSENSORIELS : ").append(sensoriels).append("\n");
-        if (tonRythme != null && !tonRythme.isBlank())
-            sb.append("\nTON ET RYTHME : ").append(tonRythme).append("\n");
+        if (intentionScene != null && !intentionScene.isBlank())
+            sb.append("\nINTENTION : ").append(intentionScene).append("\n");
         return sb.toString().trim();
     }
 

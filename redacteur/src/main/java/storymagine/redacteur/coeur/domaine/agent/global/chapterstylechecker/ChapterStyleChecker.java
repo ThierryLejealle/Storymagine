@@ -40,7 +40,10 @@ public class ChapterStyleChecker implements Agent {
         // Section optionnelle : consigne de style (avant les critères qualité pour que le modèle la lise en premier)
         String styleGuideSection = !hasStyle ? "" : "\n\n## Consigne de style\n"
                 + "Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n"
-                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement.";
+                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement";
+        // Note optionnelle : exception si un défaut est imposé par la consigne de style
+        if (hasStyle) styleGuideSection += ", par exemple, un défaut imposé par la consigne de style";
+        styleGuideSection += ".";
 
         String qualitySection = """
 
@@ -54,10 +57,6 @@ public class ChapterStyleChecker implements Agent {
                 - Transitions mécaniques ou coutures visibles
                 - Phrases qui sonnent fabriquées plutôt que vécues""";
 
-        // Note optionnelle : exception si un défaut est imposé par la consigne de style
-        String styleException = !hasStyle ? ""
-                : "\nSi un de ces défauts est imposé par la consigne de style, ne le mentionne pas.";
-
         String notationSection = """
 
                 ## Échelle de notation
@@ -67,18 +66,20 @@ public class ChapterStyleChecker implements Agent {
                  7 = lisible mais plusieurs maladresses
                  6 = correct mais largement améliorable
                  5 = moyen
-                 3 = à réécrire intégralement
+                 4 = mauvais
+                 3 = très mauvais
+                 2 = nul
+                 1 = absolument nul
                 Sois strict : réserve 8+ à un texte vraiment bon.
 
                 Format de sortie strict :
                 PROBLEME: [défaut ou axe d'amélioration stylistique]
-                SCORE: N  (entier 0-10)
+                SCORE: N  (entier 1-10)
                 En français. Sois précis et sévère.""";
 
         return "Tu es un éditeur littéraire exigeant et sans concession."
                 + styleGuideSection
                 + qualitySection
-                + styleException
                 + notationSection;
     }
 

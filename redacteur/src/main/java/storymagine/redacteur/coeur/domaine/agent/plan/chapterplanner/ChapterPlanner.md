@@ -3,7 +3,7 @@
 ## Rôle
 Produit le plan d'un chapitre. Deux modes :
 - **Libre** (jsonMode=false) : plan narratif en prose libre
-- **Structuré** (jsonMode=true) : tableau JSON, un objet par séquence, avec `beats`, `sensoriels`, `ton_et_rythme`
+- **Structuré** (jsonMode=true) : tableau JSON, un objet par séquence, avec `beats`, `sensoriels`, `intention_de_scene`
 
 ## Modes de fonctionnement
 | Mode | Condition | Description |
@@ -19,8 +19,8 @@ Produit le plan d'un chapitre. Deux modes :
   {
     "sequence": 1,
     "beats": ["beat 1", "beat 2", ...],
-    "sensoriels": "son, vue, toucher, odorat",
-    "ton_et_rythme": "couleur émotionnelle et cadence"
+    "sensoriels": "sons, textures, odeurs, lumière, températures, mouvements visibles",
+    "intention_de_scene": "effet recherché sur le lecteur — max 15 mots"
   }
 ]
 ```
@@ -34,7 +34,7 @@ Le résultat `ChapterPlannerOutput.sequencePlans()` contient les chaînes format
 - storySoFar : 1/8
 
 ## Contraintes
-- Règles sur les beats : au moins 6 par séquence, actions concrètes uniquement
+- Règles sur les beats : au moins 6 par séquence, filmables à la caméra (action/réaction/parole/perception sensorielle)
 - `forbiddenPhrases` injectées dans le system prompt
 - En correction, le plan précédent est injecté dans le user prompt (slot 1/4 du contexte)
 

@@ -29,6 +29,11 @@ public class Proofreader implements Agent {
         - FAUX: "phrase exacte contenant le problème"
           JUSTE: "phrase corrigée"
 
+        Exemple :
+        CORRECTIONS:
+        - FAUX: "Il a été allé au marché hier soir."
+          JUSTE: "Il est allé au marché hier soir."
+
         ATTENTION : une seule phrase par ligne JUSTE, sans variante, sans commentaire, sans explication.
 
         Si aucun problème : retourner "PAS D'ERREUR" — rien avant, rien après.""";

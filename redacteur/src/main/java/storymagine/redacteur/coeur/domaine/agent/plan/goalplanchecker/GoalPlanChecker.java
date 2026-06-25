@@ -36,6 +36,7 @@ Procède dans cet ordre :
 3. Détermine la note en fonction de la qualité globale.
 4. Liste en sortie défauts et axes d'amélioration trouvés.
 
+Écris UNIQUEMENT le FORMAT STRICT ci-dessous — ne produis pas les étapes intermédiaires 1, 2 et 3 dans ta réponse.
 FORMAT STRICT :
 PROBLEME: une ligne par problème, ou [RIEN] si aucun problème.
 SCORE: la note que tu as déterminée  (entier 1-10)

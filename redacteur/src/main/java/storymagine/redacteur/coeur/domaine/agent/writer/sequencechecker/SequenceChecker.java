@@ -3,8 +3,6 @@ package storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
-import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,8 +29,6 @@ public class SequenceChecker implements Agent {
         MANQUANT: [élément] — présent mais non développé
 
         Si TOUS les éléments sont présents et développés : n'écris AUCUNE ligne MANQUANT:
-        Conclus TOUJOURS par :
-        SCORE: N  (entier 0-10 ; 10 = tous présents et développés ; -1 pt par élément manquant ou insuffisant)
         En français.""";
 
     private static final String AGENT_NAME = "SequenceChecker";
@@ -55,9 +51,16 @@ public class SequenceChecker implements Agent {
         String user = "### Texte de la séquence\n"       + trunc(input.sequenceText(), ctx * 4 / 3)
             + descSection
             + "\n\n### Éléments importants à vérifier\n" + checksBlock
-            + "\n\nVérifie que chaque élément est présent dans le texte. Conclus par SCORE: N.";
+            + "\n\nVérifie que chaque élément est présent dans le texte.";
         String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName())).text();
-        return new SequenceCheckerOutput(parseFailures(raw), ProblemScoreParser.parseScoreInt(raw));
+        List<String> failures = parseFailures(raw);
+        int total = input.checks().size();
+        int missing = failures.size();
+        int score;
+        if (missing == 0)          score = 10;
+        else if (missing >= total) score = 1;
+        else                       score = (int) Math.round(5.0 * (total - missing) / (total - 1));
+        return new SequenceCheckerOutput(failures, score);
     }
 
     private List<String> parseFailures(String response) {

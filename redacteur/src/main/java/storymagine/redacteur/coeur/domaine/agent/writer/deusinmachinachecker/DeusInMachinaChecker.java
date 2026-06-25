@@ -27,39 +27,45 @@ public class DeusInMachinaChecker implements Agent {
             mécanique de fabrication devient visible au-delà ou indépendamment de la consigne reçue.
 
             PRINCIPE
-            Un lecteur n'a pas accès aux instructions qui ont créé ce texte. Toute phrase qui ne
-            s'explique que si l'on connaît ces instructions est une fuite.
+            Ce texte a été produit par un LLM à partir de consignes de rédaction.
+            Les deux fuites principales à détecter :
+            — un fragment de consigne recopié dans la prose
+            — une confirmation que le LLM a suivi une instruction ("comme demandé", "conformément au plan", etc.)
+            Tout passage qui révèle l'existence de ces consignes au lecteur est une fuite.
 
             TEST : pour chaque phrase suspecte, demande-toi — cette phrase existerait-elle si
             aucune consigne ne l'avait provoquée ? Si non, c'est une fuite.
 
-            ────────────────────────────────────────────────────────────
             CINQ FORMES DE FUITES
-            ────────────────────────────────────────────────────────────
 
             1. NÉGATION VERBALISÉE
             Une consigne interdit X → le texte mentionne l'absence de X au lieu de simplement ne pas en parler.
               RÈGLE : ne signaler que si X correspond à une contrainte listée dans les consignes fournies.
+              FUITE : "Il n'y eut pas de confrontation entre eux." (si consigne interdit les confrontations)
+              OK    : "Les deux hommes se séparèrent sans un mot."
 
             2. FICHE PERSONNAGE DANS LA BOUCHE DU PERSONNAGE
             Un trait de personnage réapparaît dans le texte comme étiquette permanente plutôt qu'observation vivante.
+              FUITE : "Bertrand, taciturne comme toujours, garda le silence."
+              OK    : "Bertrand fixa ses mains sans répondre."
 
             3. ARTEFACT DE SCÉNARIO
             Mots ou tournures qui appartiennent au script de fabrication, pas à la fiction.
               FUITE : "Dans cette scène, Pierre comprend que..."
-              OK    : Tout ce qu'un roman publié en librairie pourrait contenir.
+              FUITE : "Conformément au plan prévu, Marie révèle enfin son secret."
+              OK    : "Pierre s'arrêta net. La vérité venait de le frapper."
 
             4. LISTE NARRATIVISÉE
             Plusieurs phrases SÉPARÉES dont chacune coche une case — aucune n'a de poids propre.
               RÈGLE ABSOLUE : une liste introduite par deux-points (:) dans UNE seule phrase n'est JAMAIS type 4.
               Au minimum 4 phrases SÉPARÉES sont requises.
+              FUITE : "Pierre arriva. Il observa la pièce. Il déposa sa valise. Il chercha son contact."
 
             5. ABSENCE JUSTIFIÉE
             Le texte explique pourquoi quelque chose n'arrive pas — justification qui ne s'explique que par une contrainte reçue.
+              FUITE : "Il n'y eut pas de combat — la scène devait rester apaisée."
 
-            ────────────────────────────────────────────────────────────
             FORMAT DE RÉPONSE
-            ────────────────────────────────────────────────────────────
 
             Si tu détectes des fuites :
             FUITE

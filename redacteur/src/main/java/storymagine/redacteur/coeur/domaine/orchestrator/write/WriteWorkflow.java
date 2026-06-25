@@ -10,6 +10,8 @@ import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.Repeti
 import storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker.SequenceCheckerOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.sequencestylechecker.SequenceStyleCheckerOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter.NaturalityFinding;
+import storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter.NaturalityFilterOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.TextCoherenceCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCriticOutput;
@@ -63,6 +65,7 @@ public class WriteWorkflow {
     private final TextWhatIfCriticStep     textWhatIfCriticStep;
     private final DeusInMachinaCheckerStep deusInMachinaCheckerStep;
     private final GoalTextCheckerStep      goalTextCheckerStep;
+    private final NaturalityFilterStep     naturalityFilterStep;
     private final HtmlExportPort           htmlExport;
     private final LogPort                  log;
 
@@ -79,6 +82,7 @@ public class WriteWorkflow {
                          TextWhatIfCriticStep textWhatIfCriticStep,
                          DeusInMachinaCheckerStep deusInMachinaCheckerStep,
                          GoalTextCheckerStep goalTextCheckerStep,
+                         NaturalityFilterStep naturalityFilterStep,
                          HtmlExportPort htmlExport,
                          LogPort log) {
         this.writerStep               = writerStep;
@@ -94,6 +98,7 @@ public class WriteWorkflow {
         this.textWhatIfCriticStep     = textWhatIfCriticStep;
         this.deusInMachinaCheckerStep = deusInMachinaCheckerStep;
         this.goalTextCheckerStep      = goalTextCheckerStep;
+        this.naturalityFilterStep     = naturalityFilterStep;
         this.htmlExport               = htmlExport;
         this.log                      = log;
     }
@@ -151,6 +156,25 @@ public class WriteWorkflow {
             for (WrittenSequence seq : bestSequences) {
                 wc.addSequence(seq);
             }
+        }
+
+        // ── NaturalityFilter: direct substitution on final chapter text ─────
+        if (config.qualityLevel().runsProofreader()) {
+            WrittenChapter wc = story.currentChapter().orElseThrow();
+            long t0 = System.nanoTime();
+            NaturalityFilterOutput natOut = naturalityFilterStep.run(wc.fullText());
+            if (!natOut.findings().isEmpty()) {
+                List<WrittenSequence> naturalised = wc.sequences().stream()
+                    .map(seq -> new WrittenSequence(seq.sequencePlan(),
+                                 applyNaturalityFixes(seq.text(), natOut.findings())))
+                    .toList();
+                wc.clearSequences();
+                naturalised.forEach(wc::addSequence);
+                htmlExport.exportHtml(scenario.config().title(), story);
+            }
+            String natNote = natOut.findings().isEmpty() ? null
+                    : "-> " + natOut.findings().size() + " correction(s)";
+            log.step("NaturalityFilter", ms(t0), natNote);
         }
 
         if (isolated) {
@@ -356,6 +380,14 @@ public class WriteWorkflow {
     // ─────────────────────────────────────────────────────────────────────────
     // Utilities
     // ─────────────────────────────────────────────────────────────────────────
+
+    private static String applyNaturalityFixes(String text, List<NaturalityFinding> findings) {
+        String result = text;
+        for (NaturalityFinding f : findings) {
+            result = result.replace(f.citation(), f.suggestion());
+        }
+        return result;
+    }
 
     private static String applyCorrections(String text, ProofreaderOutput proof) {
         if (proof.corrections().isEmpty()) return text;

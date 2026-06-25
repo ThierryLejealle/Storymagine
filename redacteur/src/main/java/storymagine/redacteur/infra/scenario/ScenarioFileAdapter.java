@@ -194,7 +194,8 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 LoreItemParser.parse(dto.lore, lore),
                 mapCheckList(dto.checks),
                 mapConstraintList(dto.constraints),
-                dto.planner_effort_in_lines);
+                dto.planner_effort_in_lines,
+                dto.sequence_min_words);
     }
 
     private Sequence mapSequence(SequenceDto dto, PersonnagePool personnages,

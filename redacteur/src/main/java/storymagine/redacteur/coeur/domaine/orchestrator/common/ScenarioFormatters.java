@@ -277,20 +277,23 @@ public final class ScenarioFormatters {
         return personnages(new ArrayList<>(seen.values()), false);
     }
 
+    /** Description of a single sequence for the planner (directive + focus/lore/characters/constraints). */
+    public static String singleSequenceDescription(Sequence seq) {
+        StringBuilder sb = new StringBuilder(seq.directive() != null ? seq.directive().trim() : "");
+        String f = focusText(seq.additions().focus(), false);
+        if (!f.isBlank()) sb.append("\nÉléments à utiliser (focus) : ").append(f);
+        String l = loreText(seq.additions().lore(), false);
+        if (!l.isBlank()) sb.append("\nInformations utiles (lore) : ").append(l);
+        String c = personnages(seq.additions().characters(), false);
+        if (!c.isBlank()) sb.append("\nPersonnages présents : ").append(c);
+        String cons = planConstraints(seq.additions().constraints());
+        if (!cons.isBlank()) sb.append("\nContraintes : ").append(cons);
+        return sb.toString();
+    }
+
     public static List<String> sequenceDescriptions(List<Sequence> sequences) {
         return sequences.stream()
-                .map(seq -> {
-                    StringBuilder sb = new StringBuilder(seq.directive() != null ? seq.directive().trim() : "");
-                    String f = focusText(seq.additions().focus(), false);
-                    if (!f.isBlank()) sb.append("\nÉléments à utiliser (focus) : ").append(f);
-                    String l = loreText(seq.additions().lore(), false);
-                    if (!l.isBlank()) sb.append("\nInformations utiles (lore) : ").append(l);
-                    String c = personnages(seq.additions().characters(), false);
-                    if (!c.isBlank()) sb.append("\nPersonnages présents : ").append(c);
-                    String cons = planConstraints(seq.additions().constraints());
-                    if (!cons.isBlank()) sb.append("\nContraintes : ").append(cons);
-                    return sb.toString();
-                })
+                .map(ScenarioFormatters::singleSequenceDescription)
                 .filter(d -> !d.isBlank())
                 .collect(Collectors.toList());
     }

@@ -23,6 +23,7 @@ import storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker.Sequence
 import storymagine.redacteur.coeur.domaine.agent.writer.sequencestylechecker.SequenceStyleChecker;
 import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.Writer;
 import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractor;
+import storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter.NaturalityFilter;
 import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.TextCoherenceCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCritic;
@@ -34,6 +35,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.CharacterChecke
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.EvaluateWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.NarrativeArcAnalyzerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.StoryCompressorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlannerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.GoalPlanCheckerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanCoherenceCriticStep;
@@ -47,6 +49,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionTrackerS
 import storymagine.redacteur.coeur.domaine.orchestrator.write.SequenceCheckerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.SequenceStyleCheckerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.StateExtractorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.NaturalityFilterStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.TextCoherenceCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.TextDreamCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.TextNarrativeCriticStep;
@@ -65,28 +68,40 @@ public class RedacteurModule {
     public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName) {
         LogPort       log = new ConsoleLogAdapter();
         OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
-        return assemble(llm, new ScenarioFileAdapter(), log, HtmlExportPort.NOOP);
+        return assemble(llm, new ScenarioFileAdapter(), log, HtmlExportPort.NOOP, BeatsConfig.defaults());
     }
 
     public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
                                             LogPort log, HtmlExportPort htmlExport) {
         OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
-        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, BeatsConfig.defaults());
+    }
+
+    public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
+                                            LogPort log, HtmlExportPort htmlExport, BeatsConfig beatsConfig) {
+        OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig);
     }
 
     public static RedacteurService assemble(OllamaAdapter llm, ScenarioReaderPort scenarioReader) {
-        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), HtmlExportPort.NOOP);
+        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), HtmlExportPort.NOOP, BeatsConfig.defaults());
     }
 
     /** Test-friendly overload. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log) {
-        return assemble(llm, scenarioReader, log, HtmlExportPort.NOOP);
+        return assemble(llm, scenarioReader, log, HtmlExportPort.NOOP, BeatsConfig.defaults());
     }
 
     /** Full assembly — all parameters explicit. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log, HtmlExportPort htmlExport) {
+        return assemble(llm, scenarioReader, log, htmlExport, BeatsConfig.defaults());
+    }
+
+    /** Full assembly with custom beats configuration. */
+    public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
+                                            LogPort log, HtmlExportPort htmlExport, BeatsConfig beatsConfig) {
         // --- Plan agents ---
         var chapterPlanner      = new ChapterPlanner(llm);
         var planNarrativeCritic = new PlanNarrativeCritic(llm);
@@ -103,6 +118,7 @@ public class RedacteurModule {
         var sequenceChecker      = new SequenceChecker(llm);
         var sequenceStyleChecker = new SequenceStyleChecker(llm);
         var stateExtractor       = new StateExtractor(llm);
+        var naturalityFilter     = new NaturalityFilter(llm);
         var textCoherenceCritic  = new TextCoherenceCritic(llm);
         var textDreamCritic      = new TextDreamCritic(llm);
         var textNarrativeCritic  = new TextNarrativeCritic(llm);
@@ -116,7 +132,7 @@ public class RedacteurModule {
         var causalAnalyzer       = new CausalAnalyzer(llm);
 
         // --- Plan steps ---
-        var chapterPlannerStep      = new ChapterPlannerStep(chapterPlanner);
+        var chapterPlannerStep      = new ChapterPlannerStep(chapterPlanner, beatsConfig);
         var planNarrativeCriticStep = new PlanNarrativeCriticStep(planNarrativeCritic);
         var planCoherenceCriticStep = new PlanCoherenceCriticStep(planCoherenceCritic);
         var goalPlanCheckerStep     = new GoalPlanCheckerStep(goalPlanChecker);
@@ -135,6 +151,7 @@ public class RedacteurModule {
         var textWhatIfCriticStep     = new TextWhatIfCriticStep(textWhatIfCritic);
         var deusInMachinaStep        = new DeusInMachinaCheckerStep(deusInMachina);
         var goalTextCheckerStep      = new GoalTextCheckerStep(goalTextChecker);
+        var naturalityFilterStep     = new NaturalityFilterStep(naturalityFilter);
 
         // --- Evaluate steps ---
         var storyCompressorStep      = new StoryCompressorStep(storyCompressor);
@@ -155,6 +172,7 @@ public class RedacteurModule {
             textNarrativeCriticStep, textCoherenceCriticStep,
             textDreamCriticStep, textWhatIfCriticStep,
             deusInMachinaStep, goalTextCheckerStep,
+            naturalityFilterStep,
             htmlExport, log);
 
         var evaluateWorkflow = new EvaluateWorkflow(

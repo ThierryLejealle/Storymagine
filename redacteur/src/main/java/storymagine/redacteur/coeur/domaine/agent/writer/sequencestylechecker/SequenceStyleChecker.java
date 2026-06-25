@@ -40,7 +40,11 @@ public class SequenceStyleChecker implements Agent {
         // Section optionnelle : consigne de style (avant les critères qualité pour que le modèle la lise en premier)
         String styleGuideSection = !hasStyle ? "" : "\n\n## Consigne de style\n"
                 + "Vérifie que le texte respecte scrupuleusement le guide de style ci-joint.\n"
-                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement.";
+                + "Ne signale jamais comme défaut ce que le guide prescrit explicitement";
+                
+        // Note optionnelle : exception si un défaut est imposé par la consigne de style
+        if (hasStyle) styleGuideSection += ", par exemple, un défaut imposé par la consigne de style";
+        styleGuideSection += ".";
 
         String qualitySection = """
 
@@ -54,31 +58,29 @@ public class SequenceStyleChecker implements Agent {
                 - Transitions mécaniques ou coutures visibles entre séquences
                 - Phrases qui sonnent fabriquées plutôt que vécues""";
 
-        // Note optionnelle : exception si un défaut est imposé par la consigne de style
-        String styleException = !hasStyle ? ""
-                : "\nSi un de ces défauts est imposé par la consigne de style, ne le mentionne pas.";
-
         String notationSection = """
 
                 ## Échelle de notation
                 10 = texte publiable tel quel — irréprochable
+                 9 = excellent, au mieux un remarque mineure
                  8 = bon texte, défauts mineurs sans impact réel sur la lecture
                  7 = correct mais plat ou sans relief — manque d'ambition stylistique
                  6 = problèmes qui nuisent à la lecture ou cassent l'immersion
                  5 = plusieurs défauts sérieux — réécriture partielle nécessaire
+                 4 = défauts graves
                  3 = à réécrire intégralement sur le plan stylistique
-                 1 = texte qui trahit visiblement sa fabrication
+                 2 = nul
+                 1 = absolument nul. texte qui trahit totalement sa fabrication
                 Un texte moyen ne mérite pas plus de 6. Réserve 8+ à l'exceptionnel.
 
                 Format de sortie strict :
                 PROBLEME: [description courte et précise]
-                SCORE: N  (entier 0-10)
+                SCORE: N  (entier 1-10)
                 En français. Sois précis et sévère — une note indulgente est inutile.""";
 
         return "Tu es un éditeur littéraire exigeant et sans concession."
                 + styleGuideSection
                 + qualitySection
-                + styleException
                 + notationSection;
     }
 

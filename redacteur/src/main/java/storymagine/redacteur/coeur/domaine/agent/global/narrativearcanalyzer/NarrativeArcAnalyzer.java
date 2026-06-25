@@ -17,12 +17,22 @@ public class NarrativeArcAnalyzer implements Agent {
             Tu vérifies UNIQUEMENT les arcs narratifs des personnages : introduction, évolution, résolution.
             Signale : arcs ouverts sans résolution, personnages qui disparaissent sans explication,
             arcs redondants entre personnages, tournants promis et jamais tenus.
-            Si rien à signaler, écris SCORE: 10 sans PROBLEME.
-
+            
             Format de sortie strict :
             PROBLEME: [description courte d'un problème réel]
-            SCORE: N  (entier 0-10)
-            En français.""";
+            SCORE: N (entier 1-10)
+
+            Exemple 1 — aucun problème :
+            PROBLEME: [RIEN]
+            SCORE: 10
+
+            Exemple 2 — deux problèmes, score 6 :
+            PROBLEME: La trahison de Martin (chapitre 4) n'a aucune cause établie dans les chapitres précédents.
+            PROBLEME: La mort de Claire (chapitre 2) n'est jamais exploitée dans la suite.
+            SCORE: 6
+            
+            En français.
+            """;
 
     private static final String AGENT_NAME = "NarrativeArcAnalyzer";
 

@@ -17,21 +17,33 @@ public class GoalTextChecker implements Agent {
         Ne juge pas la qualité littéraire ni la cohérence avec l'ensemble du roman.
         Uniquement : le texte produit-il l'effet narratif ou émotionnel requis par l'objectif ?
 
-        Échelle de notation :
-        10 = objectif pleinement atteint
-         9 = excellent — objectif bien atteint, quelques légères imperfections
-         8 = bon — bien atteint, des moments pourraient mieux servir l'objectif
-         7 = atteint mais insuffisamment — des passages dérivent de l'objectif
-         6 = partiellement atteint — l'effet narratif reste flou sur une partie du texte
-         5 = mal atteint — le texte produit peu ou pas l'effet requis
-         3 = à réécrire : le texte rate l'objectif narratif
+        Echelle de notation :
+        10 = objectif pleinement couvert
+         9 = excellent — objectif tres bien couvert, quelques legeres imperfections
+         8 = tres bien — objectif couvert, quelques sequences a affiner
+         7 = bien — objectif couvert mais quelques sequences peuvent mieux le servir
+         6 = correct — plusieurs sequences ne servent pas assez l'objectif
+         5 = insuffisant — l'objectif est traite de facon trop superficielle
+         4 = plusieurs lacunes — l'objectif est secondaire dans le plan
+         3 = mauvais — l'objectif n'est qu'en partie adresse
+         2 = tres mauvais — l'objectif est absent du plan
+         1 = inutilisable — a replanifier integralement
 
-        Format obligatoire :
-        PROBLEME: [défaut ou axe d'amélioration]
-        (une ligne PROBLEME: par défaut réellement constaté — ne pas en inventer)
-        Si score = 10 : aucune ligne PROBLEME:
-        SCORE: N  (entier 0-10)
-        En français.""";
+        FORMAT STRICT :
+        PROBLEME: une ligne par probleme, ou [RIEN] si aucun probleme.
+        SCORE: la note que tu as determinee (entier 1-10)
+        Rien d'autre : ni texte avant ni texte apres ces lignes.
+
+        Exemple 1 — deux problemes, note 7 :
+        PROBLEME: Le personnage n'exprime pas de doute alors que l'objectif l'exige.
+        PROBLEME: La resolution arrive trop tot, sans tension prealable.
+        SCORE: 7
+
+        Exemple 2 — aucun probleme, note 10 :
+        PROBLEME: [RIEN]
+        SCORE: 10
+
+        En francais.""";
 
     private static final String AGENT_NAME = "GoalTextChecker";
 

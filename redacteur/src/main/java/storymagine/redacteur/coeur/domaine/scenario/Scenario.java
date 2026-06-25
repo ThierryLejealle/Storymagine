@@ -41,6 +41,16 @@ public class Scenario {
         this.chapters       = List.copyOf(chapters);
     }
 
+    /**
+     * Resolves the target word count for a sequence using the cascade:
+     * sequence override → chapter default → scenario config (already includes properties fallback).
+     */
+    public int resolveSequenceWords(Sequence seq, Chapter chapter) {
+        if (seq.overrides().minWords() > 0)         return seq.overrides().minWords();
+        if (chapter.defaults().sequenceMinWords() != null) return chapter.defaults().sequenceMinWords();
+        return config.defaultSequenceWords();
+    }
+
     public ScenarioConfig  config()         { return config; }
     /** Narrative goal from goal.md — null if file absent. Falls back to title in formatters. */
     public String          bookGoal()       { return bookGoal; }

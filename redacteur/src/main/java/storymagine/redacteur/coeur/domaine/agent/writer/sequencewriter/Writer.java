@@ -57,23 +57,25 @@ public class Writer implements Agent {
                           + "Ne commence ni par le prénom d'un personnage seul ni par un pronom sujet nu "
                           + "('Il', 'Elle', 'Ils') — montre d'abord ce qui se passe, le personnage en est le sujet implicite.";
 
-        // 4. Expressions et schémas interdits (en fin de prompt, depuis le bean d'entrée)
-        String bannedPhrases = in.forbiddenPhrases().isEmpty() ? ""
-                : "\n\nEXPRESSIONS À NE PAS RÉPÉTER (déjà utilisées dans ce livre) :\n"
-                  + in.forbiddenPhrases().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
-        String bannedThemes = in.forbiddenThemes().isEmpty() ? ""
-                : "\n\nSCHÉMAS NARRATIFS USÉS — à reformuler différemment ou à omettre :\n"
-                  + in.forbiddenThemes().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
-
         return rewritePrefix
                 + """
                 Tu es un écrivain littéraire.
                 Tu suis la trame générale dans l'ordre indiqué — chaque élément de la trame DOIT apparaître dans le texte.
+                Tu peux enrichir la scène avec des actions, réactions, observations ou dialogues locaux —
+                à condition de ne pas modifier les éléments de la trame, les relations entre personnages ni l'issue de la scène.
                 La trame est découpée en séquences numérotées : checks, contraintes, focus ou lore propres à une séquence ne s'appliquent qu'à cette séquence.
                 Tu respectes intégralement les directives détaillées de l'auteur pour cette séquence :
                 elles précisent et enrichissent la trame, et ont priorité sur elle si les deux divergent.
                 Tu ne prends aucune décision narrative : ton seul rôle est de transformer ces instructions en prose française de haute qualité.
                 Tu ne produis QUE le texte narratif — aucun commentaire, aucun méta-texte.
+                En cas de conflit entre les instructions :
+                1. Directives détaillées de l'auteur
+                2. Contraintes de rédaction
+                3. Éléments de la trame (dans l'ordre)
+                4. Fiches personnages
+                5. Style et exemple de rédaction
+                6. Focus
+                7. Lore
                 """
                 + lengthConstraint + "\n" + openingRule + "\n"
                 + """
@@ -84,9 +86,7 @@ public class Writer implements Agent {
                 (ligne 'Article : X — pronom'), respecte-les strictement dans tout le texte.
                 Les traits visibles d'un personnage (tenue, apparence physique, gestes récurrents)
                 et son tempérament sont des faits non négociables.
-                Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose."""
-                + bannedPhrases
-                + bannedThemes;
+                Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose.""";
     }
 
     private String buildUser(WriterInput in) {
@@ -105,7 +105,17 @@ public class Writer implements Agent {
         int sHistory     = ctx * 4 / 8;
         int sExample     = ctx * 4 / 16;
 
+        // Interdictions en tête du user, proches de la génération
+        String bannedPhrases = in.forbiddenPhrases().isEmpty() ? ""
+                : "EXPRESSIONS À NE PAS RÉPÉTER (déjà utilisées dans ce livre) :\n"
+                  + in.forbiddenPhrases().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
+        String bannedThemes = in.forbiddenThemes().isEmpty() ? ""
+                : "SCHÉMAS NARRATIFS USÉS — à reformuler différemment ou à omettre :\n"
+                  + in.forbiddenThemes().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
+
         StringBuilder sb = new StringBuilder();
+        if (!bannedPhrases.isBlank()) sb.append(bannedPhrases).append("\n\n");
+        if (!bannedThemes.isBlank())  sb.append(bannedThemes).append("\n\n");
         appendSection(sb, "État actuel des entités",        trunc(in.entityState(),          sState));
         appendSection(sb, "Itérations précédentes (journal)", trunc(in.loopJournal(),        sJournal));
         appendSection(sb, "Action narrative à explorer",    trunc(in.actionsText(),          sActions));

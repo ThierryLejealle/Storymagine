@@ -39,7 +39,7 @@ public class WriterStep {
 
         return agent.call(new WriterInput(
                 sequence.directive(),
-                sequence.overrides().minWords(),
+                scenario.resolveSequenceWords(sequence, chapter),
                 isRewrite,
                 ScenarioFormatters.personnages(merge(chapter.defaults().characters(), sequence.additions().characters()), true),
                 ScenarioFormatters.focusText(merge(chapter.defaults().focus(), sequence.additions().focus()), true),

@@ -15,4 +15,5 @@ public class ChapterDefaultsDto {
     @JsonDeserialize(using = PlanWriterListDeserializer.class)
     public PlanWriterListDto constraints;
     public Integer planner_effort_in_lines;
+    public Integer sequence_min_words;
 }

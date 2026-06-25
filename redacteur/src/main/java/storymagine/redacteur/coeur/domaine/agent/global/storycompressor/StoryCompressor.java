@@ -39,11 +39,11 @@ public class StoryCompressor implements Agent {
             EXCLURE :
             - Descriptions atmosphériques (météo, lumière, ambiance) sauf si elles ont
               une signification narrative directe
-            - Ressenti émotionnel interne sauf si c'est une décision ou un tournant dramatique
+            - Ressenti émotionnel interne ponctuel (humeur du moment, sensation fugace)
             - Répétitions de ce qui est déjà dans le résumé existant sans qu'il y ait évolution
 
             Intègre le résumé existant : garde l'essentiel, remplace ce qui a évolué.
-            """ + "Maximum " + maxWords + " mots. Prose factuelle. En français.";
+            Prose factuelle. En français.""";
 
         int summaryBudget = ctx * 4 / 6;
         int chapterBudget = ctx * 4 / 2;

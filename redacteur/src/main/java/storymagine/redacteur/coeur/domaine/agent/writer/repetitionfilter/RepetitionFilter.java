@@ -19,8 +19,8 @@ public class RepetitionFilter implements Agent {
         Tu es un éditeur littéraire. On te donne :
         1. Une liste de leitmotivs/rituels narratifs intentionnellement récurrents (à protéger).
         2. Une liste d'expressions extraites d'un texte, candidates à être bannies.
-        Ta tâche : retourner uniquement les expressions candidates qui NE sont PAS
-        sémantiquement proches d'un leitmotiv protégé.
+        Ta tâche : filtrer la liste "candidates à bannir". Écarte toute expression
+        sémantiquement proche d'un leitmotiv protégé. Retourne uniquement ce qui reste.
         En cas de doute, protège l'expression (ne la mets pas dans la liste retournée).
         On préfère autoriser quelques répétitions plutôt qu'interdire un leitmotiv par erreur.
         Format de sortie STRICT : une expression par ligne, précédée d'un tiret (-).

@@ -27,11 +27,16 @@ public class TextCoherenceCritic implements Agent {
                AMELIORATION: un detail factuel pourrait etre plus precis ou conforme a la fiche.
                DEFAUT_SIGNIFICATIF: information qui contredit partiellement un fait etabli ou un check.
                DEFAUT_MAJEUR: contradiction directe d'un check explicite ou d'un fait fondamental.
+            Exemple de sortie :
+            AMELIORATION : Le texte décrit Marc comme "agité" ; sa fiche le dit "méticuleux et discret" — sans contradiction directe mais légèrement discordant.
+            DEFAUT_SIGNIFICATIF : Pierre porte un manteau gris alors que sa fiche le décrit toujours en veston sombre.
+            DEFAUT_MAJEUR : Marie apparaît dans la scène alors qu'un check précise qu'elle a quitté la ville le matin même.
+
             FORMAT STRICT :
             AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
             DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
             DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
-            Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+            Rien d'autre : ni texte avant ni texte apres ces trois sections.
             En francais.""";
 
     private static final String AGENT_NAME = "TextCoherenceCritic";
@@ -50,7 +55,6 @@ public class TextCoherenceCritic implements Agent {
         String user = "### Texte\n"                          + trunc(input.text(),        ctx * 4 * 55 / 100)
             + "\n\n### Questions de coherence\n"            + trunc(input.checks(),      ctx * 4 / 10)
             + "\n\n### Contraintes\n"                       + trunc(input.constraints(), ctx * 4 / 10)
-            + "\n\n### Éléments à utiliser (focus)\n"        + trunc(input.focusText(),   ctx * 4 / 10)
             + "\n\nEvalue la coherence du texte.";
         String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
         return new TextCoherenceCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));

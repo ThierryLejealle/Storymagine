@@ -29,11 +29,16 @@ public class TextNarrativeCritic implements Agent {
                AMELIORATION: point qui pourrait etre affine ; la faiblesse est quasi imperceptible.
                DEFAUT_SIGNIFICATIF: faiblesse plus marquee qui affaiblit l'arc sans le contredire.
                DEFAUT_MAJEUR: element qui CONTREDIT DIRECTEMENT l'objectif du chapitre.
+            Exemple de sortie :
+            AMELIORATION : Le dialogue entre Pierre et Marie effleure leur tension passée sans l'approfondir — l'arc émotionnel aurait pu gagner en intensité.
+            DEFAUT_SIGNIFICATIF : La montée en tension s'effondre à mi-chapitre : les deux derniers paragraphes relâchent la pression sans retournement.
+            DEFAUT_MAJEUR : Pierre est décrit comme apaisé dès le premier paragraphe, ce qui contredit directement l'objectif — le chapitre devait montrer son rejet.
+
             FORMAT STRICT :
             AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
             DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
             DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
-            Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+            Rien d'autre : ni texte avant ni texte apres ces trois sections.
             En francais.""";
 
     private static final String AGENT_NAME = "TextNarrativeCritic";

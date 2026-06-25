@@ -8,8 +8,8 @@ import storymagine.redacteur.coeur.domaine.story.Story;
 /** Activates StoryCompressor to produce a running summary after a chapter is written. */
 public class StoryCompressorStep {
 
-    private static final int BASE_WORDS        = 150;
-    private static final int WORDS_PER_CHAPTER = 30;
+    private static final int BASE_WORDS        = 800;
+    private static final int WORDS_PER_CHAPTER = 200;
 
     private final StoryCompressor agent;
 

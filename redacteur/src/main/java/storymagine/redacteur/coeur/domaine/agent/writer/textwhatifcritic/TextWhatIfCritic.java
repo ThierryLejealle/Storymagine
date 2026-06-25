@@ -30,11 +30,14 @@ public class TextWhatIfCritic implements Agent {
              7 = globalement plausible mais une incohérence causale notable
              6 = hypothèse acceptable mais conséquences manquent de rigueur causale
              5 = incohérences causales qui brisent la suspension d'incrédulité
+             4 = incohérences sérieuses multiples
              3 = à réécrire
+             2 = prémisse invalidée par ses propres conséquences
+             1 = inutilisable
 
             Format de sortie strict :
             PROBLEME: [défaut ou axe d'amélioration]
-            SCORE: N  (entier 0-10)
+            SCORE: N  (entier 1-10)
             En français.""";
 
     private static final String AGENT_NAME = "TextWhatIfCritic";

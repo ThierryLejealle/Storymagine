@@ -34,11 +34,12 @@ PROCEDURE OBLIGATOIRE :
    Si une sequence contredit directement un check explicite ou un fait fondamental du recit, c'est un DEFAUT_MAJEUR.
    Exemple : La S2 annonce la mission Gold Beach et les coordonnees radio — viole le check : le premier briefing ne mentionne pas encore de mission specifique.
    Exemple : La S4 sort du compartiment — viole la contrainte : l'histoire ne quitte jamais le compartiment du train.
+
 FORMAT STRICT :
 AMELIORATION : avec une ligne par amelioration, ou [RIEN] si aucune.
 DEFAUT_SIGNIFICATIF : avec une ligne par defaut significatif, ou [RIEN] si aucun.
 DEFAUT_MAJEUR : avec une ligne par defaut majeur, ou [RIEN] si aucun.
-Rien d'autre : ni texte avant ni texte apres ces trois lignes.
+Rien d'autre : ni texte avant ni texte apres ces trois sections.
 Exemple 1 - deux defauts significatifs, rien d'autre :
 AMELIORATION : [RIEN]
 DEFAUT_SIGNIFICATIF : Le heros n'a pas d'epee

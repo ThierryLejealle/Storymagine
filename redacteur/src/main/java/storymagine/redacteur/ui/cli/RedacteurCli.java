@@ -12,6 +12,7 @@ import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.RetryPolicy;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.redacteur.RedacteurModule;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.infra.HtmlFileExportAdapter;
@@ -102,8 +103,9 @@ public class RedacteurCli {
 
         // 2. Lister les scenarios
         System.out.println();
-        var htmlExport = new HtmlFileExportAdapter(fileLog::runDir);
-        var service    = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport);
+        var htmlExport  = new HtmlFileExportAdapter(fileLog::runDir);
+        var beatsConfig = buildBeatsConfig(props);
+        var service     = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport, beatsConfig);
         var scenarios = service.listScenarios(scenarioRoot);
         if (scenarios.isEmpty()) {
             System.err.println("ERREUR : aucun scenario dans '" + scenarioRoot + "'.");
@@ -250,6 +252,13 @@ public class RedacteurCli {
             numPredict, timeoutMs,
             new RetryPolicy(retryCount, retryDelay1, retryDelay2, retryDelay3),
             ramFraction, timeoutMult);
+    }
+
+    private static BeatsConfig buildBeatsConfig(Properties props) {
+        int base      = Integer.parseInt(props.getProperty("beats.base",            "2"));
+        int ratio     = Integer.parseInt(props.getProperty("beats.per.words.ratio", "75"));
+        int tolerance = Integer.parseInt(props.getProperty("beats.tolerance.pct",   "20"));
+        return new BeatsConfig(base, ratio, tolerance);
     }
 
     private static String formatSize(long bytes) {
