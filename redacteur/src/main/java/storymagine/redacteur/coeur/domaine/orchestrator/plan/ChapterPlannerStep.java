@@ -20,8 +20,9 @@ public class ChapterPlannerStep {
     }
 
     public ChapterPlannerOutput run(Scenario scenario, Chapter chapter, Story story, boolean jsonMode) {
-        WrittenChapter wc       = story.currentChapter().orElseThrow();
+        WrittenChapter wc        = story.currentChapter().orElseThrow();
         boolean        isRewrite = wc.plan() != null;
+        int            effort    = resolveEffort(scenario, chapter);
 
         return agent.call(new ChapterPlannerInput(
                 chapter.title(),
@@ -37,10 +38,19 @@ public class ChapterPlannerStep {
                 ScenarioFormatters.loreText(chapter.defaults().lore(), false),
                 wc.coherence(),
                 story.repetitionMemory().forbiddenPhrases(),
+                effort,
                 jsonMode,
                 isRewrite,
                 isRewrite ? wc.plan() : null,
                 wc.coherence()
         ));
+    }
+
+    private int resolveEffort(Scenario scenario, Chapter chapter) {
+        if (chapter.defaults().plannerEffortInLines() != null)
+            return chapter.defaults().plannerEffortInLines();
+        if (scenario.config().plannerEffortInLines() != null)
+            return scenario.config().plannerEffortInLines();
+        return ChapterPlanner.DEFAULT_PLANNER_EFFORT_IN_LINES;
     }
 }

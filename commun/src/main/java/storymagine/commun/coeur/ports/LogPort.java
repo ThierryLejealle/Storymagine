@@ -25,6 +25,12 @@ public interface LogPort {
     /** Saves the final plan text for a chapter (file log only — console NOOP). */
     void chapterPlan(String chapterTitle, String planText);
 
+    /**
+     * Called after all plan retries complete, only when ≥2 attempts actually ran.
+     * Reports which attempt's plan was retained (highest average critic score).
+     */
+    default void planRetained(int bestAttempt, int totalAttempts, double bestScore) {}
+
     /** Saves the final text of one sequence for a chapter (file log only — console NOOP). */
     void sequenceText(String chapterTitle, int seqIdx, String text);
 

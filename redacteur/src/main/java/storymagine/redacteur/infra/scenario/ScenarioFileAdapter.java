@@ -64,7 +64,8 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                     cfgDto.title, cfgDto.language,
                     cfgDto.default_sequence_words > 0 ? cfgDto.default_sequence_words : 300,
                     cfgDto.context_window > 0 ? cfgDto.context_window : 32768,
-                    cfgDto.stitch);
+                    cfgDto.stitch,
+                    cfgDto.planner_effort_in_lines);
 
             String bookGoal      = readOptionalDirective(root, "goal.md");
             String quality       = readOptionalDirective(root, "quality.md");
@@ -192,7 +193,8 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 resolveFocusItems(dto.focus, focus),
                 LoreItemParser.parse(dto.lore, lore),
                 mapCheckList(dto.checks),
-                mapConstraintList(dto.constraints));
+                mapConstraintList(dto.constraints),
+                dto.planner_effort_in_lines);
     }
 
     private Sequence mapSequence(SequenceDto dto, PersonnagePool personnages,

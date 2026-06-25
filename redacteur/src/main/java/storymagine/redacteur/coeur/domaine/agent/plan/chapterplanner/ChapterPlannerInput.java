@@ -24,6 +24,7 @@ public record ChapterPlannerInput(
     String loreText,
     String coherence,
     List<String> forbiddenPhrases,
+    int plannerEffortInLines,
     boolean jsonMode,
     boolean isRewrite,
     String previousPlan,

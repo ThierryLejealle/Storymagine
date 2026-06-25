@@ -16,6 +16,8 @@ import java.util.stream.Collectors;
  */
 public class ChapterPlanner implements Agent {
 
+    public static final int DEFAULT_PLANNER_EFFORT_IN_LINES = 25;
+
     private static final String JSON_PLANNER_SYSTEM =
         "Tu es le planificateur de scènes d'un roman. Ton objectif premier est d'enrichir le contenu par rapport "
         + "à la consigne tout en la respectant. Donne beaucoup plus de détails que la consigne d'origine — "
@@ -33,7 +35,7 @@ public class ChapterPlanner implements Agent {
         + "2. Couvre tous les éléments de la consigne sans en omettre aucun.\n"
         + "3. Enrichis librement au-delà de la consigne — rends la séquence riche et intéressante.\n\n"
         + "Contraintes sur les beats :\n"
-        + "- Au moins 6 par séquence, autant que la séquence l'exige\n"
+        + "- Au moins %d par séquence, autant que la séquence l'exige\n"
         + "- Chaque beat = une action concrète ou un événement perceptible — pas un thème ni un état psychologique\n"
         + "- Bon : \"Pierre pose sa main sur le fuselage froid.\"\n"
         + "- Mauvais : \"Pierre ressent un ancrage intérieur dans l'environnement.\"\n"
@@ -96,7 +98,7 @@ public class ChapterPlanner implements Agent {
                 ? "RÉVISION — Un précédent plan a été jugé insuffisant. "
                   + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n"
                 : "";
-            base = prefix + JSON_PLANNER_SYSTEM + "\n" + INNER_STATE_NOTE;
+            base = prefix + String.format(JSON_PLANNER_SYSTEM, in.plannerEffortInLines()) + "\n" + INNER_STATE_NOTE;
         } else {
             String prefix = in.isRewrite()
                 ? "RÉVISION — Un précédent plan a été jugé insuffisant. "

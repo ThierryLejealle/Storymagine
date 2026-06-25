@@ -54,6 +54,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.write.TextNarrativeCriti
 import storymagine.redacteur.coeur.domaine.orchestrator.write.TextWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriteWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriterStep;
+import storymagine.redacteur.coeur.ports.HtmlExportPort;
 import storymagine.redacteur.coeur.ports.ScenarioReaderPort;
 import storymagine.redacteur.coeur.service.RedacteurService;
 import storymagine.redacteur.coeur.service.RedacteurServiceImpl;
@@ -69,29 +70,31 @@ public class RedacteurModule {
         LogPort       log    = new ConsoleLogAdapter();
         OllamaAdapter llm    = ollamaConfig.adapter(modelName, log);
         EngineConfig  engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, new ScenarioFileAdapter(), log, engine);
+        return assemble(llm, new ScenarioFileAdapter(), log, HtmlExportPort.NOOP, engine);
     }
 
-    public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName, LogPort log) {
+    public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
+                                            LogPort log, HtmlExportPort htmlExport) {
         OllamaAdapter llm    = ollamaConfig.adapter(modelName, log);
         EngineConfig  engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, new ScenarioFileAdapter(), log, engine);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, engine);
     }
 
     public static RedacteurService assemble(OllamaAdapter llm, ScenarioReaderPort scenarioReader) {
         EngineConfig engine = EngineConfigLoader.load(Path.of("engine.properties"));
-        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), engine);
+        return assemble(llm, scenarioReader, new ConsoleLogAdapter(), HtmlExportPort.NOOP, engine);
     }
 
     /** Test-friendly overload — uses EngineConfig.defaults(), no file I/O. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log) {
-        return assemble(llm, scenarioReader, log, EngineConfig.defaults());
+        return assemble(llm, scenarioReader, log, HtmlExportPort.NOOP, EngineConfig.defaults());
     }
 
     /** Full assembly — all parameters explicit. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
-                                            LogPort log, EngineConfig engineConfig) {
+                                            LogPort log, HtmlExportPort htmlExport,
+                                            EngineConfig engineConfig) {
         // --- Plan agents ---
         var chapterPlanner      = new ChapterPlanner(llm);
         var planNarrativeCritic = new PlanNarrativeCritic(llm);
@@ -160,14 +163,14 @@ public class RedacteurModule {
             textNarrativeCriticStep, textCoherenceCriticStep,
             textDreamCriticStep, textWhatIfCriticStep,
             deusInMachinaStep, goalTextCheckerStep,
-            engineConfig, log);
+            engineConfig, htmlExport, log);
 
         var evaluateWorkflow = new EvaluateWorkflow(
             storyCompressorStep, chapterStyleCheckerStep, characterCheckerStep,
             narrativeArcAnalyzerStep, causalAnalyzerStep,
             log);
 
-        var orchestrator = new StoryOrchestrator(planWorkflow, writeWorkflow, evaluateWorkflow, log);
+        var orchestrator = new StoryOrchestrator(planWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, log);
         return new RedacteurServiceImpl(scenarioReader, orchestrator);
     }
 }

@@ -2,6 +2,7 @@ package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinachecker.DeusInMachinaCheckerOutput;
+import storymagine.redacteur.coeur.ports.HtmlExportPort;
 import storymagine.redacteur.coeur.domaine.agent.writer.goaltextchecker.GoalTextCheckerOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.proofreader.ProofreaderOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilterOutput;
@@ -64,6 +65,7 @@ public class WriteWorkflow {
     private final DeusInMachinaCheckerStep deusInMachinaCheckerStep;
     private final GoalTextCheckerStep      goalTextCheckerStep;
     private final EngineConfig             engineConfig;
+    private final HtmlExportPort           htmlExport;
     private final LogPort                  log;
 
     public WriteWorkflow(WriterStep writerStep,
@@ -80,6 +82,7 @@ public class WriteWorkflow {
                          DeusInMachinaCheckerStep deusInMachinaCheckerStep,
                          GoalTextCheckerStep goalTextCheckerStep,
                          EngineConfig engineConfig,
+                         HtmlExportPort htmlExport,
                          LogPort log) {
         this.writerStep               = writerStep;
         this.proofreaderStep          = proofreaderStep;
@@ -95,6 +98,7 @@ public class WriteWorkflow {
         this.deusInMachinaCheckerStep = deusInMachinaCheckerStep;
         this.goalTextCheckerStep      = goalTextCheckerStep;
         this.engineConfig             = engineConfig;
+        this.htmlExport               = htmlExport;
         this.log                      = log;
     }
 
@@ -219,6 +223,7 @@ public class WriteWorkflow {
 
         story.currentChapter().orElseThrow().addSequence(new WrittenSequence(sequencePlan, text));
         log.sequenceText(chapter.title(), seqIdx, text);
+        htmlExport.exportHtml(scenario.config().title(), story);
     }
 
     /**

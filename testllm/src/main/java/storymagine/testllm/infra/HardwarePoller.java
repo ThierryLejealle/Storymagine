@@ -1,5 +1,6 @@
 package storymagine.testllm.infra;
 
+import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.testllm.coeur.domaine.HardwareUsage;
 
 import java.io.BufferedReader;

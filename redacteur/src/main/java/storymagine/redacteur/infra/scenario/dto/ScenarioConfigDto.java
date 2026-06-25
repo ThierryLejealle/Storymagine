@@ -10,4 +10,5 @@ public class ScenarioConfigDto {
     public int     context_window;
     public String  writing_example;
     public String  stitch;
+    public Integer planner_effort_in_lines;
 }

@@ -8,6 +8,7 @@ import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.story.ChapterId;
 import storymagine.redacteur.coeur.domaine.story.Story;
+import storymagine.redacteur.coeur.ports.HtmlExportPort;
 
 import java.util.List;
 
@@ -20,15 +21,18 @@ public class StoryOrchestrator {
     private final PlanWorkflow     planWorkflow;
     private final WriteWorkflow    writeWorkflow;
     private final EvaluateWorkflow evaluateWorkflow;
+    private final HtmlExportPort   htmlExport;
     private final LogPort          log;
 
     public StoryOrchestrator(PlanWorkflow planWorkflow,
                              WriteWorkflow writeWorkflow,
                              EvaluateWorkflow evaluateWorkflow,
+                             HtmlExportPort htmlExport,
                              LogPort log) {
         this.planWorkflow     = planWorkflow;
         this.writeWorkflow    = writeWorkflow;
         this.evaluateWorkflow = evaluateWorkflow;
+        this.htmlExport       = htmlExport;
         this.log              = log;
     }
 
@@ -51,6 +55,7 @@ public class StoryOrchestrator {
             }
 
             evaluateWorkflow.run(scenario, chapter, story, config);
+            htmlExport.exportHtml(scenario.config().title(), story);
         }
 
         log.sessionEnd();

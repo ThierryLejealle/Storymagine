@@ -4,13 +4,17 @@ import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
+import storymagine.commun.infra.ModelHardwareDisplay;
+import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaConfig;
+import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.RetryPolicy;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.redacteur.RedacteurModule;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.story.Story;
+import storymagine.redacteur.infra.HtmlFileExportAdapter;
 import storymagine.redacteur.infra.StoryExporter;
 
 import java.io.IOException;
@@ -98,7 +102,8 @@ public class RedacteurCli {
 
         // 2. Lister les scenarios
         System.out.println();
-        var service   = RedacteurModule.assemble(ollama, selectedModel, log);
+        var htmlExport = new HtmlFileExportAdapter(fileLog::runDir);
+        var service    = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport);
         var scenarios = service.listScenarios(scenarioRoot);
         if (scenarios.isEmpty()) {
             System.err.println("ERREUR : aucun scenario dans '" + scenarioRoot + "'.");
@@ -161,6 +166,18 @@ public class RedacteurCli {
             System.out.println("Annule.");
             return;
         }
+
+        // -- Chargement du modele + info materiel
+        System.out.print("Chargement du modele... ");
+        try {
+            ollama.adapter(selectedModel).probe();
+            System.out.println("OK");
+        } catch (Exception e) {
+            System.out.println("(echec probe : " + e.getMessage() + ")");
+        }
+        OllamaPsInfo                    ps   = OllamaPsInfo.query(ollama.baseUrl(), selectedModel).orElse(null);
+        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
+        ModelHardwareDisplay.print("[redacteur] ", ps, gpus);
 
         // 6. Generation
         System.out.println();

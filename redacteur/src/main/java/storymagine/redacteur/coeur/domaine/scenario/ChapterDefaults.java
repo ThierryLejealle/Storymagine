@@ -10,26 +10,31 @@ import java.util.List;
 public class ChapterDefaults {
 
     public static final ChapterDefaults EMPTY =
-            new ChapterDefaults(List.of(), List.of(), List.of(), CheckList.EMPTY, ConstraintList.EMPTY);
+            new ChapterDefaults(List.of(), List.of(), List.of(), CheckList.EMPTY, ConstraintList.EMPTY, null);
 
     private final List<Personnage> characters;
     private final List<FocusItem>  focus;
     private final List<LoreItem>   lore;
     private final CheckList        checks;
     private final ConstraintList   constraints;
+    private final Integer          plannerEffortInLines;
 
     public ChapterDefaults(List<Personnage> characters, List<FocusItem> focus,
-                           List<LoreItem> lore, CheckList checks, ConstraintList constraints) {
-        this.characters  = List.copyOf(characters);
-        this.focus       = List.copyOf(focus);
-        this.lore        = List.copyOf(lore);
-        this.checks      = checks != null      ? checks      : CheckList.EMPTY;
-        this.constraints = constraints != null ? constraints : ConstraintList.EMPTY;
+                           List<LoreItem> lore, CheckList checks, ConstraintList constraints,
+                           Integer plannerEffortInLines) {
+        this.characters           = List.copyOf(characters);
+        this.focus                = List.copyOf(focus);
+        this.lore                 = List.copyOf(lore);
+        this.checks               = checks != null      ? checks      : CheckList.EMPTY;
+        this.constraints          = constraints != null ? constraints : ConstraintList.EMPTY;
+        this.plannerEffortInLines = plannerEffortInLines;
     }
 
-    public List<Personnage> characters()  { return characters; }
-    public List<FocusItem>  focus()       { return focus; }
-    public List<LoreItem>   lore()        { return lore; }
-    public CheckList        checks()      { return checks; }
-    public ConstraintList   constraints() { return constraints; }
+    public List<Personnage> characters()         { return characters; }
+    public List<FocusItem>  focus()              { return focus; }
+    public List<LoreItem>   lore()               { return lore; }
+    public CheckList        checks()             { return checks; }
+    public ConstraintList   constraints()        { return constraints; }
+    /** Minimum beats per sequence override for this chapter — null means inherit from scenario or agent default. */
+    public Integer          plannerEffortInLines() { return plannerEffortInLines; }
 }

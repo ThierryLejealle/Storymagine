@@ -1,12 +1,12 @@
 package storymagine.testllm.ui.cli;
 
 import storymagine.commun.coeur.ports.ModelEntry;
+import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.testllm.coeur.domaine.BenchRun;
 import storymagine.testllm.coeur.service.TestLlmService;
 import storymagine.testllm.infra.BenchCsvWriter;
 import storymagine.testllm.infra.BenchSession;
 import storymagine.testllm.infra.BenchTextFormatter;
-import storymagine.testllm.infra.NvidiaSmiSnapshot;
 import storymagine.testllm.infra.OllamaLauncher;
 import storymagine.testllm.infra.TestLlmAssembler;
 import storymagine.testllm.infra.TestLlmConfig;

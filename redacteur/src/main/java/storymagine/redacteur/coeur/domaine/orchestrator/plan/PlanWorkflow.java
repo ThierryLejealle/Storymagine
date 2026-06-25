@@ -52,8 +52,11 @@ public class PlanWorkflow {
         String       bestPlan          = null;
         List<String> bestSequencePlans = List.of();
         double       bestScore         = -1.0;
+        int          bestAttempt       = 1;
+        int          finalAttempt      = 0;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            finalAttempt = attempt + 1;
             log.phaseHeader("PLAN", "tentative " + (attempt + 1) + "/" + maxAttempts);
 
             long t0      = System.nanoTime();
@@ -96,6 +99,7 @@ public class PlanWorkflow {
                 bestScore         = avg;
                 bestPlan          = planOut.fullPlan();
                 bestSequencePlans = planOut.sequencePlans();
+                bestAttempt       = attempt + 1;
             }
 
             String hint = (!passed && !isLastAttempt) ? (attempt + 2) + "/" + maxAttempts : null;
@@ -110,6 +114,9 @@ public class PlanWorkflow {
         if (bestPlan != null) {
             wc.setPlan(bestPlan);
             wc.setSequencePlans(bestSequencePlans);
+        }
+        if (finalAttempt > 1) {
+            log.planRetained(bestAttempt, finalAttempt, bestScore);
         }
         log.chapterPlan(chapter.title(), wc.plan());
     }

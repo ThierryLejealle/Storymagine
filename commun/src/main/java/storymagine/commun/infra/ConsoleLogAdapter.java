@@ -86,6 +86,12 @@ public class ConsoleLogAdapter implements LogPort {
     }
 
     @Override
+    public void planRetained(int bestAttempt, int totalAttempts, double bestScore) {
+        printf("[%s]   -> plan retenu : tentative %d/%d  moy %.2f%n",
+               ts(), bestAttempt, totalAttempts, bestScore);
+    }
+
+    @Override
     public void sequenceText(String chapterTitle, int seqIdx, String text) {
         int words = text == null ? 0 : text.split("\\s+").length;
         printf("[%s]   [seq %d sauvegardee] %s  (%d mots)%n",

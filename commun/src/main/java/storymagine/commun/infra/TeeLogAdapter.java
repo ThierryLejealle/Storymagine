@@ -56,6 +56,11 @@ public class TeeLogAdapter implements LogPort {
     }
 
     @Override
+    public void planRetained(int bestAttempt, int totalAttempts, double bestScore) {
+        delegates.forEach(d -> d.planRetained(bestAttempt, totalAttempts, bestScore));
+    }
+
+    @Override
     public String llmCallOpen(String agentName, int localNum,
                                String systemPrompt, String userPrompt) {
         String handle = "";

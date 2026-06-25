@@ -8,3 +8,5 @@
 - vérifier qu'on accumulle pas les critiques à chaque retry
 - enregistrer le dernier profil de génération pour gagner du temps
 - passer les directives de séquences (type imperative, non vides) aux 3 agents critiques de plan (PlanNarrativeCritic, PlanCoherenceCritic, GoalPlanChecker) : afficher avant les beats avec label "Directives :", + note de cadrage dans le prompt user : "Le plan peut enrichir librement ces directives. Signale uniquement les violations de CONTRAINTE ou LIMITE explicites."
+- Pour le plan on demande exactement 6 lignes par sequence. C'est trop limitant
+- Vérifier s'il ne faudrait pas numéroter les séquences S1 à Sn comme dans les retours en cas d'erreur

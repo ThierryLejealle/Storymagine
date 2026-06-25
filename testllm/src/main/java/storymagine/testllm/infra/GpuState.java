@@ -1,5 +1,8 @@
 package storymagine.testllm.infra;
 
+import storymagine.commun.infra.NvidiaSmiSnapshot;
+import storymagine.commun.infra.OllamaPsInfo;
+
 import java.util.List;
 
 /**

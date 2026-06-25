@@ -1,5 +1,6 @@
 package storymagine.testllm.infra;
 
+import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.testllm.coeur.domaine.BenchModeleResult;
 import storymagine.testllm.coeur.domaine.BenchPasseResult;
 import storymagine.testllm.coeur.domaine.BenchRun;

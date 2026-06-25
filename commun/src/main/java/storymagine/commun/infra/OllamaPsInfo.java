@@ -1,4 +1,4 @@
-package storymagine.testllm.infra;
+package storymagine.commun.infra;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,16 +10,19 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * Snapshot de l'API /api/ps d'Ollama : taille en RAM et répartition CPU/GPU d'un modèle chargé.
+ */
 public record OllamaPsInfo(long sizeBytes, long sizeVramBytes) {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** "7.7 Go" */
+    /** Ex : "7.7 Go" */
     public String sizeLabel() {
         return String.format("%.1f Go", sizeBytes / 1_073_741_824.0);
     }
 
-    /** "25%/75% CPU/GPU" | "100% GPU" | "100% CPU" */
+    /** Ex : "25%/75% CPU/GPU" | "100% GPU" | "100% CPU" */
     public String processorLabel() {
         if (sizeBytes <= 0)             return "?";
         if (sizeVramBytes <= 0)         return "100% CPU";

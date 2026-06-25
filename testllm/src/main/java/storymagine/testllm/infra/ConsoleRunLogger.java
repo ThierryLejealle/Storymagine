@@ -1,5 +1,8 @@
 package storymagine.testllm.infra;
 
+import storymagine.commun.infra.ModelHardwareDisplay;
+import storymagine.commun.infra.NvidiaSmiSnapshot;
+import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.testllm.coeur.domaine.BenchmarkRunner;
 import storymagine.testllm.coeur.domaine.BenchmarkRunner.BenchEvent;
 import storymagine.testllm.coeur.domaine.BenchPasseResult;
@@ -74,13 +77,7 @@ public class ConsoleRunLogger implements BenchmarkRunner.RunLogger {
                 GpuState state = new GpuState(gpuMode, ps.orElse(null), gpuStats);
                 if (currentModel != null) gpuStateByModel.put(currentModel, state);
 
-                if (ps.isPresent()) {
-                    System.out.printf("[bench] |  ollama ps  -> %-10s  |  %s%n",
-                            ps.get().sizeLabel(), ps.get().processorLabel());
-                }
-                if (!gpuStats.isEmpty()) {
-                    System.out.printf("[bench] |  nvidia-smi -> %s%n", NvidiaSmiSnapshot.formatShort(gpuStats));
-                }
+                ModelHardwareDisplay.print("[bench] |  ", ps.orElse(null), gpuStats);
             }
 
             case BenchEvent.ProbeFail e ->
