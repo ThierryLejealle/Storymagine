@@ -10,6 +10,7 @@ public class SequenceDto {
     public String       type;
     public String       directive;
     public List<String> character_sheets;
+    @JsonDeserialize(using = FocusListDeserializer.class)
     public List<String> focus;
     @JsonDeserialize(using = LoreStringDeserializer.class)
     public String       lore;

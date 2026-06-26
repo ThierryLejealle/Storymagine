@@ -7,6 +7,7 @@ import java.util.List;
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class ChapterDefaultsDto {
     public List<String> character_sheets;
+    @JsonDeserialize(using = FocusListDeserializer.class)
     public List<String> focus;
     @JsonDeserialize(using = LoreStringDeserializer.class)
     public String lore;

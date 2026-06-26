@@ -38,21 +38,11 @@ public class RedacteurCli {
         System.out.println("=================================================");
         System.out.println();
 
-        String scenarioRootProp = System.getProperty("redacteur.scenario.root");
-        if (scenarioRootProp == null || scenarioRootProp.isBlank()) {
-            System.err.println("ERREUR : propriete redacteur.scenario.root non definie.");
-            System.exit(1);
-        }
-        Path scenarioRoot = Paths.get(scenarioRootProp);
-        if (!scenarioRoot.toFile().isDirectory()) {
-            System.err.println("ERREUR : le repertoire '" + scenarioRoot + "' n'existe pas.");
-            System.exit(1);
-        }
-
         Properties   props   = loadProperties();
+        Scanner      scanner = new Scanner(System.in);
+        Path         scenarioRoot = chooseScenarioRoot(props, scanner);
         OllamaConfig ollama  = buildOllamaConfig(props);
         List<String> favoris = loadFavoris(props);
-        Scanner      scanner = new Scanner(System.in);
 
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
@@ -213,6 +203,41 @@ public class RedacteurCli {
             System.out.printf("  Logs     : %s%n", fileLog.runDir().toAbsolutePath());
         }
         System.out.println("=================================================");
+    }
+
+    private static Path chooseScenarioRoot(Properties props, Scanner scanner) {
+        String defaultDir  = props.getProperty("scenario.root.default", "");
+        String projectDir  = Paths.get("scenarios").toAbsolutePath().toString();
+
+        System.out.println("Ou se trouvent les scenarios ?");
+        System.out.println("  ENTREE - Repertoire par defaut : " + defaultDir);
+        System.out.println("  1      - Repertoire du projet  : " + projectDir);
+        System.out.println("  2      - Autre repertoire...");
+        System.out.println();
+
+        while (true) {
+            System.out.print("Choix [ENTREE/1/2] : ");
+            String choice = scanner.nextLine().trim();
+            Path root = switch (choice) {
+                case ""  -> Paths.get(defaultDir);
+                case "1" -> Paths.get(projectDir);
+                case "2" -> {
+                    System.out.print("Chemin du repertoire : ");
+                    yield Paths.get(scanner.nextLine().trim());
+                }
+                default -> null;
+            };
+            if (root == null) {
+                System.out.println("  --> Entree invalide, choisir ENTREE, 1 ou 2.");
+                continue;
+            }
+            if (!root.toFile().isDirectory()) {
+                System.err.println("ERREUR : le repertoire '" + root + "' n'existe pas.");
+                System.exit(1);
+            }
+            System.out.println();
+            return root;
+        }
     }
 
     private static Properties loadProperties() {

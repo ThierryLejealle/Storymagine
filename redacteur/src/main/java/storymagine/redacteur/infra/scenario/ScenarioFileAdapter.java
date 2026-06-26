@@ -31,7 +31,6 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
             errors.add(ScenarioError.missingFile("scenario.md"));
         if (!Files.exists(root.resolve("chapitres")))
             errors.add(ScenarioError.missingFile("chapitres/"));
-
         if (!errors.isEmpty()) return errors;
 
         try {
@@ -49,7 +48,84 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
             errors.add(ScenarioError.invalidFormat("chapitres/", e.getMessage()));
         }
 
+        if (!errors.isEmpty()) return errors;
+
+        // Load pools for reference validation
+        FocusPool      focusPool      = new FocusPool(List.of());
+        LorePool       lorePool       = LorePool.EMPTY;
+        PersonnagePool personnagePool = new PersonnagePool(List.of());
+
+        try { focusPool      = loadFocus(root);      } catch (IOException e) { errors.add(ScenarioError.invalidFormat("focus.md",      e.getMessage())); }
+        try { lorePool       = loadLore(root);       } catch (IOException e) { errors.add(ScenarioError.invalidFormat("lore.md",       e.getMessage())); }
+        try { personnagePool = loadPersonnages(root);} catch (IOException e) { errors.add(ScenarioError.invalidFormat("characters/",   e.getMessage())); }
+
+        validateChapters(root, focusPool, lorePool, personnagePool, errors);
+
         return errors;
+    }
+
+    private void validateChapters(Path root, FocusPool focus, LorePool lore,
+                                   PersonnagePool personnages, List<ScenarioError> errors) {
+        List<Path> files;
+        try (Stream<Path> stream = Files.list(root.resolve("chapitres"))) {
+            files = stream.filter(p -> p.getFileName().toString().endsWith(".yaml"))
+                          .sorted().toList();
+        } catch (IOException e) {
+            return;
+        }
+
+        for (Path f : files) {
+            String name = "chapitres/" + f.getFileName();
+            ChapterDto dto;
+            try {
+                dto = readYaml(f, ChapterDto.class);
+            } catch (Exception e) {
+                errors.add(ScenarioError.invalidFormat(name, e.getMessage()));
+                continue;
+            }
+
+            if (dto.title == null || dto.title.isBlank())
+                errors.add(ScenarioError.invalidFormat(name, "missing title"));
+
+            if (dto.sequences == null || dto.sequences.isEmpty())
+                errors.add(ScenarioError.invalidFormat(name, "no sequences defined"));
+
+            if (dto.defaults != null)
+                validateRefs(dto.defaults.focus, dto.defaults.character_sheets, dto.defaults.lore,
+                             focus, lore, personnages, name + " [defaults]", errors);
+
+            if (dto.sequences != null) {
+                for (int i = 0; i < dto.sequences.size(); i++) {
+                    SequenceDto seq = dto.sequences.get(i);
+                    validateRefs(seq.focus, seq.character_sheets, seq.lore,
+                                 focus, lore, personnages, name + " [sequence " + (i + 1) + "]", errors);
+                }
+            }
+        }
+    }
+
+    private void validateRefs(List<String> focusTags, List<String> characterIds, String loreRaw,
+                               FocusPool focus, LorePool lore, PersonnagePool personnages,
+                               String context, List<ScenarioError> errors) {
+        if (focusTags != null) {
+            for (String entry : focusTags) {
+                String tag = extractTag(entry);
+                if (tag != null && focus.find(tag).isEmpty())
+                    errors.add(ScenarioError.unresolvedRef(tag, context + " > focus"));
+            }
+        }
+        if (characterIds != null) {
+            for (String id : characterIds) {
+                if (personnages.find(id).isEmpty())
+                    errors.add(ScenarioError.unresolvedRef(id, context + " > character_sheets"));
+            }
+        }
+        if (loreRaw != null && !loreRaw.isBlank()) {
+            LoreItemParser.parse(loreRaw, lore).stream()
+                    .filter(item -> item instanceof LoreRef ref && ref.resolved() == null)
+                    .map(item -> ((LoreRef) item).tag())
+                    .forEach(tag -> errors.add(ScenarioError.unresolvedRef(tag, context + " > lore")));
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -230,11 +306,26 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 .toList();
     }
 
-    private List<FocusItem> resolveFocusItems(List<String> tags, FocusPool pool) {
-        if (tags == null) return List.of();
-        return tags.stream()
-                .map(tag -> (FocusItem) new FocusRef(tag, pool.find(tag).orElse(null)))
+    private List<FocusItem> resolveFocusItems(List<String> entries, FocusPool pool) {
+        if (entries == null) return List.of();
+        return entries.stream()
+                .map(entry -> {
+                    String tag = extractTag(entry);
+                    if (tag != null) return (FocusItem) new FocusRef(tag, pool.find(tag).orElse(null));
+                    return (FocusItem) new FocusInline(entry.replaceAll("^\"|\"$", "").strip());
+                })
                 .toList();
+    }
+
+    /** Returns the tag name if entry is [TAG] or ["TAG"], else null. */
+    private static String extractTag(String entry) {
+        if (entry == null) return null;
+        String t = entry.strip();
+        if (t.startsWith("[") && t.contains("]")) {
+            String inner = t.substring(1, t.indexOf(']')).replaceAll("\"", "").trim();
+            if (!inner.isBlank()) return inner;
+        }
+        return null;
     }
 
     private CheckList mapCheckList(PlanWriterListDto dto) {
