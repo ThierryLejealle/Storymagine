@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -35,7 +35,7 @@ public class TextDreamCritic implements Agent {
                 + "\n\n### Psychologie du personnage (objectif du livre)\n" + trunc(input.bookGoal(), ctx * 4 / 8)
                 + "\n\nÉvalue la qualité onirique. Conclus par SCORE: N.";
 
-        String raw = llm.generate(buildSystem(level), user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(buildSystem(level), user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> problems = ProblemScoreParser.parseProblems(raw);
         double score = ProblemScoreParser.parseScore(raw);
         return new TextDreamCriticOutput(problems, score);

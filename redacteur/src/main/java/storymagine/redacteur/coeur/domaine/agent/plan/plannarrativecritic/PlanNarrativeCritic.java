@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -62,7 +62,7 @@ DEFAUT_MAJEUR : [RIEN]
             + "\n\n### Objectif de ce chapitre\n"    + trunc(input.chapterGoal(), 800)
             + "\n\n### Objectif du livre\n"           + trunc(input.bookGoal(),    ctx * 4 / 8)
             + "\n\nEvalue le plan.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new PlanNarrativeCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));
     }
 

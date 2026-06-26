@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.global.storycompressor;
+﻿package storymagine.redacteur.coeur.domaine.agent.global.storycompressor;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -54,7 +54,7 @@ public class StoryCompressor implements Agent {
             + "\n\nNOUVEAU CHAPITRE:\n" + trunc(input.newChapterText(), chapterBudget)
             + "\n\nProduis le résumé mis à jour en " + maxWords + " mots maximum.";
 
-        String raw = llm.generate(system, user, 0.4, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(system, user, 0.4, LlmCallContext.of(agentName(), agentLabel())).text();
         return new StoryCompressorOutput(raw);
     }
 

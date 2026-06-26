@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -27,7 +27,7 @@ public class Writer implements Agent {
     public WriterOutput call(WriterInput input) {
         String system = buildSystem(input);
         String user   = buildUser(input);
-        String raw = llm.generate(system, user, 0.8, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(system, user, 0.8, LlmCallContext.of(agentName(), agentLabel())).text();
         return new WriterOutput(raw);
     }
 

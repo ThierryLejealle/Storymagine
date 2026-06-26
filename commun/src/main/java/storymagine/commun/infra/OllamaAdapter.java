@@ -87,7 +87,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         long   t0     = System.currentTimeMillis();
         String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt);
         try {
-            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature);
+            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel());
             log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
@@ -98,10 +98,11 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         }
     }
 
-    private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature) {
+    private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature,
+                                        String agentLabel) {
         while (true) {
             try {
-                return sendWithNetworkRetry(systemPrompt, userPrompt, temperature);
+                return sendWithNetworkRetry(systemPrompt, userPrompt, temperature, agentLabel);
             } catch (ContextOverflowException e) {
                 int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
                 if (newSize <= contextWindowSize) {
@@ -235,7 +236,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // Implémentation interne
     // -------------------------------------------------------------------------
 
-    private LlmResult sendWithNetworkRetry(String systemPrompt, String userPrompt, double temperature) {
+    private LlmResult sendWithNetworkRetry(String systemPrompt, String userPrompt, double temperature,
+                                            String agentLabel) {
         OllamaRequest req = new OllamaRequest();
         req.model = model;
         req.options.put("num_ctx",        contextWindowSize);
@@ -281,7 +283,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                     throw new RuntimeException("Ollama error : " + resp.error);
                 }
                 String text = resp.message != null ? resp.message.content : "";
-                logLlmCall(resp.promptEvalCount, resp.evalCount, resp.evalDuration);
+                logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration);
                 return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration);
 
             } catch (RuntimeException e) {
@@ -307,11 +309,11 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
             "Ollama : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
     }
 
-    private void logLlmCall(int promptTokens, int evalTokens, long evalDurationNs) {
+    private void logLlmCall(String agentLabel, int promptTokens, int evalTokens, long evalDurationNs) {
         long   ms  = evalDurationNs > 0 ? evalDurationNs / 1_000_000L : 0;
         double tps = evalTokens > 0 && evalDurationNs > 0
             ? evalTokens / (evalDurationNs / 1_000_000_000.0) : 0;
-        log.llmCall(ms, promptTokens, evalTokens, tps);
+        log.llmCall(agentLabel, ms, promptTokens, evalTokens, tps);
     }
 
     private OllamaModelInfo fetchModelInfo() {

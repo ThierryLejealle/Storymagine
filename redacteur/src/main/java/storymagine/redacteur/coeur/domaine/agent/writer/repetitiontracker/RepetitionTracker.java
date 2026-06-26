@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -71,7 +71,7 @@ public class RepetitionTracker implements Agent {
             + trunc(input.text(), 10000)
             + "\n\nExtrais les expressions et schémas de ce texte.";
 
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return parseResult(raw);
     }
 

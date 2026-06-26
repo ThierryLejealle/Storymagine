@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner;
+﻿package storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -106,7 +106,7 @@ public class ChapterPlanner implements Agent {
         boolean isCorrection = input.previousPlan() != null && !input.previousPlan().isBlank();
         String systemPrompt = buildSystem(input, isCorrection);
         String userPrompt   = buildUser(input, isCorrection);
-        String raw = llm.generate(systemPrompt, userPrompt, 0.7, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(systemPrompt, userPrompt, 0.7, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> seqPlans = input.jsonMode() ? parseJsonSequences(raw, input.sequenceDescriptions()) : List.of();
         return new ChapterPlannerOutput(raw, seqPlans);
     }

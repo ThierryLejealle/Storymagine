@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.stateextractor;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.stateextractor;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -40,7 +40,7 @@ public class StateExtractor implements Agent {
         String user = prevBlock
             + "### Séquence\n" + trunc(input.sequenceText(), MAX_TEXT_CHARS)
             + "\n\nExtrais les changements d'état.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
         return new StateExtractorOutput(raw.trim());
     }
 

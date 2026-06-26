@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker;
 
 import java.util.List;
 
@@ -57,7 +57,7 @@ En français.
                 + section("Objectif global du roman (contexte)", trunc(input.bookGoal(), 1600))
                 + section("Plan à évaluer",                      trunc(input.plan(),     ctx * 4 / 2))
                 + "\n\nAnalyse si ce plan remplit l'objectif narratif, puis liste tes PROBLEME:.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> problems = ProblemScoreParser.parseProblems(raw);
         return new GoalPlanCheckerOutput(problems, ProblemScoreParser.scoreFromProblemCount(problems.size()));
     }

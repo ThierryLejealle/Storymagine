@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -75,7 +75,7 @@ DEFAUT_MAJEUR : [RIEN]
             + (checks.isBlank()      ? "" : "\n\n### Points a verifier\n"           + checks)
             + (constraints.isBlank() ? "" : "\n\n### Contraintes\n"                 + constraints)
             + (focusText.isBlank()   ? "" : "\n\n### Éléments à utiliser (focus)\n" + focusText);
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new PlanCoherenceCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));
     }
 

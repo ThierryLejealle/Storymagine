@@ -35,7 +35,7 @@ public class CapturingLogPort implements LogPort {
         scores.add(passed ? "PASS" : "RETRY");
     }
 
-    @Override public void llmCall(long ms, int tokIn, int tokOut, double tps) {}
+    @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps) {}
     @Override public void chapterPlan(String title, String plan) {}
     @Override public void sequenceText(String title, int idx, String text) {}
     @Override public void sessionEnd() {}

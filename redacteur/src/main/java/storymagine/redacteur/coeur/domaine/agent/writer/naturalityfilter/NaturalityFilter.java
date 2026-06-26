@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -96,7 +96,7 @@ public class NaturalityFilter implements Agent {
         int ctx = llm.contextWindow();
         String user = "### Texte\n" + trunc(input.text(), ctx * 4 * 60 / 100)
             + "\n\nAnalyse la naturalite du texte.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new NaturalityFilterOutput(parseFindings(raw));
     }
 

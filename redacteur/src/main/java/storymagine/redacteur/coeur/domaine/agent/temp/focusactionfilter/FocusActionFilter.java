@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.temp.focusactionfilter;
+﻿package storymagine.redacteur.coeur.domaine.agent.temp.focusactionfilter;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -64,7 +64,7 @@ public class FocusActionFilter implements Agent {
                 + actionsSection
                 + "Filtre et retiens uniquement les éléments pertinents.";
 
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return parseResponse(raw, input.groupNames(), input.actionCategories());
     }
 

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.goaltextchecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.goaltextchecker;
 
 import java.util.List;
 
@@ -49,7 +49,7 @@ public class GoalTextChecker implements Agent {
                 + section("Objectif global du roman (contexte)", trunc(input.bookGoal(), 1600))
                 + section("Texte à évaluer",                     trunc(input.text(),     ctx * 4 / 2))
                 + "\n\nAnalyse si ce texte atteint l'objectif narratif, puis liste tes PROBLEME:.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> problems = ProblemScoreParser.parseProblems(raw);
         return new GoalTextCheckerOutput(problems, ProblemScoreParser.scoreFromProblemCount(problems.size()));
     }

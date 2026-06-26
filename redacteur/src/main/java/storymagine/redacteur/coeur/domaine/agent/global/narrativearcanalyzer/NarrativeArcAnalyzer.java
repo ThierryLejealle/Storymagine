@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.global.narrativearcanalyzer;
+﻿package storymagine.redacteur.coeur.domaine.agent.global.narrativearcanalyzer;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -50,7 +50,7 @@ public class NarrativeArcAnalyzer implements Agent {
         String plansText = trunc(input.plansText(), ctx * 4 / 3);
         String user = "### Plans des chapitres du roman\n\n" + plansText
             + "\n\nAnalyse les arcs narratifs des personnages. Conclus par SCORE: N.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new NarrativeArcAnalyzerOutput(ProblemScoreParser.parseProblems(raw), ProblemScoreParser.parseScoreInt(raw));
     }
 

@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ConsoleLogAdapter implements LogPort {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final int    NAME_W = 30;
-    private static final String SEP    = "  ";
+    private static final int    NAME_W  = 30;
+    private static final String SEP     = "  ";
 
     private final AtomicInteger llmCalls    = new AtomicInteger(0);
     private final AtomicLong    sumTokIn    = new AtomicLong(0);
@@ -69,14 +69,14 @@ public class ConsoleLogAdapter implements LogPort {
     }
 
     @Override
-    public void llmCall(long ms, int tokIn, int tokOut, double tokPerSec) {
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
         int    n    = llmCalls.incrementAndGet();
         long   sumI = sumTokIn.addAndGet(tokIn);
         long   sumO = sumTokOut.addAndGet(tokOut);
         sumMs.addAndGet(ms);
         String tpsStr = tokPerSec > 0 ? String.format("  %.1f tok/s", tokPerSec) : "";
-        printf("[%s]   [LLM #%3d]  %5ds  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
-               ts(), n, ms / 1000, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO));
+        printf("[%s]   [LLM #%3d]  %-28s  %5ds  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
+               ts(), n, agentLabel, ms / 1000, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO));
     }
 
     @Override

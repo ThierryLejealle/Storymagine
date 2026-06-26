@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -56,7 +56,7 @@ public class TextWhatIfCritic implements Agent {
         String user = "### Texte du scénario alternatif\n"    + trunc(input.text(),        ctx * 4 * 55 / 100)
             + "\n\n### Contraintes physiques/monde\n"         + trunc(input.constraints(), ctx * 4 / 8)
             + "\n\nÉvalue la plausibilité physique et causale. Conclus par SCORE: N.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> problems = ProblemScoreParser.parseProblems(raw);
         double score = ProblemScoreParser.parseScore(raw);
         return new TextWhatIfCriticOutput(problems, score);

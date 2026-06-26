@@ -36,8 +36,8 @@ public class TeeLogAdapter implements LogPort {
     }
 
     @Override
-    public void llmCall(long ms, int tokIn, int tokOut, double tokPerSec) {
-        delegates.forEach(d -> d.llmCall(ms, tokIn, tokOut, tokPerSec));
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
+        delegates.forEach(d -> d.llmCall(agentLabel, ms, tokIn, tokOut, tokPerSec));
     }
 
     @Override

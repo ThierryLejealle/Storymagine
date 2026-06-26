@@ -19,8 +19,8 @@ public interface LogPort {
     /** Summarises the pass/retry outcome for a group of critics. avg <= 0 means not applicable. */
     void scoresSummary(double avg, boolean passed, String retryHint);
 
-    /** Called after each LLM generate() call with timing and token counts. */
-    void llmCall(long ms, int tokIn, int tokOut, double tokPerSec);
+    /** Called after each LLM generate() call with agent label, timing and token counts. */
+    void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec);
 
     /** Saves the final plan text for a chapter (file log only — console NOOP). */
     void chapterPlan(String chapterTitle, String planText);
@@ -61,7 +61,7 @@ public interface LogPort {
         @Override public void step(String n, long ms, String note) {}
         @Override public void critic(String n, double s, long ms, List<String> p) {}
         @Override public void scoresSummary(double avg, boolean passed, String hint) {}
-        @Override public void llmCall(long ms, int tokIn, int tokOut, double tps) {}
+        @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps) {}
         @Override public void chapterPlan(String t, String plan) {}
         @Override public void sequenceText(String t, int i, String txt) {}
         @Override public void sessionEnd() {}

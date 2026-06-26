@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinachecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinachecker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -95,7 +95,7 @@ public class DeusInMachinaChecker implements Agent {
         String user = constraintsSection
                 + "Texte à analyser :\n" + input.text()
                 + "\n\nRéponds FUITE (avec liste) ou OK.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName())).text().trim();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text().trim();
         return new DeusInMachinaCheckerOutput(parseLeaks(raw));
     }
 

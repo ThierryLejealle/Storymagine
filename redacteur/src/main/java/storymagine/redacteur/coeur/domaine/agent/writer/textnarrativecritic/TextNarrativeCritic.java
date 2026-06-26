@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -57,7 +57,7 @@ public class TextNarrativeCritic implements Agent {
         String user = "### Texte\n"             + trunc(input.text(),    ctx * 4 * 55 / 100)
             + "\n\n### Objectif du chapitre\n"  + trunc(input.bookGoal(), ctx * 4 / 8)
             + "\n\nEvalue le texte.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new TextNarrativeCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));
     }
 

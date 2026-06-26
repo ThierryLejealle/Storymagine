@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.sequencestylechecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.sequencestylechecker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -31,7 +31,7 @@ public class SequenceStyleChecker implements Agent {
     public SequenceStyleCheckerOutput call(SequenceStyleCheckerInput input) {
         String system = buildSystem(input);
         String user   = buildUser(input);
-        String raw    = llm.generate(system, user, 0.2, LlmCallContext.of(agentName())).text();
+        String raw    = llm.generate(system, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> problems = ProblemScoreParser.parseProblems(raw);
         int score = ProblemScoreParser.parseScoreInt(raw);
         return new SequenceStyleCheckerOutput(problems, score);

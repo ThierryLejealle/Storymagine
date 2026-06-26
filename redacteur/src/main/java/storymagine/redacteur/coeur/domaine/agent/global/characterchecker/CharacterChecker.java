@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.global.characterchecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.global.characterchecker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -48,7 +48,7 @@ public class CharacterChecker implements Agent {
         String user = "### Fiches personnages (section GÉNÉRAL)\n" + fichesBlock
             + "\n\n### Texte du chapitre\n" + (input.text() != null ? input.text() : "")
             + "\n\nIdentifie les incohérences. Conclus par SCORE: N.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> issues = ProblemScoreParser.parseTagged(raw, "INCOHERENCE");
         int score = ProblemScoreParser.parseScoreInt(raw);
         return new CharacterCheckerOutput(issues, score);

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -52,7 +52,7 @@ public class SequenceChecker implements Agent {
             + descSection
             + "\n\n### Éléments importants à vérifier\n" + checksBlock
             + "\n\nVérifie que chaque élément est présent dans le texte.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
         List<String> failures = parseFailures(raw);
         int total = input.checks().size();
         int missing = failures.size();

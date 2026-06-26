@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.proofreader;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.proofreader;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -52,7 +52,7 @@ public class Proofreader implements Agent {
     public ProofreaderOutput call(ProofreaderInput input) {
         int maxChars = llm.contextWindow() * 4 / 3;
         String user  = "### Texte\n" + trunc(input.text(), maxChars) + "\n\nAnalyse les fautes.";
-        String raw   = llm.generate(SYSTEM, user, 0.1, LlmCallContext.of(agentName())).text();
+        String raw   = llm.generate(SYSTEM, user, 0.1, LlmCallContext.of(agentName(), agentLabel())).text();
         return new ProofreaderOutput(parseCorrections(raw));
     }
 

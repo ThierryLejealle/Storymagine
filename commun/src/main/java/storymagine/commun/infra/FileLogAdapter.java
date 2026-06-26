@@ -115,15 +115,15 @@ public class FileLogAdapter implements LogPort {
     }
 
     @Override
-    public void llmCall(long ms, int tokIn, int tokOut, double tokPerSec) {
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
         int  n    = llmCalls.incrementAndGet();
         long sumI = sumTokIn.addAndGet(tokIn);
         long sumO = sumTokOut.addAndGet(tokOut);
         String tpsStr = tokPerSec > 0
                 ? String.format(Locale.ROOT, "  %.1f tok/s", tokPerSec) : "";
         appendMaster(String.format(Locale.ROOT,
-                "[%s]   [LLM #%3d]  %,8dms  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
-                ts(), n, ms, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO)));
+                "[%s]   [LLM #%3d]  %-28s  %,8dms  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
+                ts(), n, agentLabel, ms, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO)));
     }
 
     @Override

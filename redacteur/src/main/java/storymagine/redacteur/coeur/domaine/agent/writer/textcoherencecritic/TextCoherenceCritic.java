@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic;
+﻿package storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -56,7 +56,7 @@ public class TextCoherenceCritic implements Agent {
             + "\n\n### Questions de coherence\n"            + trunc(input.checks(),      ctx * 4 / 10)
             + "\n\n### Contraintes\n"                       + trunc(input.constraints(), ctx * 4 / 10)
             + "\n\nEvalue la coherence du texte.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
         return new TextCoherenceCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));
     }
 
