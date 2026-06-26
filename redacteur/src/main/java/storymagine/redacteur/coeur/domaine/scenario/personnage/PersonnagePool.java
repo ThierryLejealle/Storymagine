@@ -17,6 +17,6 @@ public class PersonnagePool {
     }
 
     public Optional<Personnage> find(String id) {
-        return personnages.stream().filter(p -> p.id().equals(id)).findFirst();
+        return personnages.stream().filter(p -> p.id().equalsIgnoreCase(id)).findFirst();
     }
 }

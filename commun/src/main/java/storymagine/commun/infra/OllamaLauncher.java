@@ -1,4 +1,4 @@
-package storymagine.testllm.infra;
+package storymagine.commun.infra;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -7,6 +7,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 
+/** Kills and restarts Ollama with a specific CUDA_VISIBLE_DEVICES setting. */
 public class OllamaLauncher {
 
     private static final int WAIT_TIMEOUT_S = 60;
@@ -42,7 +43,7 @@ public class OllamaLauncher {
         if (isReachable("http://localhost:11434")) {
             throw new RuntimeException(
                 "Ollama n'a pas pu etre arrete dans les 10s — port 11434 toujours occupe. " +
-                "Arretez Ollama manuellement et relancez le bench.");
+                "Arretez Ollama manuellement et relancez.");
         }
         Thread.sleep(500);
     }
@@ -54,7 +55,6 @@ public class OllamaLauncher {
      * @param baseUrl     ex. "http://localhost:11434"
      */
     public static Process launch(String cudaDevices, String baseUrl) throws Exception {
-        // cmd /c ensures the env var is in the Windows shell session scope before ollama starts
         ProcessBuilder pb = new ProcessBuilder("cmd", "/c", "ollama serve");
         pb.environment().put("CUDA_VISIBLE_DEVICES", cudaDevices);
         pb.environment().put("OLLAMA_VULKAN", "false");

@@ -7,7 +7,7 @@ import storymagine.testllm.coeur.service.TestLlmService;
 import storymagine.testllm.infra.BenchCsvWriter;
 import storymagine.testllm.infra.BenchSession;
 import storymagine.testllm.infra.BenchTextFormatter;
-import storymagine.testllm.infra.OllamaLauncher;
+import storymagine.commun.infra.OllamaLauncher;
 import storymagine.testllm.infra.TestLlmAssembler;
 import storymagine.testllm.infra.TestLlmConfig;
 

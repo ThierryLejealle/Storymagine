@@ -19,7 +19,7 @@ public class LorePool {
     }
 
     public Optional<LoreElement> find(String tag) {
-        return elements.stream().filter(e -> e.tag().equals(tag)).findFirst();
+        return elements.stream().filter(e -> e.tag().equalsIgnoreCase(tag)).findFirst();
     }
 
     public boolean isEmpty() {

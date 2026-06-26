@@ -8,6 +8,7 @@ import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaConfig;
+import storymagine.commun.infra.OllamaLauncher;
 import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.RetryPolicy;
 import storymagine.commun.infra.TeeLogAdapter;
@@ -47,7 +48,52 @@ public class RedacteurCli {
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
 
-        // 1. Lister les modeles — favoris en tete
+        // 1. Menu GPU
+        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
+        System.out.println("Configuration GPU Ollama :");
+        System.out.printf("  1. Utiliser Ollama deja demarre%n");
+        printGpuOption(2, gpus, 0);
+        printGpuOption(3, gpus, 1);
+        System.out.printf("  4. Relancer sur GPU 0+1 - split auto%n");
+
+        int gpuChoice = 0;
+        while (gpuChoice < 1 || gpuChoice > 4) {
+            System.out.print("Choix GPU [1-4] : ");
+            String line = scanner.nextLine().trim();
+            try { gpuChoice = Integer.parseInt(line); } catch (NumberFormatException ignored) {}
+            if (gpuChoice < 1 || gpuChoice > 4) System.out.println("  Entree invalide, choisir 1-4.");
+        }
+        System.out.println();
+
+        switch (gpuChoice) {
+            case 1 -> {
+                if (!OllamaLauncher.isReachable(ollama.baseUrl())) {
+                    System.err.println("ERREUR : Ollama non joignable. Lancez Ollama d'abord ou choisissez 2-4.");
+                    System.exit(1);
+                }
+                System.out.printf("[redacteur] Ollama deja demarre.%n%n");
+            }
+            case 2 -> {
+                System.out.printf("[redacteur] Relancement Ollama sur GPU 0...%n");
+                try { OllamaLauncher.killAll(); OllamaLauncher.launch("0", ollama.baseUrl()); }
+                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
+                System.out.printf("[redacteur] Ollama pret - %s%n%n", gpuLabel(gpus, 0));
+            }
+            case 3 -> {
+                System.out.printf("[redacteur] Relancement Ollama sur GPU 1...%n");
+                try { OllamaLauncher.killAll(); OllamaLauncher.launch("1", ollama.baseUrl()); }
+                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
+                System.out.printf("[redacteur] Ollama pret - %s%n%n", gpuLabel(gpus, 1));
+            }
+            default -> {
+                System.out.printf("[redacteur] Relancement Ollama sur GPU 0+1...%n");
+                try { OllamaLauncher.killAll(); OllamaLauncher.launch("0,1", ollama.baseUrl()); }
+                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
+                System.out.printf("[redacteur] Ollama pret - GPU 0+1 split%n%n");
+            }
+        }
+
+        // 2. Lister les modeles — favoris en tete
         System.out.println("Connexion a Ollama (" + ollama.baseUrl() + ")...");
         OllamaAdapter probe = ollama.adapter("_probe");
         List<ModelEntry> allModels;
@@ -92,7 +138,7 @@ public class RedacteurCli {
         String selectedModel = sorted.get(modelIdx).name();
         System.out.println(">> Modele : " + selectedModel);
 
-        // 2. Lister les scenarios
+        // 3. Lister les scenarios
         System.out.println();
         var htmlExport  = new HtmlFileExportAdapter(fileLog::runDir);
         var beatsConfig = buildBeatsConfig(props);
@@ -120,7 +166,7 @@ public class RedacteurCli {
         System.out.println(">> Scenario : " + selectedScenario.getFileName());
         fileLog.setOutputDir(selectedScenario.resolve("generated"));
 
-        // 3. Validation
+        // 4. Validation
         var errors = service.validate(selectedScenario);
         if (!errors.isEmpty()) {
             System.err.println();
@@ -130,7 +176,7 @@ public class RedacteurCli {
             return;
         }
 
-        // 4. Profil de generation
+        // 5. Profil de generation
         System.out.println();
         System.out.println("Profil de generation :");
         System.out.println("  1. BROUILLON — plan + redaction, agents minimum          (rapide)");
@@ -146,7 +192,7 @@ public class RedacteurCli {
         System.out.println(">> Profil : " + config.qualityLevel()
             + " (jsonMode=" + config.jsonMode() + ")");
 
-        // 5. Confirmation
+        // 6. Confirmation
         System.out.println();
         System.out.println("-----------------------------------");
         System.out.printf("  Modele   : %s%n", selectedModel);
@@ -160,7 +206,7 @@ public class RedacteurCli {
             return;
         }
 
-        // -- Chargement du modele + info materiel
+        // -- 7. Chargement du modele + info materiel
         System.out.print("Chargement du modele... ");
         try {
             ollama.adapter(selectedModel).probe();
@@ -168,11 +214,10 @@ public class RedacteurCli {
         } catch (Exception e) {
             System.out.println("(echec probe : " + e.getMessage() + ")");
         }
-        OllamaPsInfo                    ps   = OllamaPsInfo.query(ollama.baseUrl(), selectedModel).orElse(null);
-        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
+        OllamaPsInfo ps = OllamaPsInfo.query(ollama.baseUrl(), selectedModel).orElse(null);
         ModelHardwareDisplay.print("[redacteur] ", ps, gpus);
 
-        // 6. Generation
+        // 8. Generation
         System.out.println();
         Instant start = Instant.now();
         Story story;
@@ -186,7 +231,7 @@ public class RedacteurCli {
             return;
         }
 
-        // 7. Export
+        // 9. Export
         Path     outputDir = selectedScenario.resolve("generated");
         Path     fullFile  = new StoryExporter().export(story, outputDir);
         Duration elapsed   = Duration.between(start, Instant.now());
@@ -293,6 +338,26 @@ public class RedacteurCli {
         int ratio     = Integer.parseInt(props.getProperty("beats.per.words.ratio", "75"));
         int tolerance = Integer.parseInt(props.getProperty("beats.tolerance.pct",   "20"));
         return new BeatsConfig(base, ratio, tolerance);
+    }
+
+    private static void printGpuOption(int num, List<NvidiaSmiSnapshot.GpuStat> gpus, int gpuIndex) {
+        NvidiaSmiSnapshot.GpuStat g = gpus.stream()
+                .filter(x -> x.index() == gpuIndex).findFirst().orElse(null);
+        if (g != null) {
+            System.out.printf("  %d. Relancer sur GPU %d - %-32s  %.0f Go%n",
+                    num, gpuIndex, g.name(), g.totalMb() / 1024.0);
+        } else {
+            System.out.printf("  %d. Relancer sur GPU %d (CUDA_VISIBLE_DEVICES=%d)%n",
+                    num, gpuIndex, gpuIndex);
+        }
+    }
+
+    private static String gpuLabel(List<NvidiaSmiSnapshot.GpuStat> gpus, int index) {
+        return gpus.stream()
+                .filter(g -> g.index() == index)
+                .findFirst()
+                .map(g -> "GPU " + index + " - " + g.name())
+                .orElse("GPU " + index);
     }
 
     private static String formatSize(long bytes) {

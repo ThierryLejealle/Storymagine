@@ -6,11 +6,12 @@ import storymagine.redacteur.coeur.domaine.scenario.lore.LorePool;
 import storymagine.redacteur.coeur.domaine.scenario.lore.LoreRef;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Parses the mixed lore directive found in chapter YAML fields.
- * Handles: ["TAG"]  → LoreRef   and   "text" or plain text → LoreInline
+ * Handles: ["TAG"]  or ["TAG1","TAG2"] → LoreRef(s)   and   "text" or plain text → LoreInline
  */
 class LoreItemParser {
 
@@ -22,10 +23,12 @@ class LoreItemParser {
             String t = line.strip();
             if (t.isBlank()) continue;
 
-            String tag = extractTag(t);
-            if (tag != null) {
-                var resolved = pool.find(tag);
-                items.add(new LoreRef(tag, resolved.orElse(null)));
+            List<String> tags = extractTags(t);
+            if (!tags.isEmpty()) {
+                for (String tag : tags) {
+                    var resolved = pool.find(tag);
+                    items.add(new LoreRef(tag, resolved.orElse(null)));
+                }
             } else {
                 String text = t.replaceAll("^\"|\"$", "").strip();
                 if (!text.isBlank()) items.add(new LoreInline(text));
@@ -34,12 +37,17 @@ class LoreItemParser {
         return List.copyOf(items);
     }
 
-    /** Returns the tag name if the token is ["TAG"] or [TAG], else null. */
-    private static String extractTag(String token) {
-        if (token.startsWith("[") && token.contains("]")) {
-            String inner = token.substring(1, token.indexOf(']')).replaceAll("\"", "").trim();
-            if (!inner.isBlank()) return inner;
-        }
-        return null;
+    /**
+     * Returns tag names if the token starts with [...].
+     * Supports ["TAG"] and ["TAG1", "TAG2", ...].
+     */
+    private static List<String> extractTags(String token) {
+        if (!token.startsWith("[") || !token.contains("]")) return List.of();
+        String inner = token.substring(1, token.indexOf(']')).replaceAll("\"", "").trim();
+        if (inner.isBlank()) return List.of();
+        return Arrays.stream(inner.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
     }
 }
