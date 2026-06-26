@@ -1,6 +1,7 @@
 package storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
 
@@ -16,12 +17,14 @@ public class Writer implements Agent {
     private static final String AGENT_NAME = "Writer";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public Writer(ModelCallPort llm) {
+    public Writer(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public WriterOutput call(WriterInput input) {
@@ -86,7 +89,12 @@ public class Writer implements Agent {
                 (ligne 'Article : X — pronom'), respecte-les strictement dans tout le texte.
                 Les traits visibles d'un personnage (tenue, apparence physique, gestes récurrents)
                 et son tempérament sont des faits non négociables.
-                Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose.""";
+                Ne cite ni ne paraphrase la fiche — incarne ces traits dans la prose.
+                Sauf si le guide de style en décide autrement : le texte ne doit pas donner
+                l'impression d'avoir été rédigé par une IA. Privilégie un vocabulaire et des
+                tournures usuels. Ne cherche pas à épater ni à avoir un style trop original —
+                évite les formulations qui sonnent artificiel.
+                """;
     }
 
     private String buildUser(WriterInput in) {
@@ -116,22 +124,22 @@ public class Writer implements Agent {
         StringBuilder sb = new StringBuilder();
         if (!bannedPhrases.isBlank()) sb.append(bannedPhrases).append("\n\n");
         if (!bannedThemes.isBlank())  sb.append(bannedThemes).append("\n\n");
-        appendSection(sb, "État actuel des entités",        trunc(in.entityState(),          sState));
-        appendSection(sb, "Itérations précédentes (journal)", trunc(in.loopJournal(),        sJournal));
-        appendSection(sb, "Action narrative à explorer",    trunc(in.actionsText(),          sActions));
-        String fWrite = trunc(in.focusText(), sFocus);
+        appendSection(sb, "État actuel des entités",        trunc(in.entityState(),          sState,       "entityState"));
+        appendSection(sb, "Itérations précédentes (journal)", trunc(in.loopJournal(),        sJournal,     "loopJournal"));
+        appendSection(sb, "Action narrative à explorer",    trunc(in.actionsText(),          sActions,     "actionsText"));
+        String fWrite = trunc(in.focusText(), sFocus, "focusText");
         appendSection(sb, "Éléments à utiliser (focus)",
             fWrite.isBlank() ? "" : "Efforce-toi d'utiliser ces éléments dans l'histoire que tu vas rédiger.\n" + fWrite);
-        String lWrite = trunc(in.loreText(), sLore);
+        String lWrite = trunc(in.loreText(), sLore, "loreText");
         appendSection(sb, "Informations utiles (lore)",
             lWrite.isBlank() ? "" : "N'hésite pas à piocher dans ces informations pour étoffer la rédaction.\n" + lWrite);
-        appendSection(sb, "Règles de rédaction",            trunc(in.redactionConstraints(), sConstraints));
-        appendSection(sb, "Guide de style",                 trunc(in.styleGuide(),           sStyleGuide));
-        appendSection(sb, "Personnages présents",           trunc(in.charactersText(),       sChars));
-        appendSection(sb, "Trame générale (ordre et structure)", trunc(in.chapterPlan(),     sPlan));
+        appendSection(sb, "Règles de rédaction",            trunc(in.redactionConstraints(), sConstraints, "redactionConstraints"));
+        appendSection(sb, "Guide de style",                 trunc(in.styleGuide(),           sStyleGuide,  "styleGuide"));
+        appendSection(sb, "Personnages présents",           trunc(in.charactersText(),       sChars,       "charactersText"));
+        appendSection(sb, "Trame générale (ordre et structure)", trunc(in.chapterPlan(),     sPlan,        "chapterPlan"));
         appendSection(sb, "Histoire jusqu'ici (résumé)",
             lastSentences(in.storySoFar(), sHistory * 4));
-        appendSection(sb, "Exemple du style attendu",       trunc(in.writingExample(),       sExample));
+        appendSection(sb, "Exemple du style attendu",       trunc(in.writingExample(),       sExample,     "writingExample"));
 
         if (in.sequenceContext() != null && !in.sequenceContext().isBlank())
             sb.append("\n\n[Contexte de la séquence]\n").append(in.sequenceContext());
@@ -159,16 +167,25 @@ public class Writer implements Agent {
         sb.append("\n\n### ").append(title).append("\n").append(content);
     }
 
-    private static String lastSentences(String text, int maxChars) {
+    private String lastSentences(String text, int maxChars) {
         if (text == null || text.isBlank()) return "";
         if (text.length() <= maxChars) return text;
+        log.warn("Writer: troncature [storySoFar] — " + text.length() + " chars > slot " + maxChars);
         String tail = text.substring(text.length() - maxChars);
         int dot = tail.indexOf('.');
         return dot >= 0 ? tail.substring(dot + 1).trim() : tail.trim();
     }
 
-    private static String trunc(String s, int maxChars) {
+    private String trunc(String s, int maxChars, String section) {
         if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
+        if (s.length() <= maxChars) return s;
+        log.warn("Writer: troncature [" + section + "] — " + s.length() + " chars > slot " + maxChars);
+        String head = s.substring(0, maxChars);
+        int best = -1;
+        for (int i = head.length() - 1; i >= 0; i--) {
+            char c = head.charAt(i);
+            if (c == '\n' || c == '.' || c == '!' || c == '?') { best = i; break; }
+        }
+        return best >= 0 ? head.substring(0, best + 1).stripTrailing() : head + "…";
     }
 }

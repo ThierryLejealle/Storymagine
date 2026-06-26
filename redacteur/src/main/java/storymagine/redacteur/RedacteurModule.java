@@ -113,7 +113,7 @@ public class RedacteurModule {
         var goalPlanChecker     = new GoalPlanChecker(llm);
 
         // --- Writer agents ---
-        var writer                  = new Writer(llm);
+        var writer                  = new Writer(llm, log);
         var deusInMachinaCritic     = new DeusInMachinaCritic(llm);
         var deusInMachinaCorrector  = new DeusInMachinaCorrector(llm);
         var goalTextCritic          = new GoalTextCritic(llm);
