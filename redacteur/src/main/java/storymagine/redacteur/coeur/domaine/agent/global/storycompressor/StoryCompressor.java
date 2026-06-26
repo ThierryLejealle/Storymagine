@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.global.storycompressor;
+package storymagine.redacteur.coeur.domaine.agent.global.storycompressor;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

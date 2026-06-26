@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker;
+package storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker;
 
 import java.util.List;
 

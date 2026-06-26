@@ -1,71 +1,74 @@
 # Règles de retry — Storymagine
 
-Source de référence : `../Redacteur/ChapterOrchestrator.java`
-Paramètres configurables dans : `redacteur/engine.properties`
+Configuration : enum `QualityLevel` dans `redacteur/coeur/domaine/orchestrator/QualityLevel.java`.
+Les valeurs ci-dessous sont celles du niveau `FULL` (le niveau maximal).
 
 ---
 
 ## 1. Retry du plan (`PlanWorkflow`)
 
-**Déclenchement** : dès qu'au moins un agent critique émet une remarque
-(non-vide dans AMELIORATION, DEFAUT_SIGNIFICATIF ou DEFAUT_MAJEUR).
+**Déclenchement** : dès qu'au moins un agent critique émet une remarque.
 
-**Nombre de passes** : `1 + critique.plan.max_retry` (défaut : 4 passes, soit 3 rewrites max).
+**Nombre de passes** : `1 + planMaxRetry` (FULL : 4 passes, soit 3 retries max).
 
-**Sélection** : à la fin de toutes les passes, le plan avec la **meilleure note moyenne** est retenu —
-pas nécessairement le dernier. L'historique des problèmes est passé au planificateur pour guider la correction.
+**Sélection** : à la fin de toutes les passes, le plan avec la **meilleure note moyenne** est retenu.
+L'historique des problèmes est passé au planificateur pour guider la correction.
 
 **Agents concernés** : PlanNarrativeCritic, PlanCoherenceCritic, GoalPlanChecker.
 
 ---
 
-## 2. Vérification par séquence (`WriteWorkflow.runSequenceCheckers`)
+## 2. Critique par séquence (`WriteWorkflow.runSequenceCritique`)
 
-Trois vérificateurs indépendants, chacun avec sa propre boucle de réécriture.
-Chaque boucle est limitée à `critique.sequence.max_retry` tentatives (défaut : 1).
-Les boucles s'exécutent dans l'ordre : DeusInMachina → StyleChecker → SequenceChecker.
+Phase globale unique : tous les critiques tournent ensemble, une note moyenne est calculée,
+et une seule décision de retry est prise pour l'ensemble.
 
-| Vérificateur          | Condition de réécriture                     | Nature  |
-|-----------------------|---------------------------------------------|---------|
-| DeusInMachinaChecker  | au moins une fuite mécanique détectée       | Binaire |
-| SequenceStyleChecker  | score < 7 (STYLE_THRESHOLD)                 | Score   |
-| SequenceChecker       | au moins un élément requis manquant         | Binaire |
+**Seuil de retry** : note moyenne < 7.0 (constante `SEQUENCE_CRITIC_THRESHOLD`).
 
-Le SequenceChecker n'est activé que si le scénario déclare des `writerChecks`.
+**Nombre de passes** : `1 + sequenceMaxRetry` (FULL : 3 passes, soit 2 retries max).
+
+**Agents** :
+
+| Agent               | Condition d'activation                        | Score            |
+|---------------------|-----------------------------------------------|------------------|
+| DeusInMachinaCritic | toujours                                      | algo (fuites)    |
+| StyleCritic         | toujours                                      | algo (problèmes) |
+| ElementCritic       | si le scénario déclare des `writerChecks`     | algo (ratio)     |
+
+Sur retry : Writer (avec TOUS les problèmes collectés) → Correcteurs → Critics à nouveau.
+La **version avec le meilleur score moyen** est retenue.
+
+**Phase Correcteurs** (avant chaque passe Critics, skip si BROUILLON) :
+DeusInMachinaCorrector → NaturalityCorrector → ProofreaderCorrector.
+Les correcteurs appliquent des patches inline (paires FAUX → JUSTE), jamais de retry Writer.
 
 ---
 
 ## 3. Critique du chapitre (`WriteWorkflow.runChapterCritique`)
 
-Évalue le **texte complet du chapitre** (toutes séquences concaténées) après la phase d'écriture.
+Évalue le **texte complet du chapitre** après toutes les séquences.
 
 **Agents selon le type de chapitre** :
 
-| Type       | Agents                                                        |
-|------------|---------------------------------------------------------------|
-| IMPERATIVE | TextNarrativeCritic, TextCoherenceCritic, GoalTextChecker    |
-| DREAM      | TextDreamCritic, GoalTextChecker                              |
-| WHAT_IF    | TextWhatIfCritic, TextCoherenceCritic, GoalTextChecker        |
+| Type       | Agents                                                         |
+|------------|----------------------------------------------------------------|
+| IMPERATIVE | TextNarrativeCritic, TextCoherenceCritic, GoalTextCritic      |
+| DREAM      | TextDreamCritic, GoalTextCritic                               |
+| WHAT_IF    | TextWhatIfCritic, TextCoherenceCritic, GoalTextCritic         |
 
-**Déclenchement** : si la note moyenne de tous les agents ≤ `critique.chapitre.threshold` (défaut : 7,0).
+**Déclenchement** : si la note moyenne ≤ `chapitreThreshold` (FULL : 7.0).
 
-**Nombre de passes** : `1 + critique.chapitre.max_retry` (défaut : 4 passes, soit 3 rewrites max).
+**Nombre de passes** : `1 + chapitreMaxRetry` (FULL : 3 passes, soit 2 retries max).
 
-**Comportement** :
-- Les problèmes des critiques sont passés au Writer comme contraintes de réécriture.
-- Toutes les séquences du chapitre sont réécrites (les vérificateurs per-séquence repassent aussi).
-- La **version avec le meilleur score moyen** est retenue — pas nécessairement la dernière.
-- La WorldState et la RepetitionMemory s'accumulent entre les passes (même comportement que Redacteur).
+Sur retry : toutes les séquences sont réécrites (Writer avec feedback chapitre + Correcteurs).
+La **version avec le meilleur score moyen** est retenue.
 
 ---
 
-## Valeurs par défaut (`EngineConfig.defaults()`)
+## Valeurs par niveau (`QualityLevel`)
 
-| Paramètre                          | Valeur |
-|------------------------------------|--------|
-| `critique.plan.max_retry`          | 3      |
-| `critique.chapitre.threshold`      | 7.0    |
-| `critique.chapitre.max_retry`      | 3      |
-| `critique.sequence.max_retry`      | 1      |
-
-Ces valeurs correspondent à celles de `engine.properties` et à `EngineConfig.defaults()`.
+| Niveau    | planMaxRetry | sequenceMaxRetry | chapitreMaxRetry | chapitreThreshold |
+|-----------|-------------|-----------------|-----------------|-------------------|
+| BROUILLON | 0           | 0               | 0               | 7.0               |
+| SIMPLE    | 1           | 1               | 1               | 7.0               |
+| FULL      | 3           | 2               | 2               | 7.0               |

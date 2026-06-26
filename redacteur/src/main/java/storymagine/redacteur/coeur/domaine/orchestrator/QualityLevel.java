@@ -16,8 +16,8 @@ public enum QualityLevel {
     /** Plan critics + write + sequence checkers + chapter critics, 1 retry each. */
     SIMPLE                 (true,  true,  true,  true,  false,   1,    1,    1,   7.0),
 
-    /** Full pipeline: SIMPLE + global evaluation, 4 plan retries and 2 sequence/chapter retries. */
-    FULL                   (true,  true,  true,  true,  true,    4,    2,    2,   7.0);
+    /** Full pipeline: SIMPLE + global evaluation, 3 plan retries and 2 sequence/chapter retries. */
+    FULL                   (true,  true,  true,  true,  true,    3,    2,    2,   7.0);
 
     // ── Fields ──────────────────────────────────────────────────────────────
 

@@ -64,18 +64,22 @@ public class TestLlmConfig {
             intProp("ollama.retryDelay2",           30),
             intProp("ollama.retryDelay3Plus",       60)
         );
+        boolean streamMode = !"sync".equalsIgnoreCase(props.getProperty("ollama.mode", "stream"));
         return new OllamaConfig(
-            props.getProperty("ollama.url",         "http://localhost:11434"),
-            intProp("ollama.contextWindow",          32768),
-            intProp("ollama.maxContextWindow",       131072),
-            intProp("ollama.topK",                   40),
-            doubleProp("ollama.topP",                0.9),
-            doubleProp("ollama.repeatPenalty",       1.1),
-            intProp("ollama.numPredict",             -1),
-            intProp("ollama.timeoutMs",              1200000),
+            props.getProperty("ollama.url",                      "http://localhost:11434"),
+            intProp("ollama.contextWindow",                       32768),
+            intProp("ollama.maxContextWindow",                    131072),
+            intProp("ollama.topK",                                40),
+            doubleProp("ollama.topP",                             0.9),
+            doubleProp("ollama.repeatPenalty",                    1.1),
+            intProp("ollama.numPredict",                          -1),
+            streamMode,
+            intProp("ollama.timeoutMs",                           1200000),
+            intProp("ollama.stream.firstTokenTimeoutMs",          300000),
+            intProp("ollama.stream.interTokenTimeoutMs",          30000),
             retry,
-            intProp("ollama.largeModelRamFractionPct",   60),
-            intProp("ollama.largeModelTimeoutMultiplier", 2)
+            intProp("ollama.largeModelRamFractionPct",            60),
+            intProp("ollama.largeModelTimeoutMultiplier",         2)
         );
     }
 

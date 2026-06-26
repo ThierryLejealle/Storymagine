@@ -15,10 +15,13 @@ public record OllamaConfig(
     double      topP,
     double      repeatPenalty,
     int         numPredict,
-    int         timeoutMs,
+    boolean     streamMode,
+    int         timeoutMs,              // mode sync : timeout total de la requête
+    int         firstTokenTimeoutMs,    // mode stream : chargement modèle + prefill → premier token
+    int         interTokenTimeoutMs,    // mode stream : délai max entre deux tokens consécutifs
     RetryPolicy retryPolicy,
     int         largeModelRamFractionPct,
-    int         largeModelTimeoutMultiplier
+    int         largeModelTimeoutMultiplier // mode sync uniquement
 ) {
 
     public OllamaAdapter adapter(String model) {
@@ -35,17 +38,21 @@ public record OllamaConfig(
 
     public OllamaAdapter adapter(String model, boolean think, LogPort log) {
         return new OllamaAdapter(baseUrl, model, contextWindowSize, maxContextWindowSize,
-            topK, topP, repeatPenalty, numPredict, timeoutMs, think, retryPolicy, log);
+            topK, topP, repeatPenalty, numPredict,
+            streamMode, timeoutMs, firstTokenTimeoutMs, interTokenTimeoutMs,
+            think, retryPolicy, log);
     }
 
-    /** Crée un adaptateur avec timeout ajusté selon la taille du modèle. */
+    /** Crée un adaptateur avec timeout sync ajusté selon la taille du modèle (stream mode : sans effet). */
     public OllamaAdapter adapter(String model, int ctx, long sizeBytes, boolean think, LogPort log) {
-        int effective = isLargeModel(sizeBytes) ? timeoutMs * largeModelTimeoutMultiplier : timeoutMs;
+        int effectiveSyncTimeout = isLargeModel(sizeBytes) ? timeoutMs * largeModelTimeoutMultiplier : timeoutMs;
         return new OllamaAdapter(baseUrl, model, ctx, maxContextWindowSize,
-            topK, topP, repeatPenalty, numPredict, effective, think, retryPolicy, log);
+            topK, topP, repeatPenalty, numPredict,
+            streamMode, effectiveSyncTimeout, firstTokenTimeoutMs, interTokenTimeoutMs,
+            think, retryPolicy, log);
     }
 
-    /** Crée un adaptateur avec timeout ajusté selon la taille du modèle (sans log). */
+    /** Crée un adaptateur avec timeout sync ajusté selon la taille du modèle (sans log). */
     public OllamaAdapter adapter(String model, int ctx, long sizeBytes, boolean think) {
         return adapter(model, ctx, sizeBytes, think, LogPort.NOOP);
     }

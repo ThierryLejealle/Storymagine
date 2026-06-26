@@ -31,6 +31,18 @@ public interface LogPort {
      */
     default void planRetained(int bestAttempt, int totalAttempts, double bestScore) {}
 
+    /**
+     * Called after all sequence critique passes, only when ≥2 passes actually ran.
+     * Reports which pass's text was retained (highest average critic score).
+     */
+    default void sequenceRetained(int bestPass, int totalPasses, double bestScore) {}
+
+    /**
+     * Called after all chapter critique attempts, only when ≥2 attempts actually ran.
+     * Reports which attempt's sequences were retained (highest average critic score).
+     */
+    default void chapterRetained(int bestPass, int totalPasses, double bestScore) {}
+
     /** Saves the final text of one sequence for a chapter (file log only — console NOOP). */
     void sequenceText(String chapterTitle, int seqIdx, String text);
 

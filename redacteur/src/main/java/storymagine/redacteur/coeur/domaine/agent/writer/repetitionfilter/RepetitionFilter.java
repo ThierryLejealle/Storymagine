@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter;
+package storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

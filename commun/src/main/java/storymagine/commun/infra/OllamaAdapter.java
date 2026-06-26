@@ -10,56 +10,73 @@ import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.coeur.ports.ModelLifecyclePort;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Adaptateur Ollama — implémente ModelCallPort (appel LLM) et ModelLifecyclePort (gestion modèles).
+ * Adaptateur Ollama — ModelCallPort et ModelLifecyclePort.
+ * Mode sync : timeout global sur la requête HTTP.
+ * Mode stream : timeout premier token (chargement + prefill) + timeout inter-token.
  */
 public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
 
-    private static final ObjectMapper JSON               = new ObjectMapper();
-    private static final double       CONTEXT_GROW_FACTOR = 1.3;
+    private static final ObjectMapper    JSON                = new ObjectMapper();
+    private static final double          CONTEXT_GROW_FACTOR = 1.3;
+    private static final ExecutorService STREAM_EXECUTOR     = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "ollama-stream");
+        t.setDaemon(true);
+        return t;
+    });
 
     private final String      baseUrl;
     private final String      model;
     private final boolean     think;
+    private final boolean     streamMode;
     private final RetryPolicy retryPolicy;
     private final int         maxContextWindowSize;
     private final int         topK;
     private final double      topP;
     private final double      repeatPenalty;
     private final int         numPredict;
-    private final int         timeoutMs;
+    private final int         timeoutMs;           // sync : timeout total requête
+    private final int         firstTokenTimeoutMs; // stream : chargement modèle + prefill → 1er token
+    private final int         interTokenTimeoutMs; // stream : délai max entre deux tokens
     private final HttpClient  http;
     private final LogPort     log;
 
-    private int              contextWindowSize;
-    private OllamaModelInfo  cachedModelInfo  = null;
+    private int             contextWindowSize;
+    private OllamaModelInfo cachedModelInfo = null;
 
     private final Map<String, AtomicInteger> agentCallCounts = new ConcurrentHashMap<>();
 
     OllamaAdapter(String baseUrl, String model, int contextWindowSize, int maxContextWindowSize,
-                  int topK, double topP, double repeatPenalty,
-                  int numPredict, int timeoutMs, boolean think, RetryPolicy retryPolicy) {
-        this(baseUrl, model, contextWindowSize, maxContextWindowSize,
-             topK, topP, repeatPenalty, numPredict, timeoutMs, think, retryPolicy, LogPort.NOOP);
-    }
-
-    OllamaAdapter(String baseUrl, String model, int contextWindowSize, int maxContextWindowSize,
-                  int topK, double topP, double repeatPenalty,
-                  int numPredict, int timeoutMs, boolean think, RetryPolicy retryPolicy, LogPort log) {
+                  int topK, double topP, double repeatPenalty, int numPredict,
+                  boolean streamMode, int timeoutMs, int firstTokenTimeoutMs, int interTokenTimeoutMs,
+                  boolean think, RetryPolicy retryPolicy, LogPort log) {
         this.baseUrl              = baseUrl;
         this.model                = model;
         this.think                = think;
+        this.streamMode           = streamMode;
         this.retryPolicy          = retryPolicy;
         this.contextWindowSize    = contextWindowSize;
         this.maxContextWindowSize = maxContextWindowSize;
@@ -68,6 +85,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         this.repeatPenalty        = repeatPenalty;
         this.numPredict           = numPredict;
         this.timeoutMs            = timeoutMs;
+        this.firstTokenTimeoutMs  = firstTokenTimeoutMs;
+        this.interTokenTimeoutMs  = interTokenTimeoutMs;
         this.log                  = log;
         this.http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -102,7 +121,9 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                                         String agentLabel) {
         while (true) {
             try {
-                return sendWithNetworkRetry(systemPrompt, userPrompt, temperature, agentLabel);
+                return streamMode
+                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel)
+                    : sendSync(systemPrompt, userPrompt, temperature, agentLabel);
             } catch (ContextOverflowException e) {
                 int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
                 if (newSize <= contextWindowSize) {
@@ -131,7 +152,6 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     @Override
     public void unload() {
         try {
-            // keep_alive:0 déclenche le déchargement immédiat de la VRAM
             String body = "{\"model\":\"" + model + "\",\"stream\":false,\"keep_alive\":0}";
             HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/generate"))
@@ -147,23 +167,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         }
     }
 
-    @Override
-    public String modelName()       { return model; }
-
-    @Override
-    public int contextWindow()      { return contextWindowSize; }
-
-    @Override
-    public String modelParamSize()    { return cachedModelInfo != null ? cachedModelInfo.parameterSize : ""; }
-
-    @Override
-    public String modelQuantization() { return cachedModelInfo != null ? cachedModelInfo.quantization  : ""; }
-
-    @Override
-    public String modelFamily()       { return cachedModelInfo != null ? cachedModelInfo.family        : ""; }
-
-    @Override
-    public boolean supportsThinking() { return cachedModelInfo != null && cachedModelInfo.supportsThinking; }
+    @Override public String  modelName()         { return model; }
+    @Override public int     contextWindow()      { return contextWindowSize; }
+    @Override public String  modelParamSize()     { return cachedModelInfo != null ? cachedModelInfo.parameterSize : ""; }
+    @Override public String  modelQuantization()  { return cachedModelInfo != null ? cachedModelInfo.quantization  : ""; }
+    @Override public String  modelFamily()        { return cachedModelInfo != null ? cachedModelInfo.family        : ""; }
+    @Override public boolean supportsThinking()   { return cachedModelInfo != null && cachedModelInfo.supportsThinking; }
 
     @Override
     public String modelInfoBlock() {
@@ -233,24 +242,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     }
 
     // -------------------------------------------------------------------------
-    // Implémentation interne
+    // Appel LLM — mode sync (timeout global sur la requête)
     // -------------------------------------------------------------------------
 
-    private LlmResult sendWithNetworkRetry(String systemPrompt, String userPrompt, double temperature,
-                                            String agentLabel) {
-        OllamaRequest req = new OllamaRequest();
-        req.model = model;
-        req.options.put("num_ctx",        contextWindowSize);
-        req.options.put("temperature",    temperature);
-        req.options.put("top_k",          topK);
-        req.options.put("top_p",          topP);
-        req.options.put("repeat_penalty", repeatPenalty);
-        if (numPredict >= 0) req.options.put("num_predict", numPredict);
-        req.think    = think ? Boolean.TRUE : null;
-        req.messages = List.of(
-            new OllamaMessage("system", systemPrompt),
-            new OllamaMessage("user",   userPrompt)
-        );
+    private LlmResult sendSync(String systemPrompt, String userPrompt, double temperature,
+                                String agentLabel) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature);
 
         HttpRequest request;
         try {
@@ -265,8 +262,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
             throw new RuntimeException("Construction requête Ollama échouée : " + e.getMessage(), e);
         }
 
-        int totalAttempts = retryPolicy.retryCount() + 1;
-        Exception lastCause = null;
+        int       totalAttempts = retryPolicy.retryCount() + 1;
+        Exception lastCause     = null;
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
             try {
                 HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
@@ -307,6 +304,167 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         }
         throw new RuntimeException(
             "Ollama : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
+    }
+
+    // -------------------------------------------------------------------------
+    // Appel LLM — mode stream (timeout premier token + timeout inter-token)
+    // -------------------------------------------------------------------------
+
+    private LlmResult sendStreaming(String systemPrompt, String userPrompt, double temperature,
+                                     String agentLabel) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature);
+        req.stream = true;
+
+        HttpRequest request;
+        try {
+            String body = JSON.writeValueAsString(req);
+            request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/chat"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Construction requête Ollama (stream) échouée : " + e.getMessage(), e);
+        }
+
+        int       totalAttempts = retryPolicy.retryCount() + 1;
+        Exception lastCause     = null;
+        for (int attempt = 1; attempt <= totalAttempts; attempt++) {
+            try {
+                return executeStreaming(request, agentLabel);
+            } catch (ContextOverflowException e) {
+                throw e;
+            } catch (Exception e) {
+                lastCause = e;
+                if (attempt < totalAttempts) {
+                    int waitSec = retryPolicy.delaySeconds(attempt);
+                    System.err.printf("[Ollama] tentative stream %d/%d échouée (%s), reprise dans %ds…%n",
+                        attempt, totalAttempts, e.getMessage(), waitSec);
+                    try { Thread.sleep(waitSec * 1000L); }
+                    catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrompu pendant l'attente de reprise", ie);
+                    }
+                }
+            }
+        }
+        throw new RuntimeException(
+            "Ollama stream : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
+    }
+
+    private LlmResult executeStreaming(HttpRequest request, String agentLabel) {
+        // Obtenir les headers HTTP — quasi-instantané sur Ollama local
+        CompletableFuture<HttpResponse<InputStream>> cf =
+            http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
+
+        HttpResponse<InputStream> response;
+        try {
+            response = cf.get(30_000, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            cf.cancel(true);
+            throw new RuntimeException("Timeout connexion Ollama (30s)");
+        } catch (ExecutionException e) {
+            throw new RuntimeException("Erreur connexion Ollama : " + e.getCause().getMessage(), e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrompu en attente de connexion Ollama");
+        }
+
+        if (response.statusCode() != 200) {
+            try (InputStream is = response.body()) {
+                String errorBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                if (isContextOverflow(errorBody))
+                    throw new ContextOverflowException(errorBody, contextWindowSize);
+                throw new RuntimeException("Ollama HTTP " + response.statusCode() + " : " + errorBody);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (IOException e) {
+                throw new RuntimeException("Ollama HTTP " + response.statusCode());
+            }
+        }
+
+        StringBuilder content      = new StringBuilder();
+        int           promptTokens = 0;
+        int           evalTokens   = 0;
+        long          evalDuration = 0;
+
+        try (InputStream is = response.body();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            boolean firstToken = true;
+            while (true) {
+                long   timeout = firstToken ? firstTokenTimeoutMs : interTokenTimeoutMs;
+                String line    = readLineWithTimeout(reader, is, timeout);
+                if (line == null) break;
+                if (line.isBlank()) continue;
+                firstToken = false;
+
+                OllamaResponse chunk = JSON.readValue(line, OllamaResponse.class);
+                if (chunk.error != null && !chunk.error.isBlank()) {
+                    if (isContextOverflow(chunk.error))
+                        throw new ContextOverflowException(chunk.error, contextWindowSize);
+                    throw new RuntimeException("Ollama streaming error : " + chunk.error);
+                }
+                // Accumule content uniquement — le champ thinking est intentionnellement ignoré
+                if (chunk.message != null && chunk.message.content != null) {
+                    content.append(chunk.message.content);
+                }
+                if (chunk.done) {
+                    promptTokens = chunk.promptEvalCount;
+                    evalTokens   = chunk.evalCount;
+                    evalDuration = chunk.evalDuration;
+                    break;
+                }
+            }
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lecture stream Ollama : " + e.getMessage(), e);
+        }
+
+        logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration);
+        return new LlmResult(content.toString(), promptTokens, evalTokens, evalDuration);
+    }
+
+    /**
+     * Lit une ligne avec timeout — ferme le flux sur expiration pour débloquer le thread lecteur.
+     */
+    private static String readLineWithTimeout(BufferedReader reader, InputStream raw, long timeoutMs) {
+        Future<String> future = STREAM_EXECUTOR.submit(reader::readLine);
+        try {
+            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            try { raw.close(); } catch (IOException ignored) {}
+            throw new RuntimeException("Timeout stream Ollama (" + timeoutMs + "ms sans nouveau token)");
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException re) throw re;
+            throw new RuntimeException("Erreur lecture stream : " + cause.getMessage(), cause);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrompu pendant la lecture stream Ollama");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers communs
+    // -------------------------------------------------------------------------
+
+    private OllamaRequest buildOllamaRequest(String systemPrompt, String userPrompt, double temperature) {
+        OllamaRequest req = new OllamaRequest();
+        req.model = model;
+        req.options.put("num_ctx",        contextWindowSize);
+        req.options.put("temperature",    temperature);
+        req.options.put("top_k",          topK);
+        req.options.put("top_p",          topP);
+        req.options.put("repeat_penalty", repeatPenalty);
+        if (numPredict >= 0) req.options.put("num_predict", numPredict);
+        req.think    = think ? Boolean.TRUE : null;
+        req.messages = List.of(
+            new OllamaMessage("system", systemPrompt),
+            new OllamaMessage("user",   userPrompt)
+        );
+        return req;
     }
 
     private void logLlmCall(String agentLabel, int promptTokens, int evalTokens, long evalDurationNs) {

@@ -15,6 +15,7 @@ Le coeur du projet (/coeur) doit être conçu en mode POJO :
   - Une logique Port/Adapteur. On limite les ports dans le Domaine au strict minimum
   - Le coeur n'a aucune adhérence vers le reste du projet ou vers d'autre modules fonctionnels ou vers autre chose que du java pur (pas de framework). Toute dépendance doit être résolue par la formalisation d'un besoin via un port, sans exception. Par exemple : log, date du jour, repertoire d'execution, infrastructure de la machine, etc.. quel que soit l'appel, il passe par un port : le domain en particulier est purement fonctionnel (on peut le relancer dix fois on aura dix fois le meme résultat avec des adapteurs bouchonnés par exemple)
   - Si une méthode prend plus de 4 paramètres en entrée, il faut étudie l'intérèt de rationnaliser (faire émerger des objets portant des concepts qui regroupent les attributs par exemple)
+  - Evite les classes trop grosses. Structure. Utilise des interface pour bien expliciter les contrats des classes et cacher l'implémentation
 
 # Un projet en DDD
 On s'inspire des pratiques DDD pour le coeur

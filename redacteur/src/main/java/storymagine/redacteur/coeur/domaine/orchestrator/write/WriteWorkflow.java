@@ -1,17 +1,20 @@
 package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
 import storymagine.commun.coeur.ports.LogPort;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinachecker.DeusInMachinaCheckerOutput;
-import storymagine.redacteur.coeur.ports.HtmlExportPort;
-import storymagine.redacteur.coeur.domaine.agent.writer.goaltextchecker.GoalTextCheckerOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreader.ProofreaderOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorFinding;
+import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacritic.DeusInMachinaCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.goaltextcritic.GoalTextCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityFinding;
+import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilterOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTrackerOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencechecker.SequenceCheckerOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencestylechecker.SequenceStyleCheckerOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter.NaturalityFinding;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalityfilter.NaturalityFilterOutput;
+import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorFinding;
+import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.TextCoherenceCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCriticOutput;
@@ -27,6 +30,7 @@ import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.coeur.domaine.story.WorldState;
 import storymagine.redacteur.coeur.domaine.story.WrittenChapter;
 import storymagine.redacteur.coeur.domaine.story.WrittenSequence;
+import storymagine.redacteur.coeur.ports.HtmlExportPort;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,71 +40,101 @@ import java.util.stream.Collectors;
  * Orchestrates the writing phase for one chapter.
  *
  * Per sequence:
- *   Writer → Proofreader
- *   → DeusInMachinaChecker (retry loop, up to sequenceMaxRetry)
- *   → SequenceStyleChecker  (retry loop, up to sequenceMaxRetry, if score < STYLE_THRESHOLD)
- *   → SequenceChecker       (retry loop, up to sequenceMaxRetry, if failures present)
- *   → StateExtractor → RepetitionTracker → RepetitionFilter
+ *   PHASE 1 — WRITE
+ *     Writer
  *
- * After all sequences (STANDARD / FULL modes):
- *   Chapter critics on full text → retry all sequences if avg ≤ chapitreThreshold.
- *   Best chapter version (highest average critic score) is retained.
+ *   PHASE 2 — CORRECTORS  (skip if BROUILLON)
+ *     DeusInMachinaCorrector → NaturalityCorrector → ProofreaderCorrector
+ *     Patches applied inline via String.replace — no Writer retry.
+ *
+ *   PHASE 3 — GLOBAL CRITIQUE  (skip if BROUILLON)
+ *     All critics run together: DeusInMachinaCritic, StyleCritic, PlanFidelityCritic (if beats), CheckCritic (if checks).
+ *     Global average score computed from all critics.
+ *     If score < SEQUENCE_CRITIC_THRESHOLD AND retry budget remains:
+ *       → Writer (ALL collected problems as feedback) → Phase 2 again → Critics again
+ *     Best version (highest average score) is retained across passes.
+ *
+ *   PHASE 4 — POST-PROCESSING  (always)
+ *     StateExtractor → RepetitionTracker → RepetitionFilter
+ *
+ * Chapter level (after all sequences, STANDARD / FULL modes):
+ *   Chapter critics run together on full text → global average.
+ *   If avg < chapitreThreshold AND retry budget remains: REBOOT all sequences with feedback.
+ *   Best chapter version (highest average) is retained.
  *
  * DREAM / WHAT_IF chapters use snapshot/restore on WorldState.
  */
 public class WriteWorkflow {
 
-    private static final int STYLE_THRESHOLD = 7;
+    private static final int SEQUENCE_CRITIC_THRESHOLD = 7;
 
-    private final WriterStep               writerStep;
-    private final ProofreaderStep          proofreaderStep;
-    private final StateExtractorStep       stateExtractorStep;
-    private final RepetitionTrackerStep    repetitionTrackerStep;
-    private final RepetitionFilterStep     repetitionFilterStep;
-    private final SequenceCheckerStep      sequenceCheckerStep;
-    private final SequenceStyleCheckerStep sequenceStyleCheckerStep;
-    private final TextNarrativeCriticStep  textNarrativeCriticStep;
-    private final TextCoherenceCriticStep  textCoherenceCriticStep;
-    private final TextDreamCriticStep      textDreamCriticStep;
-    private final TextWhatIfCriticStep     textWhatIfCriticStep;
-    private final DeusInMachinaCheckerStep deusInMachinaCheckerStep;
-    private final GoalTextCheckerStep      goalTextCheckerStep;
-    private final NaturalityFilterStep     naturalityFilterStep;
-    private final HtmlExportPort           htmlExport;
-    private final LogPort                  log;
+    // Phase 1
+    private final WriterStep                 writerStep;
+
+    // Phase 2 — Correctors (ordered)
+    private final DeusInMachinaCorrectorStep deusInMachinaCorrectorStep;
+    private final NaturalityCorrectorStep    naturalityCorrectorStep;
+    private final ProofreaderCorrectorStep   proofreaderCorrectorStep;
+
+    // Phase 2 — Correctors (ordered) — continued
+    private final StyleCorrectorStep         styleCorrectorStep;
+
+    // Phase 3 — Critics (run together)
+    private final DeusInMachinaCriticStep    deusInMachinaCriticStep;
+    private final PlanFidelityCriticStep     planFidelityCriticStep;
+    private final CheckCriticStep            checkCriticStep;
+
+    // Phase 4 — Post-processing
+    private final StateExtractorStep         stateExtractorStep;
+    private final RepetitionTrackerStep      repetitionTrackerStep;
+    private final RepetitionFilterStep       repetitionFilterStep;
+
+    // Chapter-level critics
+    private final TextNarrativeCriticStep    textNarrativeCriticStep;
+    private final TextCoherenceCriticStep    textCoherenceCriticStep;
+    private final TextDreamCriticStep        textDreamCriticStep;
+    private final TextWhatIfCriticStep       textWhatIfCriticStep;
+    private final GoalTextCriticStep         goalTextCriticStep;
+
+    private final HtmlExportPort             htmlExport;
+    private final LogPort                    log;
 
     public WriteWorkflow(WriterStep writerStep,
-                         ProofreaderStep proofreaderStep,
+                         DeusInMachinaCorrectorStep deusInMachinaCorrectorStep,
+                         NaturalityCorrectorStep naturalityCorrectorStep,
+                         ProofreaderCorrectorStep proofreaderCorrectorStep,
+                         StyleCorrectorStep styleCorrectorStep,
+                         DeusInMachinaCriticStep deusInMachinaCriticStep,
+                         PlanFidelityCriticStep planFidelityCriticStep,
+                         CheckCriticStep checkCriticStep,
                          StateExtractorStep stateExtractorStep,
                          RepetitionTrackerStep repetitionTrackerStep,
                          RepetitionFilterStep repetitionFilterStep,
-                         SequenceCheckerStep sequenceCheckerStep,
-                         SequenceStyleCheckerStep sequenceStyleCheckerStep,
                          TextNarrativeCriticStep textNarrativeCriticStep,
                          TextCoherenceCriticStep textCoherenceCriticStep,
                          TextDreamCriticStep textDreamCriticStep,
                          TextWhatIfCriticStep textWhatIfCriticStep,
-                         DeusInMachinaCheckerStep deusInMachinaCheckerStep,
-                         GoalTextCheckerStep goalTextCheckerStep,
-                         NaturalityFilterStep naturalityFilterStep,
+                         GoalTextCriticStep goalTextCriticStep,
                          HtmlExportPort htmlExport,
                          LogPort log) {
-        this.writerStep               = writerStep;
-        this.proofreaderStep          = proofreaderStep;
-        this.stateExtractorStep       = stateExtractorStep;
-        this.repetitionTrackerStep    = repetitionTrackerStep;
-        this.repetitionFilterStep     = repetitionFilterStep;
-        this.sequenceCheckerStep      = sequenceCheckerStep;
-        this.sequenceStyleCheckerStep = sequenceStyleCheckerStep;
-        this.textNarrativeCriticStep  = textNarrativeCriticStep;
-        this.textCoherenceCriticStep  = textCoherenceCriticStep;
-        this.textDreamCriticStep      = textDreamCriticStep;
-        this.textWhatIfCriticStep     = textWhatIfCriticStep;
-        this.deusInMachinaCheckerStep = deusInMachinaCheckerStep;
-        this.goalTextCheckerStep      = goalTextCheckerStep;
-        this.naturalityFilterStep     = naturalityFilterStep;
-        this.htmlExport               = htmlExport;
-        this.log                      = log;
+        this.writerStep                 = writerStep;
+        this.deusInMachinaCorrectorStep = deusInMachinaCorrectorStep;
+        this.naturalityCorrectorStep    = naturalityCorrectorStep;
+        this.proofreaderCorrectorStep   = proofreaderCorrectorStep;
+        this.styleCorrectorStep         = styleCorrectorStep;
+        this.deusInMachinaCriticStep    = deusInMachinaCriticStep;
+        this.planFidelityCriticStep     = planFidelityCriticStep;
+        this.checkCriticStep            = checkCriticStep;
+        this.stateExtractorStep         = stateExtractorStep;
+        this.repetitionTrackerStep      = repetitionTrackerStep;
+        this.repetitionFilterStep       = repetitionFilterStep;
+        this.textNarrativeCriticStep    = textNarrativeCriticStep;
+        this.textCoherenceCriticStep    = textCoherenceCriticStep;
+        this.textDreamCriticStep        = textDreamCriticStep;
+        this.textWhatIfCriticStep       = textWhatIfCriticStep;
+        this.goalTextCriticStep         = goalTextCriticStep;
+        this.htmlExport                 = htmlExport;
+        this.log                        = log;
     }
 
     /** Writes all sequences of the current chapter in Story. Mutates Story. */
@@ -108,20 +142,20 @@ public class WriteWorkflow {
         boolean isolated = chapter.type() != NarrativeType.IMPERATIVE;
         WorldState.Snapshot snapshot = isolated ? story.worldState().snapshot() : null;
 
-        List<Sequence> sequences       = chapter.sequences();
-        boolean        runCritique     = config.qualityLevel().runsSequenceCheckers();
+        List<Sequence> sequences      = chapter.sequences();
+        boolean        runCritique    = config.qualityLevel().runsSequenceCheckers();
         int            chapMaxAttempts = runCritique ? 1 + config.qualityLevel().chapitreMaxRetry() : 1;
 
-        List<WrittenSequence> bestSequences = null;
-        double                bestScore     = -1.0;
-        String                chapterProblems = null;  // problems fed back to writer on retry
+        List<WrittenSequence> bestSequences    = null;
+        double                bestScore        = -1.0;
+        int                   bestChapPass     = 1;
+        int                   finalChapPasses  = 0;
+        String                chapterProblems  = null;
 
         for (int chapPass = 0; chapPass < chapMaxAttempts; chapPass++) {
-
+            finalChapPasses = chapPass + 1;
             WrittenChapter wc = story.currentChapter().orElseThrow();
-            if (chapPass > 0) {
-                wc.clearSequences();
-            }
+            if (chapPass > 0) wc.clearSequences();
 
             for (int i = 0; i < sequences.size(); i++) {
                 writeSequence(scenario, chapter, sequences.get(i), story, config,
@@ -130,7 +164,6 @@ public class WriteWorkflow {
 
             if (!runCritique) break;
 
-            // ── Chapter-level critique on full text ───────────────────────────
             ChapterCritiqueResult critique = runChapterCritique(chapter, scenario,
                                                                 wc.fullText(), story, config);
             boolean passed        = critique.avg() > config.qualityLevel().chapitreThreshold();
@@ -139,6 +172,7 @@ public class WriteWorkflow {
             if (bestSequences == null || critique.avg() > bestScore) {
                 bestScore     = critique.avg();
                 bestSequences = new ArrayList<>(wc.sequences());
+                bestChapPass  = chapPass + 1;
             }
 
             String hint = (!passed && !isLastAttempt) ? (chapPass + 2) + "/" + chapMaxAttempts : null;
@@ -149,41 +183,18 @@ public class WriteWorkflow {
             chapterProblems = critique.problems();
         }
 
-        // ── Restore the best chapter version if retries occurred ─────────────
         if (runCritique && bestSequences != null) {
             WrittenChapter wc = story.currentChapter().orElseThrow();
             wc.clearSequences();
-            for (WrittenSequence seq : bestSequences) {
-                wc.addSequence(seq);
-            }
+            for (WrittenSequence seq : bestSequences) wc.addSequence(seq);
+            if (finalChapPasses > 1) log.chapterRetained(bestChapPass, finalChapPasses, bestScore);
         }
 
-        // ── NaturalityFilter: direct substitution on final chapter text ─────
-        if (config.qualityLevel().runsProofreader()) {
-            WrittenChapter wc = story.currentChapter().orElseThrow();
-            long t0 = System.nanoTime();
-            NaturalityFilterOutput natOut = naturalityFilterStep.run(wc.fullText());
-            if (!natOut.findings().isEmpty()) {
-                List<WrittenSequence> naturalised = wc.sequences().stream()
-                    .map(seq -> new WrittenSequence(seq.sequencePlan(),
-                                 applyNaturalityFixes(seq.text(), natOut.findings())))
-                    .toList();
-                wc.clearSequences();
-                naturalised.forEach(wc::addSequence);
-                htmlExport.exportHtml(scenario.config().title(), story);
-            }
-            String natNote = natOut.findings().isEmpty() ? null
-                    : "-> " + natOut.findings().size() + " correction(s)";
-            log.step("NaturalityFilter", ms(t0), natNote);
-        }
-
-        if (isolated) {
-            story.worldState().restore(snapshot);
-        }
+        if (isolated) story.worldState().restore(snapshot);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Per-sequence writing
+    // Phase 1 + 2 + 3 + 4 — per sequence
     // ─────────────────────────────────────────────────────────────────────────
 
     private void writeSequence(Scenario scenario, Chapter chapter, Sequence seq,
@@ -191,131 +202,154 @@ public class WriteWorkflow {
                                 int seqIdx, int seqTotal, String chapterRewriteProblems) {
         log.phaseHeader("WRITE " + seqIdx + "/" + seqTotal, seq.type().name().toLowerCase());
 
-        String actionsText = "";
-        long   t0;
-
-        List<String> seqPlans    = story.currentChapter().orElseThrow().sequencePlans();
+        List<String> seqPlans     = story.currentChapter().orElseThrow().sequencePlans();
         String       sequencePlan = (!seqPlans.isEmpty() && seqIdx <= seqPlans.size())
-            ? seqPlans.get(seqIdx - 1) : null;
+                ? seqPlans.get(seqIdx - 1) : null;
 
-        // Initial write — pass chapter-level rewrite problems if this is a retry pass
-        t0 = System.nanoTime();
+        // Phase 1 — Write
+        long t0 = System.nanoTime();
         String text = writerStep.run(scenario, chapter, seq, story, sequencePlan,
-                                     actionsText, chapterRewriteProblems).text();
-        log.step("WriterStep", ms(t0), "-> " + countWords(text) + " mots");
+                                     "", chapterRewriteProblems).text();
+        log.step("Writer", ms(t0), "-> " + countWords(text) + " mots");
 
-        // ── Proofreader ───────────────────────────────────────────────────────
-        if (config.qualityLevel().runsProofreader()) {
-            t0 = System.nanoTime();
-            ProofreaderOutput proofOut = proofreaderStep.run(text);
-            text = applyCorrections(text, proofOut);
-            String proofNote = proofOut.corrections().isEmpty() ? null
-                    : "-> " + proofOut.corrections().size() + " correction(s)";
-            log.step("ProofreaderStep", ms(t0), proofNote);
-        }
+        // Phase 2 — Correctors
+        text = applyCorrectorsPhase(text, scenario, chapter, config);
 
+        // Phase 3 — Global critique with vote
         if (config.qualityLevel().runsSequenceCheckers()) {
-            text = runSequenceCheckers(scenario, chapter, seq, story, sequencePlan,
-                                       actionsText, text, seqIdx, seqTotal, config);
+            text = runSequenceCritique(text, scenario, chapter, seq, story, sequencePlan, config);
         }
 
-        // ── Memory updates (after all per-sequence rewrites) ──────────────────
+        // Phase 4 — Post-processing
         t0 = System.nanoTime();
         StateExtractorOutput stateOut = stateExtractorStep.run(text, story.worldState());
-        if (stateOut.hasChanges()) {
-            StoryFormatters.applyStateLines(story.worldState(), stateOut.stateLines());
-        }
-        String stateNote = stateOut.hasChanges()
-                ? "-> " + countLines(stateOut.stateLines()) + " changement(s)" : null;
-        log.step("StateExtractorStep", ms(t0), stateNote);
+        if (stateOut.hasChanges()) StoryFormatters.applyStateLines(story.worldState(), stateOut.stateLines());
+        log.step("StateExtractor", ms(t0),
+                 stateOut.hasChanges() ? "-> " + countLines(stateOut.stateLines()) + " changement(s)" : null);
 
         t0 = System.nanoTime();
         RepetitionTrackerOutput trackOut = repetitionTrackerStep.run(text, story.repetitionMemory());
-        log.step("RepetitionTrackerStep", ms(t0), null);
+        log.step("RepetitionTracker", ms(t0), null);
 
         t0 = System.nanoTime();
         RepetitionFilterOutput filterOut = repetitionFilterStep.run(
-                trackOut.phrases(),
-                ScenarioFormatters.keepPhrases(scenario));
+                trackOut.phrases(), ScenarioFormatters.keepPhrases(scenario));
         story.repetitionMemory().addPhrases(filterOut.filteredCandidates());
         story.repetitionMemory().addThemes(trackOut.themes());
-        String filterNote = filterOut.filteredCandidates().isEmpty() ? null
-                : "-> " + filterOut.filteredCandidates().size() + " filtre(s)";
-        log.step("RepetitionFilterStep", ms(t0), filterNote);
+        log.step("RepetitionFilter", ms(t0),
+                 filterOut.filteredCandidates().isEmpty() ? null
+                         : "-> " + filterOut.filteredCandidates().size() + " filtre(s)");
 
         story.currentChapter().orElseThrow().addSequence(new WrittenSequence(sequencePlan, text));
         log.sequenceText(chapter.title(), seqIdx, text);
         htmlExport.exportHtml(scenario.config().title(), story);
     }
 
-    /**
-     * Per-sequence checks with independent retry loops (Redacteur logic):
-     * 1. DeusInMachina   — retry if mechanical leaks detected
-     * 2. SequenceStyleChecker — retry if score < STYLE_THRESHOLD
-     * 3. SequenceChecker — retry if required elements missing
-     * Each loop is capped at qualityLevel.sequenceMaxRetry().
-     */
-    private String runSequenceCheckers(Scenario scenario, Chapter chapter, Sequence seq,
-                                        Story story, String sequencePlan, String actionsText,
-                                        String text, int seqIdx, int seqTotal,
-                                        GenerationConfig config) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phase 2 — Correctors
+    // ─────────────────────────────────────────────────────────────────────────
 
-        int maxRetry = config.qualityLevel().sequenceMaxRetry();
+    /** Applies all correctors in sequence. Skipped entirely on BROUILLON quality level. */
+    private String applyCorrectorsPhase(String text, Scenario scenario, Chapter chapter,
+                                         GenerationConfig config) {
+        if (!config.qualityLevel().runsProofreader()) return text;
 
-        // 1. DeusInMachina
-        for (int r = 0; r < 1 + maxRetry; r++) {
-            long                    t0 = System.nanoTime();
-            DeusInMachinaCheckerOutput dm = deusInMachinaCheckerStep.run(text, scenario, chapter);
-            boolean                 pass = !dm.hasLeaks();
-            log.critic("DeusInMachinaChecker", pass ? 10.0 : 4.0, ms(t0),
-                       pass ? List.of() : List.of(dm.summary()));
-            if (pass || r == maxRetry) break;
-            String problems = "Fuites mécaniques à éliminer :\n"
-                    + dm.leaks().stream().map(l -> "- " + l).collect(Collectors.joining("\n"));
-            t0   = System.nanoTime();
-            text = writerStep.run(scenario, chapter, seq, story, sequencePlan,
-                                  actionsText, problems).text();
-            log.step("WriterStep (DeusRetry " + (r + 1) + ")", ms(t0),
-                     "-> " + countWords(text) + " mots");
-        }
+        long t0 = System.nanoTime();
+        DeusInMachinaCorrectorOutput deusOut = deusInMachinaCorrectorStep.run(text, scenario, chapter);
+        text = applyDeusCorrections(text, deusOut.findings());
+        log.step("DeusInMachinaCorrector", ms(t0),
+                 deusOut.findings().isEmpty() ? null : "-> " + deusOut.findings().size() + " correction(s)");
 
-        // 2. SequenceStyleChecker
-        for (int r = 0; r < 1 + maxRetry; r++) {
-            long                        t0  = System.nanoTime();
-            SequenceStyleCheckerOutput  ss  = sequenceStyleCheckerStep.run(text, scenario);
-            boolean                     pass = ss.passed(STYLE_THRESHOLD);
-            log.critic("SequenceStyleChecker", ss.score(), ms(t0),
-                       pass ? List.of() : ss.problems());
-            if (pass || r == maxRetry) break;
-            String problems = "Corrections stylistiques :\n"
-                    + ss.problems().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
-            t0   = System.nanoTime();
-            text = writerStep.run(scenario, chapter, seq, story, sequencePlan,
-                                  actionsText, problems).text();
-            log.step("WriterStep (StyleRetry " + (r + 1) + ")", ms(t0),
-                     "-> " + countWords(text) + " mots");
-        }
+        t0 = System.nanoTime();
+        NaturalityCorrectorOutput natOut = naturalityCorrectorStep.run(text);
+        text = applyNaturalityFixes(text, natOut.findings());
+        log.step("NaturalityCorrector", ms(t0),
+                 natOut.findings().isEmpty() ? null : "-> " + natOut.findings().size() + " correction(s)");
 
-        // 3. SequenceChecker (only if any writer checks declared at any level)
-        if (!ScenarioFormatters.writerChecks(scenario, chapter, seq).isEmpty()) {
-            for (int r = 0; r < 1 + maxRetry; r++) {
-                long                  t0   = System.nanoTime();
-                SequenceCheckerOutput sc   = sequenceCheckerStep.run(seq, text, scenario, chapter);
-                boolean               pass = sc.failures().isEmpty();
-                log.critic("SequenceChecker", sc.score(), ms(t0),
-                           pass ? List.of() : sc.failures());
-                if (pass || r == maxRetry) break;
-                String problems = "Éléments requis manquants :\n"
-                        + sc.failures().stream().map(f -> "- " + f).collect(Collectors.joining("\n"));
-                t0   = System.nanoTime();
-                text = writerStep.run(scenario, chapter, seq, story, sequencePlan,
-                                      actionsText, problems).text();
-                log.step("WriterStep (SeqCheckRetry " + (r + 1) + ")", ms(t0),
-                         "-> " + countWords(text) + " mots");
-            }
-        }
+        t0 = System.nanoTime();
+        StyleCorrectorOutput styleOut = styleCorrectorStep.run(text, scenario);
+        text = applyStyleCorrections(text, styleOut.findings());
+        log.step("StyleCorrector", ms(t0),
+                 styleOut.findings().isEmpty() ? null : "-> " + styleOut.findings().size() + " correction(s)");
+
+        t0 = System.nanoTime();
+        ProofreaderCorrectorOutput proofOut = proofreaderCorrectorStep.run(text);
+        text = applyProofCorrections(text, proofOut);
+        log.step("ProofreaderCorrector", ms(t0),
+                 proofOut.corrections().isEmpty() ? null : "-> " + proofOut.corrections().size() + " correction(s)");
 
         return text;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phase 3 — Global critique with vote
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Runs all sequence-level critics together and computes a global average score.
+     * All LLM calls complete first; scores are logged together afterwards (mirrors Plan pattern).
+     * If score < SEQUENCE_CRITIC_THRESHOLD and retry budget allows:
+     *   Writer (all problems as feedback) → Correctors (full Phase 2) → Critics again.
+     * Returns the version with the highest average score across all passes.
+     */
+    private String runSequenceCritique(String text, Scenario scenario, Chapter chapter,
+                                        Sequence seq, Story story, String sequencePlan,
+                                        GenerationConfig config) {
+        int    maxRetry    = config.qualityLevel().sequenceMaxRetry();
+        String bestText    = text;
+        double bestScore   = -1.0;
+        int    bestPass    = 0;
+        int    finalPasses = 0;
+
+        for (int pass = 0; pass <= maxRetry; pass++) {
+            finalPasses = pass + 1;
+            List<CriticEntry> entries     = new ArrayList<>();
+            List<String>      allProblems = new ArrayList<>();
+
+            // Run critics — collect results before logging
+            long t0 = System.nanoTime();
+            DeusInMachinaCriticOutput dm = deusInMachinaCriticStep.run(text, scenario, chapter);
+            entries.add(new CriticEntry("DeusInMachinaCritic", dm.score(), ms(t0),
+                                        dm.hasLeaks() ? List.of(dm.summary()) : List.of()));
+            if (dm.hasLeaks()) allProblems.add("Fuites mécaniques : " + dm.summary());
+
+            if (sequencePlan != null && !sequencePlan.isBlank()) {
+                List<String> beats = PlanFidelityCriticStep.extractBeats(sequencePlan);
+                if (!beats.isEmpty()) {
+                    t0 = System.nanoTime();
+                    PlanFidelityCriticOutput pf = planFidelityCriticStep.run(text, beats);
+                    entries.add(new CriticEntry("PlanFidelityCritic", pf.score(), ms(t0), pf.failures()));
+                    pf.failures().forEach(f -> allProblems.add("Beat du plan non développé : " + f));
+                }
+            }
+
+            List<String> checks = ScenarioFormatters.writerChecks(scenario, chapter, seq);
+            if (!checks.isEmpty()) {
+                t0 = System.nanoTime();
+                CheckCriticOutput cc = checkCriticStep.run(text, checks);
+                entries.add(new CriticEntry("CheckCritic", cc.score(), ms(t0), cc.failures()));
+                // TODO: CheckCritic failures not fed to Writer — add dual representation to enable Writer feedback
+            }
+
+            // Log all scores together, then decision
+            List<Double> scores = logCritics(entries);
+            double  avg    = scores.stream().mapToDouble(Double::doubleValue).average().orElse(10.0);
+            boolean passed = avg >= SEQUENCE_CRITIC_THRESHOLD;
+            boolean isLast = pass == maxRetry;
+            log.scoresSummary(avg, passed, (!passed && !isLast) ? (pass + 2) + "/" + (maxRetry + 1) : null);
+
+            if (avg > bestScore) { bestScore = avg; bestText = text; bestPass = pass + 1; }
+            if (passed || isLast) break;
+
+            String feedback = allProblems.stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
+            t0   = System.nanoTime();
+            text = writerStep.run(scenario, chapter, seq, story, sequencePlan, "", feedback).text();
+            log.step("Writer (CritiqueRetry " + (pass + 1) + ")", ms(t0), "-> " + countWords(text) + " mots");
+            text = applyCorrectorsPhase(text, scenario, chapter, config);
+        }
+
+        if (finalPasses > 1) log.sequenceRetained(bestPass, finalPasses, bestScore);
+        return bestText;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -324,76 +358,109 @@ public class WriteWorkflow {
 
     private record ChapterCritiqueResult(double avg, String problems) {}
 
+    /** Buffers one critic result so all LLM calls can complete before any score is logged. */
+    private record CriticEntry(String name, double score, long ms, List<String> problems) {}
+
+    /** Logs all buffered critic scores together and returns the list of scores. */
+    private List<Double> logCritics(List<CriticEntry> entries) {
+        List<Double> scores = new ArrayList<>();
+        for (CriticEntry e : entries) {
+            log.critic(e.name(), e.score(), e.ms(), e.problems());
+            scores.add(e.score());
+        }
+        return scores;
+    }
+
     private ChapterCritiqueResult runChapterCritique(Chapter chapter, Scenario scenario,
                                                       String fullText, Story story,
                                                       GenerationConfig config) {
-        List<Double>  scores   = new ArrayList<>();
-        List<String>  problems = new ArrayList<>();
+        List<CriticEntry> entries = new ArrayList<>();
 
+        // Run critics — collect results before logging
         switch (chapter.type()) {
             case IMPERATIVE -> {
                 long t0 = System.nanoTime();
                 TextNarrativeCriticOutput tn = textNarrativeCriticStep.run(fullText, scenario);
-                log.critic("TextNarrativeCritic", tn.score(), ms(t0), tn.problems());
-                scores.add(tn.score());
-                problems.addAll(tn.problems());
+                entries.add(new CriticEntry("TextNarrativeCritic", tn.score(), ms(t0), tn.problems()));
 
                 t0 = System.nanoTime();
                 TextCoherenceCriticOutput tc = textCoherenceCriticStep.run(fullText, scenario, chapter);
-                log.critic("TextCoherenceCritic", tc.score(), ms(t0), tc.problems());
-                scores.add(tc.score());
-                problems.addAll(tc.problems());
+                entries.add(new CriticEntry("TextCoherenceCritic", tc.score(), ms(t0), tc.problems()));
             }
             case DREAM -> {
                 long t0 = System.nanoTime();
                 TextDreamCriticOutput td = textDreamCriticStep.run(fullText, scenario);
-                log.critic("TextDreamCritic", td.score(), ms(t0), td.problems());
-                scores.add(td.score());
-                problems.addAll(td.problems());
+                entries.add(new CriticEntry("TextDreamCritic", td.score(), ms(t0), td.problems()));
             }
             case WHAT_IF -> {
                 long t0 = System.nanoTime();
                 TextWhatIfCriticOutput tw = textWhatIfCriticStep.run(fullText, scenario, chapter);
-                log.critic("TextWhatIfCritic", tw.score(), ms(t0), tw.problems());
-                scores.add(tw.score());
-                problems.addAll(tw.problems());
+                entries.add(new CriticEntry("TextWhatIfCritic", tw.score(), ms(t0), tw.problems()));
 
                 t0 = System.nanoTime();
                 TextCoherenceCriticOutput tc = textCoherenceCriticStep.run(fullText, scenario, chapter);
-                log.critic("TextCoherenceCritic", tc.score(), ms(t0), tc.problems());
-                scores.add(tc.score());
-                problems.addAll(tc.problems());
+                entries.add(new CriticEntry("TextCoherenceCritic", tc.score(), ms(t0), tc.problems()));
             }
         }
 
-        long                t0 = System.nanoTime();
-        GoalTextCheckerOutput gt = goalTextCheckerStep.run(fullText, chapter, scenario);
-        log.critic("GoalTextChecker", gt.score(), ms(t0), gt.problems());
-        scores.add(gt.score());
-        problems.addAll(gt.problems());
+        long t0 = System.nanoTime();
+        GoalTextCriticOutput gt = goalTextCriticStep.run(fullText, chapter, scenario);
+        entries.add(new CriticEntry("GoalTextCritic", gt.score(), ms(t0), gt.problems()));
 
-        double avg = scores.stream().mapToDouble(Double::doubleValue).average().orElse(10.0);
+        // Log all scores together
+        List<Double> scores   = logCritics(entries);
+        List<String> problems = entries.stream().flatMap(e -> e.problems().stream()).toList();
+
+        double avg          = scores.stream().mapToDouble(Double::doubleValue).average().orElse(10.0);
         String problemsText = problems.stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
         return new ChapterCritiqueResult(avg, problemsText);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Utilities
+    // Patch utilities
     // ─────────────────────────────────────────────────────────────────────────
 
-    private static String applyNaturalityFixes(String text, List<NaturalityFinding> findings) {
+    private String applyDeusCorrections(String text, List<DeusInMachinaCorrectorFinding> findings) {
         String result = text;
-        for (NaturalityFinding f : findings) {
-            result = result.replace(f.citation(), f.suggestion());
+        for (DeusInMachinaCorrectorFinding f : findings) {
+            String patched = result.replace(f.wrongPhrase(), f.correctedPhrase());
+            if (patched.equals(result))
+                log.warn("DeusInMachinaCorrector: replace miss — phrase not found in text: " + f.wrongPhrase());
+            result = patched;
         }
         return result;
     }
 
-    private static String applyCorrections(String text, ProofreaderOutput proof) {
+    private String applyStyleCorrections(String text, List<StyleCorrectorFinding> findings) {
+        String result = text;
+        for (StyleCorrectorFinding f : findings) {
+            String patched = result.replace(f.wrongPhrase(), f.correctedPhrase());
+            if (patched.equals(result))
+                log.warn("StyleCorrector: replace miss — phrase not found in text: " + f.wrongPhrase());
+            result = patched;
+        }
+        return result;
+    }
+
+    private String applyNaturalityFixes(String text, List<NaturalityFinding> findings) {
+        String result = text;
+        for (NaturalityFinding f : findings) {
+            String patched = result.replace(f.wrongPhrase(), f.correctedPhrase());
+            if (patched.equals(result))
+                log.warn("NaturalityCorrector: replace miss — phrase not found in text: " + f.wrongPhrase());
+            result = patched;
+        }
+        return result;
+    }
+
+    private String applyProofCorrections(String text, ProofreaderCorrectorOutput proof) {
         if (proof.corrections().isEmpty()) return text;
         String result = text;
-        for (ProofreaderOutput.Correction c : proof.corrections()) {
-            result = result.replace(c.wrongSentence(), c.correctSentence());
+        for (ProofreaderCorrectorOutput.Correction c : proof.corrections()) {
+            String patched = result.replace(c.wrongSentence(), c.correctSentence());
+            if (patched.equals(result))
+                log.warn("ProofreaderCorrector: replace miss — phrase not found in text: " + c.wrongSentence());
+            result = patched;
         }
         return result;
     }

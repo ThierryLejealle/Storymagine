@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.writer.stateextractor;
+package storymagine.redacteur.coeur.domaine.agent.writer.stateextractor;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

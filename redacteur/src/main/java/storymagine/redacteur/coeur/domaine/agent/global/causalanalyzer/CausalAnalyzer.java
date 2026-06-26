@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.global.causalanalyzer;
+package storymagine.redacteur.coeur.domaine.agent.global.causalanalyzer;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

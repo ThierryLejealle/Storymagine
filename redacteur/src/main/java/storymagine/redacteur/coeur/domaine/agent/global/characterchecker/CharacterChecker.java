@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.global.characterchecker;
+package storymagine.redacteur.coeur.domaine.agent.global.characterchecker;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

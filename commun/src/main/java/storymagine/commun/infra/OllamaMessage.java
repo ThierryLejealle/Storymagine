@@ -2,7 +2,7 @@ package storymagine.commun.infra;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIgnoreProperties(ignoreUnknown = true) // ignore "thinking" field in streaming responses
 class OllamaMessage {
     public String role;
     public String content;

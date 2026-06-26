@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.global.narrativearcanalyzer;
+package storymagine.redacteur.coeur.domaine.agent.global.narrativearcanalyzer;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

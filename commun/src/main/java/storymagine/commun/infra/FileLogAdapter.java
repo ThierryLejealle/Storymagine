@@ -139,6 +139,20 @@ public class FileLogAdapter implements LogPort {
     }
 
     @Override
+    public void sequenceRetained(int bestPass, int totalPasses, double bestScore) {
+        appendMaster(String.format(Locale.ROOT,
+                "[%s]   -> sequence retenue : passe %d/%d  moy %.2f%n",
+                ts(), bestPass, totalPasses, bestScore));
+    }
+
+    @Override
+    public void chapterRetained(int bestPass, int totalPasses, double bestScore) {
+        appendMaster(String.format(Locale.ROOT,
+                "[%s]   -> chapitre retenu : passe %d/%d  moy %.2f%n",
+                ts(), bestPass, totalPasses, bestScore));
+    }
+
+    @Override
     public void sequenceText(String chapterTitle, int seqIdx, String text) {
         writeChapterFile(chapterTitle, "seq_" + seqIdx + ".md", text);
     }

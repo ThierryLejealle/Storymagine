@@ -264,23 +264,26 @@ public class RedacteurCli {
     }
 
     private static OllamaConfig buildOllamaConfig(Properties props) {
-        String baseUrl       = props.getProperty("ollama.base-url",                       "http://localhost:11434");
-        int    ctxWindow     = Integer.parseInt(props.getProperty("ollama.context-window",               "32768"));
-        int    maxCtx        = Integer.parseInt(props.getProperty("ollama.max-context-window",          "131072"));
-        int    topK          = Integer.parseInt(props.getProperty("ollama.top-k",                           "40"));
-        double topP          = Double.parseDouble(props.getProperty("ollama.top-p",                        "0.9"));
-        double repeatPenalty = Double.parseDouble(props.getProperty("ollama.repeat-penalty",               "1.1"));
-        int    numPredict    = Integer.parseInt(props.getProperty("ollama.num-predict",                      "-1"));
-        int    timeoutMs     = Integer.parseInt(props.getProperty("ollama.timeout-ms",                  "600000"));
-        int    ramFraction   = Integer.parseInt(props.getProperty("ollama.large-model-ram-fraction-pct",    "60"));
-        int    timeoutMult   = Integer.parseInt(props.getProperty("ollama.large-model-timeout-multiplier",   "3"));
-        int    retryCount    = Integer.parseInt(props.getProperty("ollama.retry-count",                       "5"));
-        int    retryDelay1   = Integer.parseInt(props.getProperty("ollama.retry-delay1",                     "15"));
-        int    retryDelay2   = Integer.parseInt(props.getProperty("ollama.retry-delay2",                     "30"));
-        int    retryDelay3   = Integer.parseInt(props.getProperty("ollama.retry-delay3",                     "60"));
+        String  baseUrl             = props.getProperty("ollama.base-url",                        "http://localhost:11434");
+        int     ctxWindow           = Integer.parseInt(props.getProperty("ollama.context-window",                  "32768"));
+        int     maxCtx              = Integer.parseInt(props.getProperty("ollama.max-context-window",             "131072"));
+        int     topK                = Integer.parseInt(props.getProperty("ollama.top-k",                              "40"));
+        double  topP                = Double.parseDouble(props.getProperty("ollama.top-p",                           "0.9"));
+        double  repeatPenalty       = Double.parseDouble(props.getProperty("ollama.repeat-penalty",                  "1.1"));
+        int     numPredict          = Integer.parseInt(props.getProperty("ollama.num-predict",                         "-1"));
+        boolean streamMode          = !"sync".equalsIgnoreCase(props.getProperty("ollama.mode",                   "stream"));
+        int     timeoutMs           = Integer.parseInt(props.getProperty("ollama.timeout-ms",                     "600000"));
+        int     firstTokenTimeoutMs = Integer.parseInt(props.getProperty("ollama.stream.first-token-timeout-ms", "300000"));
+        int     interTokenTimeoutMs = Integer.parseInt(props.getProperty("ollama.stream.inter-token-timeout-ms",   "30000"));
+        int     ramFraction         = Integer.parseInt(props.getProperty("ollama.large-model-ram-fraction-pct",       "60"));
+        int     timeoutMult         = Integer.parseInt(props.getProperty("ollama.large-model-timeout-multiplier",      "3"));
+        int     retryCount          = Integer.parseInt(props.getProperty("ollama.retry-count",                          "5"));
+        int     retryDelay1         = Integer.parseInt(props.getProperty("ollama.retry-delay1",                        "15"));
+        int     retryDelay2         = Integer.parseInt(props.getProperty("ollama.retry-delay2",                        "30"));
+        int     retryDelay3         = Integer.parseInt(props.getProperty("ollama.retry-delay3",                        "60"));
 
         return new OllamaConfig(baseUrl, ctxWindow, maxCtx, topK, topP, repeatPenalty,
-            numPredict, timeoutMs,
+            numPredict, streamMode, timeoutMs, firstTokenTimeoutMs, interTokenTimeoutMs,
             new RetryPolicy(retryCount, retryDelay1, retryDelay2, retryDelay3),
             ramFraction, timeoutMult);
     }
