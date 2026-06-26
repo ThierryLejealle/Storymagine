@@ -54,7 +54,7 @@ public class RedacteurCli {
         System.out.printf("  1. Utiliser Ollama deja demarre%n");
         printGpuOption(2, gpus, 0);
         printGpuOption(3, gpus, 1);
-        System.out.printf("  4. Relancer sur GPU 0+1 - split auto%n");
+        System.out.printf("  4. Utiliser GPU 0+1 - split auto%n");
 
         int gpuChoice = 0;
         while (gpuChoice < 1 || gpuChoice > 4) {
@@ -344,10 +344,10 @@ public class RedacteurCli {
         NvidiaSmiSnapshot.GpuStat g = gpus.stream()
                 .filter(x -> x.index() == gpuIndex).findFirst().orElse(null);
         if (g != null) {
-            System.out.printf("  %d. Relancer sur GPU %d - %-32s  %.0f Go%n",
+            System.out.printf("  %d. Utiliser GPU %d - %-32s  %.0f Go%n",
                     num, gpuIndex, g.name(), g.totalMb() / 1024.0);
         } else {
-            System.out.printf("  %d. Relancer sur GPU %d (CUDA_VISIBLE_DEVICES=%d)%n",
+            System.out.printf("  %d. Utiliser GPU %d (CUDA_VISIBLE_DEVICES=%d)%n",
                     num, gpuIndex, gpuIndex);
         }
     }
