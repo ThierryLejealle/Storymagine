@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class StyleCorrector implements Agent {
 
-    private static final String AGENT_NAME = "StyleCorrector";
+    private static final String AGENT_NAME = "SequenceStyleCorrector";
 
     private final ModelCallPort llm;
 
@@ -48,7 +48,8 @@ public class StyleCorrector implements Agent {
                 Cherche en priorite :
                 - Verbes faibles ou abstraits la ou un verbe physique suffirait
                 - Constructions nominalisees ou passives inutiles
-                - Repetitions de structure ou de tournure dans le meme passage
+                - Repetitions de structure, de tournure, ou d'un meme mot ou groupe significatif dans des phrases proches
+                  (ex : "Il effaca la rature avec precipitation. Il prit sa gomme et effaca la rature." — "effaca la rature" repete en deux phrases)
                 - Formules generiques ou cliches de style ("un sourire triste", "le coeur lourd")
                 - Adjectifs de remplissage sans pouvoir evocateur
                 - Transitions mecaniques ou coutures visibles entre sequences

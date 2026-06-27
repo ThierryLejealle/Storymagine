@@ -38,7 +38,7 @@ public class ProofreaderCorrector implements Agent {
 
         Si aucun problème : retourner "PAS D'ERREUR" — rien avant, rien après.""";
 
-    private static final String AGENT_NAME = "ProofreaderCorrector";
+    private static final String AGENT_NAME = "SequenceProofreaderCorrector";
 
     private final ModelCallPort llm;
 

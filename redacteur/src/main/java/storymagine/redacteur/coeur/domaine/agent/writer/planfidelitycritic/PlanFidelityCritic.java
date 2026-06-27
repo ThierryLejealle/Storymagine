@@ -16,14 +16,14 @@ public class PlanFidelityCritic implements Agent {
 
     private static final String SYSTEM = """
             Tu es un editeur qui verifie qu'un texte exploite tous les beats d'un plan de sequence.
-            Un beat est exploite s'il est developpe dans le texte — une allusion fugace ne compte pas.
+            Un beat est exploite si son intention narrative est developpee dans le texte — cherche l'essence du beat, pas ses mots exacts. Une allusion fugace ne compte pas.
             Examine chaque beat individuellement.
             Pour chaque beat absent ou non developpe, ecris une ligne :
             MANQUANT: [le beat tel quel]
             Si tous les beats sont exploites : ecrire TOUT_OK — rien d'autre.
             Rien d'autre : ni introduction ni conclusion. En francais.""";
 
-    private static final String AGENT_NAME = "PlanFidelityCritic";
+    private static final String AGENT_NAME = "SequencePlanFidelityCritic";
 
     private final ModelCallPort llm;
 

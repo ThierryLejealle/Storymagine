@@ -26,7 +26,7 @@ public class RepetitionFilter implements Agent {
         Format de sortie STRICT : une expression par ligne, précédée d'un tiret (-).
         Pas de commentaires. Pas d'explication. Uniquement la liste filtrée. En français.""";
 
-    private static final String AGENT_NAME = "RepetitionFilter";
+    private static final String AGENT_NAME = "SequenceRepetitionFilter";
 
     private final ModelCallPort llm;
 

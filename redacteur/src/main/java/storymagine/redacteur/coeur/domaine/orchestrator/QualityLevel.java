@@ -6,18 +6,18 @@ package storymagine.redacteur.coeur.domaine.orchestrator;
  */
 public enum QualityLevel {
 
-    //                      write  planCr proof  seqCk  eval  pRtry sRtry cRtry thresh
+    //                      write  planCr proof  seqCk  eval  pRtry sRtry cRtry thresh corrRpt
     /** Plan only — writing phases skipped. */
-    PLAN_ONLY              (false, false, false, false, false,   0,    0,    0,   7.0),
+    PLAN_ONLY              (false, false, false, false, false,   0,    0,    0,   7.0,  false),
 
     /** Plan + write, minimum agents (StateExtractor + repetition memory only). */
-    BROUILLON              (true,  false, false, false, false,   0,    0,    0,   7.0),
+    BROUILLON              (true,  false, false, false, false,   0,    0,    0,   7.0,  false),
 
     /** Plan critics + write + sequence checkers + chapter critics, 1 retry each. */
-    SIMPLE                 (true,  true,  true,  true,  false,   1,    1,    1,   7.0),
+    SIMPLE                 (true,  true,  true,  true,  false,   1,    1,    1,   7.0,  false),
 
     /** Full pipeline: SIMPLE + global evaluation, 3 plan retries and 2 sequence/chapter retries. */
-    FULL                   (true,  true,  true,  true,  true,    3,    2,    2,   7.0);
+    FULL                   (true,  true,  true,  true,  true,    3,    2,    2,   7.0,  true);
 
     // ── Fields ──────────────────────────────────────────────────────────────
 
@@ -30,6 +30,7 @@ public enum QualityLevel {
     private final int     sequenceMaxRetry;
     private final int     chapitreMaxRetry;
     private final double  chapitreThreshold;
+    private final boolean runsCorrectorsRepeat;
 
     QualityLevel(boolean runsWriting,
                  boolean runsPlanCritics,
@@ -39,7 +40,8 @@ public enum QualityLevel {
                  int planMaxRetry,
                  int sequenceMaxRetry,
                  int chapitreMaxRetry,
-                 double chapitreThreshold) {
+                 double chapitreThreshold,
+                 boolean runsCorrectorsRepeat) {
         this.runsWriting           = runsWriting;
         this.runsPlanCritics       = runsPlanCritics;
         this.runsProofreader       = runsProofreader;
@@ -49,6 +51,7 @@ public enum QualityLevel {
         this.sequenceMaxRetry      = sequenceMaxRetry;
         this.chapitreMaxRetry      = chapitreMaxRetry;
         this.chapitreThreshold     = chapitreThreshold;
+        this.runsCorrectorsRepeat  = runsCorrectorsRepeat;
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -62,4 +65,5 @@ public enum QualityLevel {
     public int     sequenceMaxRetry()      { return sequenceMaxRetry; }
     public int     chapitreMaxRetry()      { return chapitreMaxRetry; }
     public double  chapitreThreshold()     { return chapitreThreshold; }
+    public boolean runsCorrectorsRepeat()  { return runsCorrectorsRepeat; }
 }

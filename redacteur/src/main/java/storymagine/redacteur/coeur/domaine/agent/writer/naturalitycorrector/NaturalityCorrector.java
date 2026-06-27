@@ -49,6 +49,12 @@ public class NaturalityCorrector implements Agent {
                     "il gerait la situation avec detachement")
             - groupes nominaux artificiels : "le deploiement reflechi du foulard"
               au lieu de "elle deplia son foulard"
+            - nom propre auto-referentiel : le texte emploie le prenom d'un personnage-focalisateur
+              la ou un pronom suffirait — artefact qui trahit une gestion par entites plutot que
+              par narration organique
+              (ex : "Lexy tendit sa main vers le medecin. Elle le voyait etudier attentivement
+                     les blessures de la main de Lexy."
+               vs  "Elle le voyait etudier attentivement les blessures de sa main.")
             - vocabulaire de planification, d'optimisation ou d'analyse dans une narration
               ordinaire : "optimise", "positionne strategiquement", "effectue une transition"
             - ambiance expliquee : le texte nomme directement une atmosphere ou un effet emotionnel
@@ -81,7 +87,7 @@ public class NaturalityCorrector implements Agent {
             Rien d'autre : ni introduction ni conclusion.
             En francais.""";
 
-    private static final String AGENT_NAME = "NaturalityCorrector";
+    private static final String AGENT_NAME = "SequenceNaturalityCorrector";
 
     private final ModelCallPort llm;
 

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -39,7 +39,7 @@ public class TextCoherenceCritic implements Agent {
             Rien d'autre : ni texte avant ni texte apres ces trois sections.
             En francais.""";
 
-    private static final String AGENT_NAME = "TextCoherenceCritic";
+    private static final String AGENT_NAME = "ChapterCoherenceCritic";
 
     private final ModelCallPort llm;
 

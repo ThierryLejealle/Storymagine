@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.goaltextcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic;
 
 import java.util.List;
 import java.util.stream.Collectors;

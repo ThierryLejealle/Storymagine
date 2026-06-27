@@ -14,11 +14,15 @@ import storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner.ChapterPlan
 import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanChecker;
 import storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic.PlanCoherenceCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic.PlanNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic.GoalTextCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic.TextCoherenceCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textdreamcritic.TextDreamCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacritic.DeusInMachinaCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrector;
 import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.goaltextcritic.GoalTextCritic;
 import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrector;
 import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrector;
 import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilter;
@@ -26,10 +30,6 @@ import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.Repeti
 import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.Writer;
 import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractor;
 import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.TextCoherenceCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic.TextWhatIfCritic;
 import storymagine.redacteur.coeur.domaine.orchestrator.StoryOrchestrator;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.CausalAnalyzerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.ChapterStyleCheckerStep;
@@ -38,6 +38,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.EvaluateWorkflo
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.NarrativeArcAnalyzerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.StoryCompressorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlannerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.GoalPlanCheckerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanCoherenceCriticStep;
@@ -47,17 +48,17 @@ import storymagine.redacteur.coeur.domaine.orchestrator.write.DeusInMachinaCriti
 import storymagine.redacteur.coeur.domaine.orchestrator.write.DeusInMachinaCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CheckCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.PlanFidelityCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.GoalTextCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.GoalTextCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextCoherenceCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextDreamCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextNarrativeCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.NaturalityCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.ProofreaderCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionFilterStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionTrackerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.StateExtractorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.StyleCorrectorStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.TextCoherenceCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.TextDreamCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.TextNarrativeCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.TextWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriteWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriterStep;
 import storymagine.redacteur.coeur.ports.HtmlExportPort;
@@ -84,7 +85,14 @@ public class RedacteurModule {
     public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
                                             LogPort log, HtmlExportPort htmlExport, BeatsConfig beatsConfig) {
         OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
-        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig, CorrectorConfig.defaults());
+    }
+
+    public static RedacteurService assemble(OllamaConfig ollamaConfig, String modelName,
+                                            LogPort log, HtmlExportPort htmlExport,
+                                            BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
+        OllamaAdapter llm = ollamaConfig.adapter(modelName, log);
+        return assemble(llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig, correctorConfig);
     }
 
     public static RedacteurService assemble(OllamaAdapter llm, ScenarioReaderPort scenarioReader) {
@@ -106,6 +114,13 @@ public class RedacteurModule {
     /** Full assembly with custom beats configuration. */
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log, HtmlExportPort htmlExport, BeatsConfig beatsConfig) {
+        return assemble(llm, scenarioReader, log, htmlExport, beatsConfig, CorrectorConfig.defaults());
+    }
+
+    /** Full assembly with custom beats and corrector configuration. */
+    public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
+                                            LogPort log, HtmlExportPort htmlExport,
+                                            BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
         // --- Plan agents ---
         var chapterPlanner      = new ChapterPlanner(llm);
         var planNarrativeCritic = new PlanNarrativeCritic(llm);
@@ -181,7 +196,7 @@ public class RedacteurModule {
             textNarrativeCriticStep, textCoherenceCriticStep,
             textDreamCriticStep, textWhatIfCriticStep,
             goalTextCriticStep,
-            htmlExport, log);
+            correctorConfig, htmlExport, log);
 
         var evaluateWorkflow = new EvaluateWorkflow(
             storyCompressorStep, chapterStyleCheckerStep, characterCheckerStep,

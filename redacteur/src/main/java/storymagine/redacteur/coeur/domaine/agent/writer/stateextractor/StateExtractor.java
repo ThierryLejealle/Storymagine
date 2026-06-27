@@ -23,7 +23,7 @@ public class StateExtractor implements Agent {
         Si aucun changement notable : réponds exactement AUCUN
         Maximum 5 lignes. En français. Pas de commentaires.""";
 
-    private static final String AGENT_NAME = "StateExtractor";
+    private static final String AGENT_NAME = "SequenceStateExtractor";
 
     private final ModelCallPort llm;
 

@@ -24,7 +24,7 @@ public class CheckCritic implements Agent {
             Si tous les points sont respectes : ecrire TOUT_OK — rien d'autre.
             Rien d'autre : ni introduction ni conclusion. En francais.""";
 
-    private static final String AGENT_NAME = "CheckCritic";
+    private static final String AGENT_NAME = "SequenceCheckCritic";
 
     private final ModelCallPort llm;
 

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -41,7 +41,7 @@ public class TextNarrativeCritic implements Agent {
             Rien d'autre : ni texte avant ni texte apres ces trois sections.
             En francais.""";
 
-    private static final String AGENT_NAME = "TextNarrativeCritic";
+    private static final String AGENT_NAME = "ChapterNarrativeCritic";
 
     private final ModelCallPort llm;
 

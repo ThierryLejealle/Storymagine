@@ -40,7 +40,7 @@ PROBLEME: [RIEN]
 En français.
 """;
 
-    private static final String AGENT_NAME = "GoalPlanChecker";
+    private static final String AGENT_NAME = "PlanGoalChecker";
 
     private final ModelCallPort llm;
 

@@ -280,16 +280,18 @@ public class ChapterPlanner implements Agent {
         String beatsRaw = obj.substring(arrStart + 1, arrEnd);
         List<String> beats = new ArrayList<>();
         int i = 0;
-        while (i < beatsRaw.length()) {
+        while (i < beatsRaw.length() && beats.size() < 50) {
             int q1 = beatsRaw.indexOf('"', i);
             if (q1 < 0) break;
             StringBuilder sb = new StringBuilder();
+            boolean closed = false;
             for (int j = q1 + 1; j < beatsRaw.length(); j++) {
                 char c = beatsRaw.charAt(j);
                 if (c == '\\' && j + 1 < beatsRaw.length()) { sb.append(beatsRaw.charAt(j + 1)); j++; }
-                else if (c == '"') { i = j + 1; break; }
+                else if (c == '"') { i = j + 1; closed = true; break; }
                 else sb.append(c);
             }
+            if (!closed) break;  // JSON malformé — guillemet fermante manquante, i non mis à jour
             String beat = sb.toString().trim();
             if (!beat.isBlank()) beats.add(beat);
         }

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic;
 
 import java.util.List;
 

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  */
 public class Writer implements Agent {
 
-    private static final String AGENT_NAME = "Writer";
+    private static final String AGENT_NAME = "SequenceWriter";
 
     private final ModelCallPort llm;
     private final LogPort       log;

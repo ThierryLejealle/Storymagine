@@ -41,7 +41,7 @@ public class RepetitionTracker implements Agent {
 
         Pas de commentaires. Pas d'explication. En français.""";
 
-    private static final String AGENT_NAME = "RepetitionTracker";
+    private static final String AGENT_NAME = "SequenceRepetitionTracker";
 
     private final ModelCallPort llm;
 

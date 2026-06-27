@@ -74,10 +74,14 @@ public class DeusInMachinaCorrector implements Agent {
             - FAUX: "citation exacte du passage problématique"
               JUSTE: "réécriture corrigée du même passage"
 
+            Pour une LISTE NARRATIVISÉE (type 4), cite le bloc complet de phrases :
+            - FAUX: "Pierre arriva. Il observa la pièce. Il déposa sa valise. Il chercha son contact."
+              JUSTE: "Pierre posa sa valise et parcourut la pièce des yeux."
+
             Si le texte est propre : PAS DE CORRECTION — rien d'autre.
             En français. Sois précis et minutieux pour trouver toutes les fuites avérées, même mineures.""";
 
-    private static final String AGENT_NAME = "DeusInMachinaCorrector";
+    private static final String AGENT_NAME = "SequenceDeusInMachinaCorrector";
 
     private final ModelCallPort llm;
 

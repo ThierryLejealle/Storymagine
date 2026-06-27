@@ -85,7 +85,7 @@ public class PlanWorkflow {
 
             log.critic("PlanNarrativeCritic", narrative.score(), narrMs, narrative.problems());
             log.critic("PlanCoherenceCritic", coherence.score(), cohMs,  coherence.problems());
-            log.critic("GoalPlanChecker",     goal.score(),      goalMs, goal.problems());
+            log.critic("PlanGoalChecker",      goal.score(),      goalMs, goal.problems());
 
             double  avg           = (narrative.score() + coherence.score() + goal.score()) / 3.0;
             boolean passed        = avg >= 10.0;
@@ -98,7 +98,7 @@ public class PlanWorkflow {
                 bestAttempt       = attempt + 1;
             }
 
-            String hint = (!passed && !isLastAttempt) ? (attempt + 2) + "/" + maxAttempts : null;
+            String hint = (!passed && !isLastAttempt) ? "PLAN " + (attempt + 2) + "/" + maxAttempts : null;
             log.scoresSummary(avg, passed, hint);
 
             if (passed || isLastAttempt) break;

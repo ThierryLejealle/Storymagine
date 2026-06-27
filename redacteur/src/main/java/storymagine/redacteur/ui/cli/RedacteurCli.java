@@ -14,6 +14,7 @@ import storymagine.commun.infra.RetryPolicy;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.redacteur.RedacteurModule;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.infra.HtmlFileExportAdapter;
@@ -140,9 +141,10 @@ public class RedacteurCli {
 
         // 3. Lister les scenarios
         System.out.println();
-        var htmlExport  = new HtmlFileExportAdapter(fileLog::runDir);
-        var beatsConfig = buildBeatsConfig(props);
-        var service     = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport, beatsConfig);
+        var htmlExport      = new HtmlFileExportAdapter(fileLog::runDir);
+        var beatsConfig     = buildBeatsConfig(props);
+        var correctorConfig = buildCorrectorConfig(props);
+        var service         = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport, beatsConfig, correctorConfig);
         var scenarios = service.listScenarios(scenarioRoot);
         if (scenarios.isEmpty()) {
             System.err.println("ERREUR : aucun scenario dans '" + scenarioRoot + "'.");
@@ -338,6 +340,11 @@ public class RedacteurCli {
         int ratio     = Integer.parseInt(props.getProperty("beats.per.words.ratio", "75"));
         int tolerance = Integer.parseInt(props.getProperty("beats.tolerance.pct",   "20"));
         return new BeatsConfig(base, ratio, tolerance);
+    }
+
+    private static CorrectorConfig buildCorrectorConfig(Properties props) {
+        float threshold = Float.parseFloat(props.getProperty("corrector.repeat.threshold.per.word", "0.016"));
+        return new CorrectorConfig(threshold);
     }
 
     private static void printGpuOption(int num, List<NvidiaSmiSnapshot.GpuStat> gpus, int gpuIndex) {

@@ -83,7 +83,7 @@ public class DeusInMachinaCritic implements Agent {
 
             Sois précis et sélectif. En français.""";
 
-    private static final String AGENT_NAME = "DeusInMachinaCritic";
+    private static final String AGENT_NAME = "SequenceDeusInMachinaCritic";
 
     private final ModelCallPort llm;
 

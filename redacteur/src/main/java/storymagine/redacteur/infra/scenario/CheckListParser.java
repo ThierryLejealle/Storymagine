@@ -34,6 +34,7 @@ class CheckListParser {
     }
 
     private static void parse(String content, List<String> plan, List<String> writer) {
+        content = content.replaceAll("(?s)<!--.*?-->", "");
         Section       section = Section.GLOBAL;
         List<String>  global  = new ArrayList<>();
         StringBuilder current = null;

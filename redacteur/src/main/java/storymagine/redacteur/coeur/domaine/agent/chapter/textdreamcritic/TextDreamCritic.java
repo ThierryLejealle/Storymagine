@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.textdreamcritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class TextDreamCritic implements Agent {
 
-    private static final String AGENT_NAME = "TextDreamCritic";
+    private static final String AGENT_NAME = "ChapterDreamCritic";
 
     private final ModelCallPort llm;
 
@@ -42,7 +42,6 @@ public class TextDreamCritic implements Agent {
     }
 
     private static String buildSystem(String level) {
-        // Critères selon le niveau de réalisme du rêve
         String levelCriteria = switch (level) {
             case "realistic" -> "Critères UNIQUEMENT : intensité émotionnelle (angoisses et désirs transparaissent dans des images familières légèrement décalées), cohérence distordue propre au rêve, résonance psychologique avec le personnage.";
             case "surreal"   -> "Critères UNIQUEMENT : originalité radicale des images (rien de banal ni de prévisible), logique interne propre au rêve (même absurde, il a sa cohérence), puissance sensorielle et émotionnelle.";

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
@@ -40,7 +40,7 @@ public class TextWhatIfCritic implements Agent {
             SCORE: N  (entier 1-10)
             En français.""";
 
-    private static final String AGENT_NAME = "TextWhatIfCritic";
+    private static final String AGENT_NAME = "ChapterWhatIfCritic";
 
     private final ModelCallPort llm;
 

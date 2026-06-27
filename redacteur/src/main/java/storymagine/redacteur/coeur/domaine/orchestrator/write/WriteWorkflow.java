@@ -6,7 +6,11 @@ import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.D
 import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacritic.DeusInMachinaCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.goaltextcritic.GoalTextCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic.GoalTextCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic.TextCoherenceCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textdreamcritic.TextDreamCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityFinding;
 import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrectorOutput;
@@ -15,11 +19,12 @@ import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.Repeti
 import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorOutput;
 import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorFinding;
 import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.textcoherencecritic.TextCoherenceCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.textdreamcritic.TextDreamCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.textnarrativecritic.TextNarrativeCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.textwhatifcritic.TextWhatIfCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.GoalTextCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextCoherenceCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextDreamCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextNarrativeCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.StoryFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
@@ -96,6 +101,7 @@ public class WriteWorkflow {
     private final TextWhatIfCriticStep       textWhatIfCriticStep;
     private final GoalTextCriticStep         goalTextCriticStep;
 
+    private final CorrectorConfig            correctorConfig;
     private final HtmlExportPort             htmlExport;
     private final LogPort                    log;
 
@@ -115,6 +121,7 @@ public class WriteWorkflow {
                          TextDreamCriticStep textDreamCriticStep,
                          TextWhatIfCriticStep textWhatIfCriticStep,
                          GoalTextCriticStep goalTextCriticStep,
+                         CorrectorConfig correctorConfig,
                          HtmlExportPort htmlExport,
                          LogPort log) {
         this.writerStep                 = writerStep;
@@ -133,6 +140,7 @@ public class WriteWorkflow {
         this.textDreamCriticStep        = textDreamCriticStep;
         this.textWhatIfCriticStep       = textWhatIfCriticStep;
         this.goalTextCriticStep         = goalTextCriticStep;
+        this.correctorConfig            = correctorConfig;
         this.htmlExport                 = htmlExport;
         this.log                        = log;
     }
@@ -164,6 +172,7 @@ public class WriteWorkflow {
 
             if (!runCritique) break;
 
+            log.phaseHeader("EVALUER CHAPITRE", chapter.title());
             ChapterCritiqueResult critique = runChapterCritique(chapter, scenario,
                                                                 wc.fullText(), story, config);
             boolean passed        = critique.avg() > config.qualityLevel().chapitreThreshold();
@@ -175,7 +184,7 @@ public class WriteWorkflow {
                 bestChapPass  = chapPass + 1;
             }
 
-            String hint = (!passed && !isLastAttempt) ? (chapPass + 2) + "/" + chapMaxAttempts : null;
+            String hint = (!passed && !isLastAttempt) ? "CHAPITRE " + (chapPass + 2) + "/" + chapMaxAttempts : null;
             log.scoresSummary(critique.avg(), passed, hint);
 
             if (passed || isLastAttempt) break;
@@ -210,7 +219,7 @@ public class WriteWorkflow {
         long t0 = System.nanoTime();
         String text = writerStep.run(scenario, chapter, seq, story, sequencePlan,
                                      "", chapterRewriteProblems).text();
-        log.step("Writer", ms(t0), "-> " + countWords(text) + " mots");
+        log.step("SequenceWriter", ms(t0), "-> " + countWords(text) + " mots");
 
         // Phase 2 — Correctors
         text = applyCorrectorsPhase(text, scenario, chapter, config);
@@ -224,19 +233,19 @@ public class WriteWorkflow {
         t0 = System.nanoTime();
         StateExtractorOutput stateOut = stateExtractorStep.run(text, story.worldState());
         if (stateOut.hasChanges()) StoryFormatters.applyStateLines(story.worldState(), stateOut.stateLines());
-        log.step("StateExtractor", ms(t0),
+        log.step("SequenceStateExtractor", ms(t0),
                  stateOut.hasChanges() ? "-> " + countLines(stateOut.stateLines()) + " changement(s)" : null);
 
         t0 = System.nanoTime();
         RepetitionTrackerOutput trackOut = repetitionTrackerStep.run(text, story.repetitionMemory());
-        log.step("RepetitionTracker", ms(t0), null);
+        log.step("SequenceRepetitionTracker", ms(t0), null);
 
         t0 = System.nanoTime();
         RepetitionFilterOutput filterOut = repetitionFilterStep.run(
                 trackOut.phrases(), ScenarioFormatters.keepPhrases(scenario));
         story.repetitionMemory().addPhrases(filterOut.filteredCandidates());
         story.repetitionMemory().addThemes(trackOut.themes());
-        log.step("RepetitionFilter", ms(t0),
+        log.step("SequenceRepetitionFilter", ms(t0),
                  filterOut.filteredCandidates().isEmpty() ? null
                          : "-> " + filterOut.filteredCandidates().size() + " filtre(s)");
 
@@ -254,29 +263,72 @@ public class WriteWorkflow {
                                          GenerationConfig config) {
         if (!config.qualityLevel().runsProofreader()) return text;
 
+        boolean repeat  = config.qualityLevel().runsCorrectorsRepeat()
+                          && correctorConfig.repeatThresholdPerWord() > 0;
+
         long t0 = System.nanoTime();
         DeusInMachinaCorrectorOutput deusOut = deusInMachinaCorrectorStep.run(text, scenario, chapter);
         text = applyDeusCorrections(text, deusOut.findings());
-        log.step("DeusInMachinaCorrector", ms(t0),
+        log.step("SequenceDeusInMachinaCorrector", ms(t0),
                  deusOut.findings().isEmpty() ? null : "-> " + deusOut.findings().size() + " correction(s)");
+        if (repeat && exceedsThreshold(deusOut.findings().size(), text)) {
+            t0 = System.nanoTime();
+            DeusInMachinaCorrectorOutput deusOut2 = deusInMachinaCorrectorStep.run(text, scenario, chapter);
+            text = applyDeusCorrections(text, deusOut2.findings());
+            log.step("SequenceDeusInMachinaCorrector (pass 2)", ms(t0),
+                     deusOut2.findings().isEmpty() ? null : "-> " + deusOut2.findings().size() + " correction(s)");
+            if (exceedsThreshold(deusOut2.findings().size(), text))
+                log.warn(String.format("DeusInMachinaCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
+                                       ratio(deusOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        }
 
         t0 = System.nanoTime();
         NaturalityCorrectorOutput natOut = naturalityCorrectorStep.run(text);
         text = applyNaturalityFixes(text, natOut.findings());
-        log.step("NaturalityCorrector", ms(t0),
+        log.step("SequenceNaturalityCorrector", ms(t0),
                  natOut.findings().isEmpty() ? null : "-> " + natOut.findings().size() + " correction(s)");
+        if (repeat && exceedsThreshold(natOut.findings().size(), text)) {
+            t0 = System.nanoTime();
+            NaturalityCorrectorOutput natOut2 = naturalityCorrectorStep.run(text);
+            text = applyNaturalityFixes(text, natOut2.findings());
+            log.step("SequenceNaturalityCorrector (pass 2)", ms(t0),
+                     natOut2.findings().isEmpty() ? null : "-> " + natOut2.findings().size() + " correction(s)");
+            if (exceedsThreshold(natOut2.findings().size(), text))
+                log.warn(String.format("NaturalityCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
+                                       ratio(natOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        }
 
         t0 = System.nanoTime();
         StyleCorrectorOutput styleOut = styleCorrectorStep.run(text, scenario);
         text = applyStyleCorrections(text, styleOut.findings());
-        log.step("StyleCorrector", ms(t0),
+        log.step("SequenceStyleCorrector", ms(t0),
                  styleOut.findings().isEmpty() ? null : "-> " + styleOut.findings().size() + " correction(s)");
+        if (repeat && exceedsThreshold(styleOut.findings().size(), text)) {
+            t0 = System.nanoTime();
+            StyleCorrectorOutput styleOut2 = styleCorrectorStep.run(text, scenario);
+            text = applyStyleCorrections(text, styleOut2.findings());
+            log.step("SequenceStyleCorrector (pass 2)", ms(t0),
+                     styleOut2.findings().isEmpty() ? null : "-> " + styleOut2.findings().size() + " correction(s)");
+            if (exceedsThreshold(styleOut2.findings().size(), text))
+                log.warn(String.format("StyleCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
+                                       ratio(styleOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        }
 
         t0 = System.nanoTime();
         ProofreaderCorrectorOutput proofOut = proofreaderCorrectorStep.run(text);
         text = applyProofCorrections(text, proofOut);
-        log.step("ProofreaderCorrector", ms(t0),
+        log.step("SequenceProofreaderCorrector", ms(t0),
                  proofOut.corrections().isEmpty() ? null : "-> " + proofOut.corrections().size() + " correction(s)");
+        if (repeat && exceedsThreshold(proofOut.corrections().size(), text)) {
+            t0 = System.nanoTime();
+            ProofreaderCorrectorOutput proofOut2 = proofreaderCorrectorStep.run(text);
+            text = applyProofCorrections(text, proofOut2);
+            log.step("SequenceProofreaderCorrector (pass 2)", ms(t0),
+                     proofOut2.corrections().isEmpty() ? null : "-> " + proofOut2.corrections().size() + " correction(s)");
+            if (exceedsThreshold(proofOut2.corrections().size(), text))
+                log.warn(String.format("ProofreaderCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
+                                       ratio(proofOut2.corrections().size(), text), correctorConfig.repeatThresholdPerWord()));
+        }
 
         return text;
     }
@@ -309,7 +361,7 @@ public class WriteWorkflow {
             // Run critics — collect results before logging
             long t0 = System.nanoTime();
             DeusInMachinaCriticOutput dm = deusInMachinaCriticStep.run(text, scenario, chapter);
-            entries.add(new CriticEntry("DeusInMachinaCritic", dm.score(), ms(t0),
+            entries.add(new CriticEntry("SequenceDeusInMachinaCritic", dm.score(), ms(t0),
                                         dm.hasLeaks() ? List.of(dm.summary()) : List.of()));
             if (dm.hasLeaks()) allProblems.add("Fuites mécaniques : " + dm.summary());
 
@@ -318,7 +370,7 @@ public class WriteWorkflow {
                 if (!beats.isEmpty()) {
                     t0 = System.nanoTime();
                     PlanFidelityCriticOutput pf = planFidelityCriticStep.run(text, beats);
-                    entries.add(new CriticEntry("PlanFidelityCritic", pf.score(), ms(t0), pf.failures()));
+                    entries.add(new CriticEntry("SequencePlanFidelityCritic", pf.score(), ms(t0), pf.failures()));
                     pf.failures().forEach(f -> allProblems.add("Beat du plan non développé : " + f));
                 }
             }
@@ -327,7 +379,7 @@ public class WriteWorkflow {
             if (!checks.isEmpty()) {
                 t0 = System.nanoTime();
                 CheckCriticOutput cc = checkCriticStep.run(text, checks);
-                entries.add(new CriticEntry("CheckCritic", cc.score(), ms(t0), cc.failures()));
+                entries.add(new CriticEntry("SequenceCheckCritic", cc.score(), ms(t0), cc.failures()));
                 // TODO: CheckCritic failures not fed to Writer — add dual representation to enable Writer feedback
             }
 
@@ -336,7 +388,7 @@ public class WriteWorkflow {
             double  avg    = scores.stream().mapToDouble(Double::doubleValue).average().orElse(10.0);
             boolean passed = avg >= SEQUENCE_CRITIC_THRESHOLD;
             boolean isLast = pass == maxRetry;
-            log.scoresSummary(avg, passed, (!passed && !isLast) ? (pass + 2) + "/" + (maxRetry + 1) : null);
+            log.scoresSummary(avg, passed, (!passed && !isLast) ? "SEQUENCE " + (pass + 2) + "/" + (maxRetry + 1) : null);
 
             if (avg > bestScore) { bestScore = avg; bestText = text; bestPass = pass + 1; }
             if (passed || isLast) break;
@@ -344,7 +396,7 @@ public class WriteWorkflow {
             String feedback = allProblems.stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
             t0   = System.nanoTime();
             text = writerStep.run(scenario, chapter, seq, story, sequencePlan, "", feedback).text();
-            log.step("Writer (CritiqueRetry " + (pass + 1) + ")", ms(t0), "-> " + countWords(text) + " mots");
+            log.step("SequenceWriter (CritiqueRetry " + (pass + 1) + ")", ms(t0), "-> " + countWords(text) + " mots");
             text = applyCorrectorsPhase(text, scenario, chapter, config);
         }
 
@@ -381,31 +433,31 @@ public class WriteWorkflow {
             case IMPERATIVE -> {
                 long t0 = System.nanoTime();
                 TextNarrativeCriticOutput tn = textNarrativeCriticStep.run(fullText, scenario);
-                entries.add(new CriticEntry("TextNarrativeCritic", tn.score(), ms(t0), tn.problems()));
+                entries.add(new CriticEntry("ChapterNarrativeCritic", tn.score(), ms(t0), tn.problems()));
 
                 t0 = System.nanoTime();
                 TextCoherenceCriticOutput tc = textCoherenceCriticStep.run(fullText, scenario, chapter);
-                entries.add(new CriticEntry("TextCoherenceCritic", tc.score(), ms(t0), tc.problems()));
+                entries.add(new CriticEntry("ChapterCoherenceCritic", tc.score(), ms(t0), tc.problems()));
             }
             case DREAM -> {
                 long t0 = System.nanoTime();
                 TextDreamCriticOutput td = textDreamCriticStep.run(fullText, scenario);
-                entries.add(new CriticEntry("TextDreamCritic", td.score(), ms(t0), td.problems()));
+                entries.add(new CriticEntry("ChapterDreamCritic", td.score(), ms(t0), td.problems()));
             }
             case WHAT_IF -> {
                 long t0 = System.nanoTime();
                 TextWhatIfCriticOutput tw = textWhatIfCriticStep.run(fullText, scenario, chapter);
-                entries.add(new CriticEntry("TextWhatIfCritic", tw.score(), ms(t0), tw.problems()));
+                entries.add(new CriticEntry("ChapterWhatIfCritic", tw.score(), ms(t0), tw.problems()));
 
                 t0 = System.nanoTime();
                 TextCoherenceCriticOutput tc = textCoherenceCriticStep.run(fullText, scenario, chapter);
-                entries.add(new CriticEntry("TextCoherenceCritic", tc.score(), ms(t0), tc.problems()));
+                entries.add(new CriticEntry("ChapterCoherenceCritic", tc.score(), ms(t0), tc.problems()));
             }
         }
 
         long t0 = System.nanoTime();
         GoalTextCriticOutput gt = goalTextCriticStep.run(fullText, chapter, scenario);
-        entries.add(new CriticEntry("GoalTextCritic", gt.score(), ms(t0), gt.problems()));
+        entries.add(new CriticEntry("ChapterGoalCritic", gt.score(), ms(t0), gt.problems()));
 
         // Log all scores together
         List<Double> scores   = logCritics(entries);
@@ -463,6 +515,15 @@ public class WriteWorkflow {
             result = patched;
         }
         return result;
+    }
+
+    private float ratio(int count, String text) {
+        int words = countWords(text);
+        return words == 0 ? 0f : (float) count / words;
+    }
+
+    private boolean exceedsThreshold(int count, String text) {
+        return ratio(count, text) > correctorConfig.repeatThresholdPerWord();
     }
 
     private static int countWords(String text) {

@@ -1,4 +1,4 @@
-package storymagine.redacteur.coeur.domaine.agent.writer.goaltextcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic;
 
 import java.util.List;
 
@@ -32,7 +32,7 @@ public class GoalTextCritic implements Agent {
 
         En francais.""";
 
-    private static final String AGENT_NAME = "GoalTextCritic";
+    private static final String AGENT_NAME = "ChapterGoalCritic";
 
     private final ModelCallPort llm;
 

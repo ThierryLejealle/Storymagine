@@ -47,7 +47,7 @@ class WorkflowLogTest {
         assertTrue(log.hasStep("ChapterPlanner"),        "Expected ChapterPlanner step");
         assertTrue(log.hasCritic("PlanNarrativeCritic"), "Expected PlanNarrativeCritic logged");
         assertTrue(log.hasCritic("PlanCoherenceCritic"), "Expected PlanCoherenceCritic logged");
-        assertTrue(log.hasCritic("GoalPlanChecker"),     "Expected GoalPlanChecker logged");
+        assertTrue(log.hasCritic("PlanGoalChecker"),     "Expected PlanGoalChecker logged");
         assertTrue(log.hasScore("PASS"),                 "Expected PASS outcome logged");
     }
 
