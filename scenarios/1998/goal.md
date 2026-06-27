@@ -11,5 +11,3 @@
     Longueur cible : 60 000 mots.
 -->
 - Raconter l'histoire entre deux personnes qui vont tomber amoureux.
-- c'est un beau souvenir après 20 ans de marriage
-- un peu comme un beau rêve mais c'était la réalité

@@ -1,9 +1,9 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.plan;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
 import storymagine.commun.coeur.ports.LogPort;
-import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanCheckerOutput;
-import storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic.PlanCoherenceCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic.PlanNarrativeCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanCheckerOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;

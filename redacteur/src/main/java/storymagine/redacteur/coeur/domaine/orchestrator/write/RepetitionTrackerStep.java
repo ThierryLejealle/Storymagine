@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTracker;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTrackerInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTrackerOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTracker;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTrackerInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTrackerOutput;
 import storymagine.redacteur.coeur.domaine.story.RepetitionMemory;
 
 /** Activates RepetitionTracker to extract new forbidden phrases and themes from a sequence. */

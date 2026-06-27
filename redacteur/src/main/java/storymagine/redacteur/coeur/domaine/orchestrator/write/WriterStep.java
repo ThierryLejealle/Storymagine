@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.Writer;
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.WriterInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.WriterOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.writer.Writer;
+import storymagine.redacteur.coeur.domaine.agent.sequence.writer.WriterInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.writer.WriterOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.StoryFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;

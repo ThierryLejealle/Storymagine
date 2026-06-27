@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrectorInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorOutput;
 
 /** Activates NaturalityCorrector on the full chapter text (all chapter types, SIMPLE and FULL quality). */
 public class NaturalityCorrectorStep {

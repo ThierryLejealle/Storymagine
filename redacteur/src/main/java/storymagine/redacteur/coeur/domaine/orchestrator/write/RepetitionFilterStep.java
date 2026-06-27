@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilter;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilterInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilterOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilter;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilterInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilterOutput;
 
 import java.util.List;
 

@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 
 /** Activates StyleCorrector to patch stylistic weaknesses inline. */

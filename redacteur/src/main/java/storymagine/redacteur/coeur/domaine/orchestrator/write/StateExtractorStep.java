@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractor;
-import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractor;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractorInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractorOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.StoryFormatters;
 import storymagine.redacteur.coeur.domaine.story.WorldState;
 

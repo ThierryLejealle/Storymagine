@@ -26,8 +26,7 @@ public final class CriticOutputParser {
             if (norm.startsWith("PROBLEME:") || norm.startsWith("DEFAUT_") || norm.startsWith("AMELIORATION:")) {
                 String p = t.substring(t.indexOf(':') + 1).trim();
                 String pn = p.toLowerCase().replaceAll("[\\[\\]().]", "").trim();
-                if (!pn.isEmpty() && !pn.equals("aucun") && !pn.equals("rien")
-                        && !pn.equals("none") && !pn.equals("neant")) {
+                if (!isSentinel(pn.toUpperCase())) {
                     problems.add(p);
                 }
             }
@@ -47,8 +46,7 @@ public final class CriticOutputParser {
             if (!t.startsWith("AMELIORATION:") && !t.startsWith("DEFAUT_SIGNIFICATIF:")
                     && !t.startsWith("DEFAUT_MAJEUR:")) continue;
             String content = t.substring(t.indexOf(':') + 1).replaceAll("[\\[\\]().]", "").trim();
-            if (content.isEmpty() || content.equals("AUCUN") || content.equals("RIEN")
-                    || content.equals("NONE") || content.equals("NEANT")) continue;
+            if (isSentinel(content)) continue;
             if      (t.startsWith("AMELIORATION:"))        amelioration++;
             else if (t.startsWith("DEFAUT_SIGNIFICATIF:")) significatif++;
             else if (t.startsWith("DEFAUT_MAJEUR:"))       majeur++;
@@ -63,6 +61,15 @@ public final class CriticOutputParser {
             return Math.max(4.0, sigBase(significatif) - amelCorr);
         }
         return amelBase(amelioration);
+    }
+
+    /** Returns true when the content (uppercase, stripped of []().) is a "nothing to report" sentinel. */
+    private static boolean isSentinel(String s) {
+        return s.isEmpty()
+            || s.equals("AUCUN") || s.equals("AUCUNE")
+            || s.equals("RIEN")  || s.equals("NONE") || s.equals("NEANT")
+            || s.startsWith("AUCUN ")  || s.startsWith("AUCUNE ")
+            || s.startsWith("RIEN ")   || s.startsWith("NONE ") || s.startsWith("NEANT ");
     }
 
     private static String normalize(String response) {

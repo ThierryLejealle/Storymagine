@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrectorInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;

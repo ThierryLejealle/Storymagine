@@ -9,4 +9,4 @@
     - Les dialogues comportent-ils des sous-entendus lisibles pour le lecteur mais opaques pour un personnage ?
     - Le temps qui passe est-il rendu concret (lumière, fatigue, faim) ?
 -->
-- ne pas utiliser les détails physiques des personnes de manière direct ou littérale : ce sont des aides de rédaction
+- ne pas utiliser les détails physiques des personnes de manière trop directe. C'est ok de mentionner la couleur des yeux et cheveux mais pas de reprendre littéralement une description physique.

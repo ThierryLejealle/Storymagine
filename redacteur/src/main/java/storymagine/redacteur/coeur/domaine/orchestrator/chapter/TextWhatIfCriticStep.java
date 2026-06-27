@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
 
-import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCriticInput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCriticInput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;

@@ -34,15 +34,16 @@ sequences:
       Le port et les barques catalanes
       La promenade débute sur le quai du port. Les barques colorées se balancent doucement sur une eau transparente où dansent les reflets des façades ocre et rose. L'air porte l'odeur du sel, des filets de pêche et du bois chauffé par le soleil. Au loin, le clocher de l'église semble émerger de la mer comme un phare immobile.
       RAPPEL : Pas Catherine dans cette scene
-    min_words: 1000
+    min_words: 300
 
   - type: explicit
     directive: >
       Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
       Les ruelles du vieux village
       En quittant le front de mer, on s'enfonce dans un dédale de ruelles étroites. Les murs chaulés alternent avec des pierres anciennes couvertes de bougainvilliers. Des volets colorés entrouverts laissent échapper des éclats de vie, tandis que les pavés résonnent sous les pas. La lumière se faufile entre les maisons et dessine des ombres fraîches et mouvantes.
+      Thierry se sent de plus en plus amoureux.
       RAPPEL : Pas Catherine dans cette scene
-    min_words: 1000
+    min_words: 300
 
   - type: explicit
     directive: >
@@ -50,18 +51,19 @@ sequences:
       Le château et les remparts
       Le chemin mène ensuite vers le Château Royal de Collioure. Depuis les remparts, le regard embrasse la baie entière : la mer scintillante, les toits de tuiles rouges et les collines couvertes de vignes. Le vent marin souffle plus fort ici, apportant un sentiment d'espace et d'histoire.
       RAPPEL : Pas Catherine dans cette scene
-    min_words: 1000
+    min_words: 300
 
   - type: explicit
     directive: >
       Promenade et discussions entre Christelle et Thierry. Et aussi un peu Corinne
       Le sentier vers les hauteurs
       La promenade s'achève sur un chemin qui s'élève au-dessus de la ville. Peu à peu, le bruit des terrasses s'estompe. Entre les murets de pierre sèche et les vignes accrochées à la pente, Collioure apparaît en contrebas comme une miniature colorée. Au coucher du soleil, les façades s'embrasent de teintes orangées et la Méditerranée devient une immense plaque d'argent, offrant un dernier tableau avant le retour.
+      Thierry commence à se sentir mélancolique car il comprends que bientot Christelle va partir et rentrer à Nantes.
       RAPPEL : Pas Catherine dans cette scene
-    min_words: 1000
+    min_words: 300
 
   - type: explicit
     directive: >
       Retour en bus à l'UCPA pour Christelle, Corinne et Thierry
       RAPPEL : Pas Catherine dans cette scene
-    min_words: 250
+    min_words: 300

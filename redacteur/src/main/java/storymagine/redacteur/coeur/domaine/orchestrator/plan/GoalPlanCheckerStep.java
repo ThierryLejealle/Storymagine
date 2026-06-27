@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.plan;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
-import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanChecker;
-import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanCheckerInput;
-import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanCheckerOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanChecker;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanCheckerInput;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanCheckerOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;

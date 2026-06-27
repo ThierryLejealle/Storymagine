@@ -1,24 +1,24 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
 import storymagine.commun.coeur.ports.LogPort;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorFinding;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrectorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacritic.DeusInMachinaCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic.GoalTextCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic.TextCoherenceCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textdreamcritic.TextDreamCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityFinding;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrectorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrectorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilterOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTrackerOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractorOutput;
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorFinding;
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrectorFinding;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic.DeusInMachinaCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.goalcritic.GoalTextCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.TextCoherenceCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.dreamcritic.TextDreamCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityFinding;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilterOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTrackerOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorFinding;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.chapter.GoalTextCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextCoherenceCriticStep;
@@ -263,71 +263,84 @@ public class WriteWorkflow {
                                          GenerationConfig config) {
         if (!config.qualityLevel().runsProofreader()) return text;
 
-        boolean repeat  = config.qualityLevel().runsCorrectorsRepeat()
-                          && correctorConfig.repeatThresholdPerWord() > 0;
+        boolean repeat   = config.qualityLevel().runsCorrectorsRepeat()
+                           && correctorConfig.repeatThresholdPerWord() > 0;
+        int     maxPasses = correctorConfig.maxRetryPasses();
 
+        // DeusInMachina
         long t0 = System.nanoTime();
         DeusInMachinaCorrectorOutput deusOut = deusInMachinaCorrectorStep.run(text, scenario, chapter);
         text = applyDeusCorrections(text, deusOut.findings());
         log.step("SequenceDeusInMachinaCorrector", ms(t0),
                  deusOut.findings().isEmpty() ? null : "-> " + deusOut.findings().size() + " correction(s)");
-        if (repeat && exceedsThreshold(deusOut.findings().size(), text)) {
-            t0 = System.nanoTime();
-            DeusInMachinaCorrectorOutput deusOut2 = deusInMachinaCorrectorStep.run(text, scenario, chapter);
-            text = applyDeusCorrections(text, deusOut2.findings());
-            log.step("SequenceDeusInMachinaCorrector (pass 2)", ms(t0),
-                     deusOut2.findings().isEmpty() ? null : "-> " + deusOut2.findings().size() + " correction(s)");
-            if (exceedsThreshold(deusOut2.findings().size(), text))
-                log.warn(String.format("DeusInMachinaCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
-                                       ratio(deusOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        if (repeat) {
+            for (int pass = 2; pass <= 1 + maxPasses && needsRetry(deusOut.findings().size(), text); pass++) {
+                t0 = System.nanoTime();
+                deusOut = deusInMachinaCorrectorStep.run(text, scenario, chapter);
+                text = applyDeusCorrections(text, deusOut.findings());
+                log.step("SequenceDeusInMachinaCorrector (pass " + pass + ")", ms(t0),
+                         deusOut.findings().isEmpty() ? null : "-> " + deusOut.findings().size() + " correction(s)");
+            }
+            if (needsRetry(deusOut.findings().size(), text))
+                log.warn(String.format("DeusInMachinaCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f) ou >= %d corrections",
+                                       ratio(deusOut.findings().size(), text), correctorConfig.repeatThresholdPerWord(), correctorConfig.minCorrectionsForRetry()));
         }
 
+        // Naturality
         t0 = System.nanoTime();
         NaturalityCorrectorOutput natOut = naturalityCorrectorStep.run(text);
         text = applyNaturalityFixes(text, natOut.findings());
         log.step("SequenceNaturalityCorrector", ms(t0),
                  natOut.findings().isEmpty() ? null : "-> " + natOut.findings().size() + " correction(s)");
-        if (repeat && exceedsThreshold(natOut.findings().size(), text)) {
-            t0 = System.nanoTime();
-            NaturalityCorrectorOutput natOut2 = naturalityCorrectorStep.run(text);
-            text = applyNaturalityFixes(text, natOut2.findings());
-            log.step("SequenceNaturalityCorrector (pass 2)", ms(t0),
-                     natOut2.findings().isEmpty() ? null : "-> " + natOut2.findings().size() + " correction(s)");
-            if (exceedsThreshold(natOut2.findings().size(), text))
-                log.warn(String.format("NaturalityCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
-                                       ratio(natOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        if (repeat) {
+            for (int pass = 2; pass <= 1 + maxPasses && needsRetry(natOut.findings().size(), text); pass++) {
+                t0 = System.nanoTime();
+                natOut = naturalityCorrectorStep.run(text);
+                text = applyNaturalityFixes(text, natOut.findings());
+                log.step("SequenceNaturalityCorrector (pass " + pass + ")", ms(t0),
+                         natOut.findings().isEmpty() ? null : "-> " + natOut.findings().size() + " correction(s)");
+            }
+            if (needsRetry(natOut.findings().size(), text))
+                log.warn(String.format("NaturalityCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f) ou >= %d corrections",
+                                       ratio(natOut.findings().size(), text), correctorConfig.repeatThresholdPerWord(), correctorConfig.minCorrectionsForRetry()));
         }
 
+        // Style
         t0 = System.nanoTime();
         StyleCorrectorOutput styleOut = styleCorrectorStep.run(text, scenario);
         text = applyStyleCorrections(text, styleOut.findings());
         log.step("SequenceStyleCorrector", ms(t0),
                  styleOut.findings().isEmpty() ? null : "-> " + styleOut.findings().size() + " correction(s)");
-        if (repeat && exceedsThreshold(styleOut.findings().size(), text)) {
-            t0 = System.nanoTime();
-            StyleCorrectorOutput styleOut2 = styleCorrectorStep.run(text, scenario);
-            text = applyStyleCorrections(text, styleOut2.findings());
-            log.step("SequenceStyleCorrector (pass 2)", ms(t0),
-                     styleOut2.findings().isEmpty() ? null : "-> " + styleOut2.findings().size() + " correction(s)");
-            if (exceedsThreshold(styleOut2.findings().size(), text))
-                log.warn(String.format("StyleCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
-                                       ratio(styleOut2.findings().size(), text), correctorConfig.repeatThresholdPerWord()));
+        if (repeat) {
+            for (int pass = 2; pass <= 1 + maxPasses && needsRetry(styleOut.findings().size(), text); pass++) {
+                t0 = System.nanoTime();
+                styleOut = styleCorrectorStep.run(text, scenario);
+                text = applyStyleCorrections(text, styleOut.findings());
+                log.step("SequenceStyleCorrector (pass " + pass + ")", ms(t0),
+                         styleOut.findings().isEmpty() ? null : "-> " + styleOut.findings().size() + " correction(s)");
+            }
+            if (needsRetry(styleOut.findings().size(), text))
+                log.warn(String.format("StyleCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f) ou >= %d corrections",
+                                       ratio(styleOut.findings().size(), text), correctorConfig.repeatThresholdPerWord(), correctorConfig.minCorrectionsForRetry()));
         }
 
+        // Proofreader
         t0 = System.nanoTime();
         ProofreaderCorrectorOutput proofOut = proofreaderCorrectorStep.run(text);
         text = applyProofCorrections(text, proofOut);
         log.step("SequenceProofreaderCorrector", ms(t0),
                  proofOut.corrections().isEmpty() ? null : "-> " + proofOut.corrections().size() + " correction(s)");
-        if (repeat && exceedsThreshold(proofOut.corrections().size(), text)) {
-            t0 = System.nanoTime();
-            ProofreaderCorrectorOutput proofOut2 = proofreaderCorrectorStep.run(text);
-            text = applyProofCorrections(text, proofOut2);
-            log.step("SequenceProofreaderCorrector (pass 2)", ms(t0),
-                     proofOut2.corrections().isEmpty() ? null : "-> " + proofOut2.corrections().size() + " correction(s)");
-            if (exceedsThreshold(proofOut2.corrections().size(), text))
-                log.warn(String.format("ProofreaderCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f)",
-                                       ratio(proofOut2.corrections().size(), text), correctorConfig.repeatThresholdPerWord()));
+        if (repeat) {
+            for (int pass = 2; pass <= 1 + maxPasses && needsRetry(proofOut.corrections().size(), text); pass++) {
+                t0 = System.nanoTime();
+                proofOut = proofreaderCorrectorStep.run(text);
+                text = applyProofCorrections(text, proofOut);
+                log.step("SequenceProofreaderCorrector (pass " + pass + ")", ms(t0),
+                         proofOut.corrections().isEmpty() ? null : "-> " + proofOut.corrections().size() + " correction(s)");
+            }
+            if (needsRetry(proofOut.corrections().size(), text))
+                log.warn(String.format("ProofreaderCorrector: seuil encore depasse apres relance — %.3f corr/mot (seuil %.3f) ou >= %d corrections",
+                                       ratio(proofOut.corrections().size(), text), correctorConfig.repeatThresholdPerWord(), correctorConfig.minCorrectionsForRetry()));
         }
 
         return text;
@@ -522,8 +535,9 @@ public class WriteWorkflow {
         return words == 0 ? 0f : (float) count / words;
     }
 
-    private boolean exceedsThreshold(int count, String text) {
-        return ratio(count, text) > correctorConfig.repeatThresholdPerWord();
+    private boolean needsRetry(int count, String text) {
+        return ratio(count, text) > correctorConfig.repeatThresholdPerWord()
+            || count >= correctorConfig.minCorrectionsForRetry();
     }
 
     private static int countWords(String text) {

@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCriticInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCriticInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCriticOutput;
 
 import java.util.ArrayList;
 import java.util.List;

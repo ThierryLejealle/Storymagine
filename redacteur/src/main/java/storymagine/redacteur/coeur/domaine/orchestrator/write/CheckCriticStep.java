@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCriticInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCriticInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCriticOutput;
 
 import java.util.List;
 

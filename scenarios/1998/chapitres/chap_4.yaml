@@ -31,7 +31,7 @@ sequences:
       Elles prennent le bus pour aller ver l'aéroport (Catherine) ou le train (Corinne et Christelle).
       Thierry leur dit au revoir et les voit monter dans le bus
       Le bus s'en va
-    min_words: 1000
+    min_words: 500
 
   - type: explicit
     directive: >
@@ -39,7 +39,7 @@ sequences:
       Le lundi, Christelle se fait opérer de la cheville à l'hopital
       Elle rentre chez elle le soir après l'opération. 
       Elle doit utiliser des béquilles dans son appartement.
-    min_words: 1000
+    min_words: 500
 
   - type: explicit
     directive: >
@@ -47,7 +47,7 @@ sequences:
       Thierry n'arrive plus à penser à autre chose qu'à Christelle.
       Le centre UCPA lui parait vide ; aucune activité ne l'intéresse
       Il réalise qu'il est tombé amoureux
-    min_words: 1000
+    min_words: 500
 
   - type: explicit
     directive: >
@@ -58,7 +58,7 @@ sequences:
       D'une petite voix (elle est encore sous le coup de l'opération) elle accepte
       Thierry range ses affaires en vitesse, quitte, l'UCPA et file à la gare
       Il rentre dans son appartement à Paris pour préparer des affaires.
-    min_words: 1000
+    min_words: 500
 
   - type: explicit
     directive: >
@@ -68,4 +68,4 @@ sequences:
       Christelle ouvre
       Ils se regardent
       C'est le début d'une grande et belle histoire d'amour
-    min_words: 300
+    min_words: 500

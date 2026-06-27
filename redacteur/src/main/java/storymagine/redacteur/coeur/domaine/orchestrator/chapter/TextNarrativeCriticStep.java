@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
 
-import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCriticInput;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCriticInput;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 

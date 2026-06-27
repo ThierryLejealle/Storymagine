@@ -44,7 +44,7 @@ sequences:
       Repas tous les 4 avec Corinne et Catherine
       Une scene potentiellement très romantique (mais attention : pas d'action romantique, ce sont juste des amis)
       RAPPEL : Ni Catherine ni Corinne dans cette scene
-    min_words: 2000
+    min_words: 1000
     lore: ["PLAGE"]
 
   - type: explicit

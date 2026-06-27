@@ -1,41 +1,33 @@
-package storymagine.redacteur;
+﻿package storymagine.redacteur;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaConfig;
-import storymagine.redacteur.coeur.domaine.agent.global.causalanalyzer.CausalAnalyzer;
-import storymagine.redacteur.coeur.domaine.agent.global.chapterstylechecker.ChapterStyleChecker;
-import storymagine.redacteur.coeur.domaine.agent.global.characterchecker.CharacterChecker;
-import storymagine.redacteur.coeur.domaine.agent.global.narrativearcanalyzer.NarrativeArcAnalyzer;
 import storymagine.redacteur.coeur.domaine.agent.global.storycompressor.StoryCompressor;
 import storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner.ChapterPlanner;
-import storymagine.redacteur.coeur.domaine.agent.plan.goalplanchecker.GoalPlanChecker;
-import storymagine.redacteur.coeur.domaine.agent.plan.plancoherencecritic.PlanCoherenceCritic;
-import storymagine.redacteur.coeur.domaine.agent.plan.plannarrativecritic.PlanNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.goaltextcritic.GoalTextCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textcoherencecritic.TextCoherenceCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textdreamcritic.TextDreamCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textnarrativecritic.TextNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.textwhatifcritic.TextWhatIfCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacritic.DeusInMachinaCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.deusinmachinacorrector.DeusInMachinaCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.checkcritic.CheckCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.planfidelitycritic.PlanFidelityCritic;
-import storymagine.redacteur.coeur.domaine.agent.writer.naturalitycorrector.NaturalityCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitionfilter.RepetitionFilter;
-import storymagine.redacteur.coeur.domaine.agent.writer.repetitiontracker.RepetitionTracker;
-import storymagine.redacteur.coeur.domaine.agent.writer.sequencewriter.Writer;
-import storymagine.redacteur.coeur.domaine.agent.writer.stateextractor.StateExtractor;
-import storymagine.redacteur.coeur.domaine.agent.writer.stylecorrector.StyleCorrector;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanChecker;
+import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCritic;
+import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.goalcritic.GoalTextCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.TextCoherenceCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.dreamcritic.TextDreamCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic.DeusInMachinaCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCritic;
+import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilter;
+import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTracker;
+import storymagine.redacteur.coeur.domaine.agent.sequence.writer.Writer;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractor;
+import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrector;
 import storymagine.redacteur.coeur.domaine.orchestrator.StoryOrchestrator;
-import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.CausalAnalyzerStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.ChapterStyleCheckerStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.CharacterCheckerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.EvaluateWorkflow;
-import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.NarrativeArcAnalyzerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.StoryCompressorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
@@ -146,11 +138,7 @@ public class RedacteurModule {
         var textWhatIfCritic     = new TextWhatIfCritic(llm);
 
         // --- Global agents ---
-        var storyCompressor      = new StoryCompressor(llm);
-        var chapterStyleChecker  = new ChapterStyleChecker(llm);
-        var characterChecker     = new CharacterChecker(llm);
-        var narrativeArcAnalyzer = new NarrativeArcAnalyzer(llm);
-        var causalAnalyzer       = new CausalAnalyzer(llm);
+        var storyCompressor = new StoryCompressor(llm);
 
         // --- Plan steps ---
         var chapterPlannerStep      = new ChapterPlannerStep(chapterPlanner, beatsConfig);
@@ -177,11 +165,7 @@ public class RedacteurModule {
         var goalTextCriticStep          = new GoalTextCriticStep(goalTextCritic);
 
         // --- Evaluate steps ---
-        var storyCompressorStep      = new StoryCompressorStep(storyCompressor);
-        var chapterStyleCheckerStep  = new ChapterStyleCheckerStep(chapterStyleChecker);
-        var characterCheckerStep     = new CharacterCheckerStep(characterChecker);
-        var narrativeArcAnalyzerStep = new NarrativeArcAnalyzerStep(narrativeArcAnalyzer);
-        var causalAnalyzerStep       = new CausalAnalyzerStep(causalAnalyzer);
+        var storyCompressorStep = new StoryCompressorStep(storyCompressor);
 
         // --- Workflows ---
         var planWorkflow = new PlanWorkflow(
@@ -198,10 +182,7 @@ public class RedacteurModule {
             goalTextCriticStep,
             correctorConfig, htmlExport, log);
 
-        var evaluateWorkflow = new EvaluateWorkflow(
-            storyCompressorStep, chapterStyleCheckerStep, characterCheckerStep,
-            narrativeArcAnalyzerStep, causalAnalyzerStep,
-            log);
+        var evaluateWorkflow = new EvaluateWorkflow(storyCompressorStep, log);
 
         var orchestrator = new StoryOrchestrator(planWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, log);
         return new RedacteurServiceImpl(scenarioReader, orchestrator);

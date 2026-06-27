@@ -1,8 +1,8 @@
-package storymagine.redacteur.coeur.domaine.orchestrator.write;
+﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrector;
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrectorInput;
-import storymagine.redacteur.coeur.domaine.agent.writer.proofreadercorrector.ProofreaderCorrectorOutput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrectorInput;
+import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrectorOutput;
 
 /** Activates ProofreaderCorrector on a sequence text. */
 public class ProofreaderCorrectorStep {

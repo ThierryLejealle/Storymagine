@@ -343,8 +343,10 @@ public class RedacteurCli {
     }
 
     private static CorrectorConfig buildCorrectorConfig(Properties props) {
-        float threshold = Float.parseFloat(props.getProperty("corrector.repeat.threshold.per.word", "0.016"));
-        return new CorrectorConfig(threshold);
+        float threshold      = Float.parseFloat(props.getProperty("corrector.repeat.threshold.per.word", "0.010"));
+        int   minCorrections = Integer.parseInt( props.getProperty("corrector.repeat.min.corrections",   "7"));
+        int   maxPasses      = Integer.parseInt( props.getProperty("corrector.repeat.max.passes",        "2"));
+        return new CorrectorConfig(threshold, minCorrections, maxPasses);
     }
 
     private static void printGpuOption(int num, List<NvidiaSmiSnapshot.GpuStat> gpus, int gpuIndex) {
