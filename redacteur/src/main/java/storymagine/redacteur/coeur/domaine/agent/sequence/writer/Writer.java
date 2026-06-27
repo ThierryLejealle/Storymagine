@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.writer;
+package storymagine.redacteur.coeur.domaine.agent.sequence.writer;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LogPort;

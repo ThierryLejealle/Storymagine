@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker;
+package storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker;
 
 import java.util.List;
 

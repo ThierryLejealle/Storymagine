@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic;
+package storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic;
 
 import java.util.List;
 

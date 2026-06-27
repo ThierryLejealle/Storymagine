@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

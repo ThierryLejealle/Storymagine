@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic;
+package storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

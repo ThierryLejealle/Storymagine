@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

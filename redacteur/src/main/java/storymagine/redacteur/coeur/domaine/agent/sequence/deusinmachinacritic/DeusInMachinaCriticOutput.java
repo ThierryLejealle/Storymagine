@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic;
+package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic;
 
 import java.util.List;
 

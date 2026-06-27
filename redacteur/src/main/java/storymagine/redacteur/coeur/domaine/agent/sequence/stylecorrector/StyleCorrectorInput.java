@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector;
+package storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector;
 
 /** Input for StyleCorrector. */
 public record StyleCorrectorInput(

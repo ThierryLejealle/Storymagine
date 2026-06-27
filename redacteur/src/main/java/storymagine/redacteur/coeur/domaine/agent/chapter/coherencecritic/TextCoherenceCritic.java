@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

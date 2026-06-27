@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector;
+package storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector;
 
 import java.util.List;
 

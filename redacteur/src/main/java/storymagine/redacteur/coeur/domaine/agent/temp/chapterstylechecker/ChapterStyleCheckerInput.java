@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.temp.chapterstylechecker;
+package storymagine.redacteur.coeur.domaine.agent.temp.chapterstylechecker;
 
 /** Input for ChapterStyleChecker â€” full chapter text + style references. */
 public record ChapterStyleCheckerInput(

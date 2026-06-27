@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic;
+package storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic;
 
 import java.util.List;
 

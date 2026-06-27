@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.temp.chapterstylechecker;
+package storymagine.redacteur.coeur.domaine.agent.temp.chapterstylechecker;
 
 import java.util.List;
 

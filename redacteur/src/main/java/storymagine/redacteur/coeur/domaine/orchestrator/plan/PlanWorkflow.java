@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.plan;
+package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanCheckerOutput;

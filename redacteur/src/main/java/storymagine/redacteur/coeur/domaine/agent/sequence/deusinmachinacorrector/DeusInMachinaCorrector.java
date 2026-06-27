@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector;
+package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector;
 
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;

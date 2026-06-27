@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.plan;
+package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
 import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanChecker;
 import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanCheckerInput;

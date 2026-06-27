@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
+package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrectorFinding;

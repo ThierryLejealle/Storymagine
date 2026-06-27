@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.temp.narrativearcanalyzer;
+package storymagine.redacteur.coeur.domaine.agent.temp.narrativearcanalyzer;
 
 import java.util.List;
 

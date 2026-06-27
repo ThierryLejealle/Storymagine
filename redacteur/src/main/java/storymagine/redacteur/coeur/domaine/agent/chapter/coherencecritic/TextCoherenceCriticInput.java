@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic;
 
 /** Input for TextCoherenceCritic — checks factual coherence of a chapter text. */
 public record TextCoherenceCriticInput(

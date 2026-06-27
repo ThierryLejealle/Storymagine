@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.temp.characterchecker;
+package storymagine.redacteur.coeur.domaine.agent.temp.characterchecker;
 
 import java.util.List;
 import java.util.stream.Collectors;

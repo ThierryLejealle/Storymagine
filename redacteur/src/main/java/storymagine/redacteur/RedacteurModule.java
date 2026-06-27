@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur;
+package storymagine.redacteur;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;

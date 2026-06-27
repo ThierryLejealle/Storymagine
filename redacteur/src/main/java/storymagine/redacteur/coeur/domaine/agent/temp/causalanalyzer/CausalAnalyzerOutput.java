@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.temp.causalanalyzer;
+package storymagine.redacteur.coeur.domaine.agent.temp.causalanalyzer;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.plan;
+package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
 import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCriticInput;

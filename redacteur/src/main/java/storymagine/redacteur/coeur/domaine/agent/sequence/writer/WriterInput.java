@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.writer;
+package storymagine.redacteur.coeur.domaine.agent.sequence.writer;
 
 import java.util.List;
 

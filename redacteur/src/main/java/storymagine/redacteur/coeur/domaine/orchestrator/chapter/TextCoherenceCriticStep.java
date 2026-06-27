@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
+package storymagine.redacteur.coeur.domaine.orchestrator.chapter;
 
 import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.TextCoherenceCritic;
 import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.TextCoherenceCriticInput;

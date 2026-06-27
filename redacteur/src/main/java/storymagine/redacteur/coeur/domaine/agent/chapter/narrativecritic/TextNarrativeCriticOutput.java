@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic;
 
 import java.util.List;
 

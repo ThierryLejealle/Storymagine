@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor;
+package storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor;
 
 /**
  * Output of StateExtractor — ETAT/EVENT lines, or "AUCUN".

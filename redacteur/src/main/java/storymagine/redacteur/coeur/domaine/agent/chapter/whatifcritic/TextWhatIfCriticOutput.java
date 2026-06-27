@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic;
+package storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic;
 
 import java.util.List;
 

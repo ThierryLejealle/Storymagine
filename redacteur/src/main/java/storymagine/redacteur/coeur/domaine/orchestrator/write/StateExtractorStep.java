@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.orchestrator.write;
+package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
 import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractor;
 import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateExtractorInput;

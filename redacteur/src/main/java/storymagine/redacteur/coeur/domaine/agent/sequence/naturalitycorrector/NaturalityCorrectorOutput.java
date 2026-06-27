@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector;
+package storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector;
 
 import java.util.List;
 

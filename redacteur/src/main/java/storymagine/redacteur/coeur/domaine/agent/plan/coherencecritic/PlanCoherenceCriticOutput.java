@@ -1,4 +1,4 @@
-﻿package storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic;
+package storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic;
 
 import java.util.List;
 
