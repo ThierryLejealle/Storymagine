@@ -38,6 +38,13 @@ class ChapterPlanWorkflowTest {
             DEFAUT_MAJEUR: probleme 3
             """;
 
+    /** Score = 9.5 (amelBase(1)) — passes every level's average/elimination comfortably. */
+    private static final String ONE_AMELIORATION = """
+            AMELIORATION: detail mineur ameliorable
+            DEFAUT_SIGNIFICATIF: [RIEN]
+            DEFAUT_MAJEUR: [RIEN]
+            """;
+
     @BeforeAll
     static void findScenarioRoot() throws URISyntaxException {
         var url = ChapterPlanWorkflowTest.class.getClassLoader().getResource("scenarios/as-du-ciel");
@@ -128,5 +135,51 @@ class ChapterPlanWorkflowTest {
             + "the 5-critic average clears planAverageThreshold");
         assertEquals(CHAPTER_COUNT * 2, retryCount(log),
             "Elimination must force a RETRY on every attempt of every chapter despite the passing average");
+    }
+
+    @Test
+    void full_firstDraftHasARemark_forcesExactlyOneRetry_evenWhenAverageAndEliminationPass() {
+        CapturingLogPort log = new CapturingLogPort();
+        var mock = MockModelCallPort.builder(8192)
+            // A single AMELIORATION scores 9.5 — comfortably above FULL's planAverageThreshold
+            // (8.0) and planEliminationThreshold (5.5). Only the FULL-only "strict first
+            // attempt" rule can explain a forced retry here.
+            .when("You are PlanCoherenceCritic", ONE_AMELIORATION)
+            .when("archiviste d'un roman", "Resume du chapitre.")
+            .otherwise(MockModelCallPort.UNIVERSAL_PASS)
+            .build();
+
+        RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
+            .generate(scenarioRoot, GenerationConfig.full());
+
+        // The mock returns the same single-AMELIORATION response on every attempt, so the
+        // second attempt scores identically to the first — the strict rule only fires on
+        // attempt 1, so the second attempt is accepted despite carrying the same remark.
+        assertEquals(CHAPTER_COUNT * 2, chapterPlanAttempts(log),
+            "FULL: any remark at all on the first draft must force exactly one retry, even "
+            + "though average and elimination both pass comfortably");
+        assertTrue(log.warnings.stream().anyMatch(w -> w.contains("premier jet")),
+            "The forced retry must be explained in the logs");
+        assertEquals(CHAPTER_COUNT, log.planRetentions.size(),
+            "Every chapter used more than one attempt, so each must log which attempt/score was retained");
+        assertTrue(log.planRetentions.stream().allMatch(r -> r.startsWith("1/2@")),
+            "The retained attempt must be reported with its number and score: " + log.planRetentions);
+    }
+
+    @Test
+    void simple_firstDraftHasARemark_doesNotForceRetry_strictRuleIsFullOnly() {
+        CapturingLogPort log = new CapturingLogPort();
+        var mock = MockModelCallPort.builder(8192)
+            .when("You are PlanCoherenceCritic", ONE_AMELIORATION)
+            .when("archiviste d'un roman", "Resume du chapitre.")
+            .otherwise(MockModelCallPort.UNIVERSAL_PASS)
+            .build();
+
+        RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
+            .generate(scenarioRoot, GenerationConfig.simple());
+
+        assertEquals(CHAPTER_COUNT, chapterPlanAttempts(log),
+            "SIMPLE has no strict-first-attempt rule — a single AMELIORATION must not force a "
+            + "retry when average and elimination both pass");
     }
 }

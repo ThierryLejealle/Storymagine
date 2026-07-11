@@ -32,9 +32,13 @@ import java.util.stream.Collectors;
  * - E PlanDramaCritic    : dramaturgical effort, relative to the intensity the instruction calls for.
  * B/C/D/E all apply the same "consigne fait foi" primacy rule — only A judges fidelity itself,
  * so it needs no such exemption. See PlanGoalCritic.md for the full design rationale.
- * Retry rule: any problem (AMELIORATION, DEFAUT_SIGNIFICATIF or DEFAUT_MAJEUR) triggers a new pass ;
+ * Retry rule: average score below QualityLevel.planAverageThreshold() triggers a new pass ;
  * also retries if any individual critic score falls below QualityLevel.planEliminationThreshold(),
  * even when the average would otherwise pass.
+ * FULL only, first draft only (QualityLevel.planStrictFirstAttempt()): a stricter rule applies
+ * on top — any remark at all (even a single AMELIORATION, from any critic that ran) forces one
+ * retry, even when average/elimination both pass. Never applies past the first attempt, so it
+ * can only add at most one extra pass.
  * Best plan (highest average score across all passes) is retained.
  * Called once per chapter by StoryPlanWorkflow, which plans the whole book.
  */
@@ -136,6 +140,21 @@ public class ChapterPlanWorkflow {
 
             if (avg >= avgThreshold && eliminated)
                 log.warn(String.format("ChapterPlanWorkflow : note eliminatoire franchie (seuil %.1f) — relance forcee malgre une moyenne suffisante", elimination));
+
+            // FULL only, first draft only: any remark at all (even a single AMELIORATION)
+            // forces one retry, stricter than the usual average/elimination gate. Later
+            // retries fall back to the normal rule — this never loops more than once for it.
+            boolean hasAnyProblem = !goal.problems().isEmpty() || !facts.problems().isEmpty()
+                    || !coherence.problems().isEmpty()
+                    || continuity.map(c -> !c.problems().isEmpty()).orElse(false)
+                    || !drama.problems().isEmpty();
+            boolean strictFirstAttempt = config.qualityLevel().planStrictFirstAttempt()
+                    && attempt == 0 && hasAnyProblem;
+
+            if (passed && strictFirstAttempt)
+                log.warn("ChapterPlanWorkflow : relance forcee apres le premier jet (mode qualite FULL) — au moins une amelioration ou un defaut releve, meme si la moyenne/seuil eliminatoire passent");
+
+            passed = passed && !strictFirstAttempt;
 
             if (avg > bestScore) {
                 bestScore         = avg;

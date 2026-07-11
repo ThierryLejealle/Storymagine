@@ -6,23 +6,25 @@ package storymagine.redacteur.coeur.domaine.orchestrator;
  */
 public enum QualityLevel {
 
-    //                      write  planCr proof  seqCk  eval  pRtry sRtry cRtry thresh elimin corrRpt planThresh planElimin bookCr bRtry bookThresh bookElimin
+    //                      write  planCr proof  seqCk  eval  pRtry sRtry cRtry thresh elimin corrRpt planThresh planElimin bookCr bRtry bookThresh bookElimin strictFirst
     /** Plan only — writing phases skipped. */
-    PLAN_ONLY              (false, false, false, false, false,   0,    0,    0,   7.0,  3.0,  false,   7.0,      3.0,      false, 0,    1.0,       0.0),
+    PLAN_ONLY              (false, false, false, false, false,   0,    0,    0,   7.0,  3.0,  false,   7.0,      3.0,      false, 0,    1.0,       0.0,       false),
 
     /** Plan + write, minimum agents (StateExtractor + repetition memory only). */
-    BROUILLON              (true,  false, false, false, false,   0,    0,    0,   8.0,  1.0,  false,   8.0,      1.0,      false, 0,    1.0,       0.0),
+    BROUILLON              (true,  false, false, false, false,   0,    0,    0,   8.0,  1.0,  false,   8.0,      1.0,      false, 0,    1.0,       0.0,       false),
 
     /** Plan critics + write + sequence checkers + chapter critics, 1 retry each. */
-    SIMPLE                 (true,  true,  true,  true,  false,   1,    1,    1,   7.0,  3.0,  false,   7.0,      3.0,      false, 0,    1.0,       0.0),
+    SIMPLE                 (true,  true,  true,  true,  false,   1,    1,    1,   7.0,  3.0,  false,   7.0,      3.0,      false, 0,    1.0,       0.0,       false),
 
     /**
      * Full pipeline: SIMPLE + global evaluation, 3 plan retries and 2 sequence/chapter retries.
      * Book-level critique (NarrativeArcAnalyzer + CausalAnalyzer) kept deliberately lenient
      * (bookAverageThreshold=1.0, bookEliminationThreshold=0.0) while these two agents are not
      * yet well tested — see evols/2026-07-07-2149-story-plan-workflow.md.
+     * Only level where a plan's very first draft is held to a stricter bar (see
+     * planStrictFirstAttempt) — later retries fall back to the normal average/elimination rule.
      */
-    FULL                   (true,  true,  true,  true,  true,    3,    2,    2,   7.0,  5.0,  true,    8.0,      5.5,      true,  2,    1.0,       0.0);
+    FULL                   (true,  true,  true,  true,  true,    3,    2,    2,   7.0,  5.0,  true,    8.0,      5.5,      true,  2,    1.0,       0.0,       true);
 
     // ── Fields ──────────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ public enum QualityLevel {
     private final int     bookMaxRetry;
     private final double  bookAverageThreshold;
     private final double  bookEliminationThreshold;
+    private final boolean planStrictFirstAttempt;
 
     QualityLevel(boolean runsWriting,
                  boolean runsPlanCritics,
@@ -60,7 +63,8 @@ public enum QualityLevel {
                  boolean runsBookCritics,
                  int bookMaxRetry,
                  double bookAverageThreshold,
-                 double bookEliminationThreshold) {
+                 double bookEliminationThreshold,
+                 boolean planStrictFirstAttempt) {
         this.runsWriting               = runsWriting;
         this.runsPlanCritics           = runsPlanCritics;
         this.runsProofreader           = runsProofreader;
@@ -78,6 +82,7 @@ public enum QualityLevel {
         this.bookMaxRetry              = bookMaxRetry;
         this.bookAverageThreshold      = bookAverageThreshold;
         this.bookEliminationThreshold  = bookEliminationThreshold;
+        this.planStrictFirstAttempt    = planStrictFirstAttempt;
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -106,4 +111,8 @@ public enum QualityLevel {
     public double  bookAverageThreshold()      { return bookAverageThreshold; }
     /** Elimination threshold for the book-level critique. */
     public double  bookEliminationThreshold()  { return bookEliminationThreshold; }
+    /** Whether a plan's very first draft is held to a stricter bar: any problem at all
+     *  (even a single AMELIORATION) forces a retry, even if average/elimination would pass.
+     *  Only checked on attempt 1 — later retries fall back to the normal rule. */
+    public boolean planStrictFirstAttempt()    { return planStrictFirstAttempt; }
 }

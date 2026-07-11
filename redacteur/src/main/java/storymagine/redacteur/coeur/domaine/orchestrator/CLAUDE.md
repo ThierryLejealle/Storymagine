@@ -174,6 +174,14 @@ La note éliminatoire (`eliminationThreshold`, `planEliminationThreshold` ou
 tombe sous ce seuil, même si la moyenne globale passe le seuil de moyenne habituel. Loggé
 séparément (`log.warn`) quand c'est la seule cause du rejet.
 
+Règle stricte premier jet (Plan chapitre, FULL uniquement — `QualityLevel.planStrictFirstAttempt()`) :
+sur la toute première tentative de plan d'un chapitre, la moindre remarque d'un critic (même une
+seule AMELIORATION) force une relance, même si moyenne ET seuil éliminatoire passent tous les
+deux. Ne s'applique jamais au-delà de la première tentative — la règle habituelle (moyenne +
+éliminatoire) reprend la main dès la 2e tentative, donc cette règle n'ajoute jamais plus d'une
+relance. Loggée séparément (`log.warn`) quand c'est la seule cause du rejet, comme pour la note
+éliminatoire.
+
 Valeurs actuelles par niveau (moyenne / éliminatoire) :
 
 | Niveau     | Write     | Plan chapitre | Plan livre        |

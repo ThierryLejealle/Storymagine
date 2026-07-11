@@ -15,6 +15,7 @@ public class CapturingLogPort implements LogPort {
     public final List<String> critics        = new ArrayList<>();
     public final List<String> scores         = new ArrayList<>();
     public final List<String> planRetentions = new ArrayList<>();
+    public final List<String> warnings       = new ArrayList<>();
 
     @Override
     public void phaseHeader(String label, String detail) {
@@ -41,6 +42,11 @@ public class CapturingLogPort implements LogPort {
     @Override public void chapterPlan(String title, String plan) {}
     @Override public void sequenceText(String title, int idx, String text) {}
     @Override public void sessionEnd() {}
+
+    @Override
+    public void warn(String message) {
+        warnings.add(message);
+    }
 
     @Override
     public void planRetained(int bestAttempt, int totalAttempts, double bestScore) {
