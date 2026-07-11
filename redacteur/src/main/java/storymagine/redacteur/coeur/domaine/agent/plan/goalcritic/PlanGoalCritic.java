@@ -65,8 +65,16 @@ public class PlanGoalCritic implements Agent {
             and find where the plan delivers each one.
             - DEFAUT_MAJEUR: an explicit element is missing from the plan, or the plan states its opposite.
             - DEFAUT_SIGNIFICATIF: an element is present but distorted — wrong sequence,
-              weakened to the point of changing its meaning, or delivered only by implication.
+              weakened to the point of changing its meaning, or delivered only by an
+              implication the reader could not reasonably draw.
             - AMELIORATION: an element is delivered but vaguely; the plan could state it more directly.
+
+            FEELINGS: a feeling or inner state is DELIVERED when the plan shows it through
+            actions or behavior (a look, a silence, a gesture) — showing is enough, never
+            ask for the feeling to be stated. This tolerance covers feelings only: concrete
+            facts, actions and causal reasons must still appear in the plan.
+            Example — directive: "Mara grows melancholic." Plan: "Mara falls silent and
+            looks away." → delivered, report nothing.
 
             OUT OF SCOPE
             Do not judge the plan's internal consistency, established story facts,

@@ -12,8 +12,9 @@ import storymagine.redacteur.coeur.domaine.agent.commun.CriticOutputParser;
 /**
  * Axis E of the chapter-plan critic suite: does the plan make the chapter alive and
  * interesting at the intensity the author's instruction itself calls for? Judgment is always
- * relative to the intended intensity (a calm chapter asked to be calm is never flat) — never
- * an absolute tension bar. Suggested by Fable during the plan-critic redesign consultation.
+ * relative to the intended intensity at the sequence's own granularity (a calm sequence asked
+ * to be calm is never flat, even within an otherwise intense chapter) — never an absolute
+ * tension bar. Suggested by Fable during the plan-critic redesign consultation.
  */
 public class PlanDramaCritic implements Agent {
 
@@ -38,6 +39,7 @@ public class PlanDramaCritic implements Agent {
         String user = PromptBuilder.create()
                 .section("Chapter goal",        t.text(input.chapterGoal(), 800, "chapterGoal"))
                 .section("Chapter description", t.text(input.chapterDescription(), ctx * 4 / 12, "chapterDescription"))
+                .section("Sequence directives", t.text(input.sequenceDirectives(), ctx * 4 / 8, "sequenceDirectives"))
                 .section("Plan",                t.text(input.plan(), ctx * 4 / 2, "plan"))
                 .raw("Judge the plan's dramaturgical effort at the intensity the instruction calls for, then list your findings.")
                 .build();
@@ -53,14 +55,18 @@ public class PlanDramaCritic implements Agent {
             chapter alive and interesting at the intensity the author's instruction calls for.
 
             RULE OF PRIMACY
-            The intended intensity is set by the goal and description, never by you.
-            A calm chapter the author asked to be calm is never flat. Judge every sequence
-            against the intensity the instruction announces, not against an absolute
-            level of tension.
+            The intended intensity is set by the goal, the description and each sequence's
+            own directive — they always prevail, never you. A calm chapter, or a calm
+            sequence within an otherwise intense chapter, that the author asked to be calm
+            is never flat. Judge each sequence against the intensity ITS OWN directive
+            calls for, not against the chapter's overall level or an absolute level of
+            tension.
 
             INPUT
             - Chapter goal and chapter description: the author's instruction,
               including its intended intensity.
+            - Sequence directives: what each sequence is meant to deliver — may set a
+              calmer or more intense moment than the chapter as a whole.
             - Plan: the generated plan (sequences and beats).
 
             WHAT TO CHECK
@@ -69,7 +75,8 @@ public class PlanDramaCritic implements Agent {
               and the beats stay polite, static or evasive).
             - DEFAUT_SIGNIFICATIF: a sequence is empty of incident — its beats only
               restate the directive or describe a setting while nothing happens,
-              even quietly.
+              even quietly — and that sequence's own directive does not call for a
+              calm or transitional moment.
             - AMELIORATION: beats repeat each other, or a concrete detail could make
               a moment more vivid within the intended intensity.
 
@@ -88,16 +95,23 @@ public class PlanDramaCritic implements Agent {
             single line [RIEN].
 
             EXAMPLE
-            Description: "La tension entre les deux frères explose enfin."
-            Plan: trois séquences où les frères échangent des propos polis et se quittent
-            par une poignée de main.
+            Description: "The tension between the two brothers finally explodes."
+            Plan: three sequences where the brothers exchange polite words and part
+            with a handshake.
             Expected output:
             AMELIORATION:
             [RIEN]
             DEFAUT_SIGNIFICATIF:
             [RIEN]
             DEFAUT_MAJEUR:
-            - La description annonce que la tension entre les frères explose enfin, mais chaque beat les garde polis ; l'explosion promise n'a jamais lieu.
+            - The description announces that the tension between the brothers finally explodes, but every beat keeps them polite; the promised explosion never happens.
+
+            COUNTER-EXAMPLE
+            Sequence directive: "A quiet scene: Mara rests alone at home, recovering."
+            Plan, this sequence: Mara sits down carefully, adjusts a cushion, moves
+            around on crutches. Nothing dramatic happens.
+            Expected output: no DEFAUT_SIGNIFICATIF for this sequence — its own
+            directive calls for a calm, uneventful moment.
             """
             + "\nWrite your findings in " + LanguageNames.english(language) + ".\n";
     }

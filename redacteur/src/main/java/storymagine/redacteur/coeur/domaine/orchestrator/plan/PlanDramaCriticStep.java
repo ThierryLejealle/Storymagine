@@ -3,6 +3,7 @@ package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 import storymagine.redacteur.coeur.domaine.agent.plan.dramacritic.PlanDramaCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.dramacritic.PlanDramaCriticInput;
 import storymagine.redacteur.coeur.domaine.agent.plan.dramacritic.PlanDramaCriticOutput;
+import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.story.Story;
@@ -22,6 +23,7 @@ public class PlanDramaCriticStep {
                 plan,
                 chapter.description(),
                 chapter.goal(),
+                ScenarioFormatters.sequenceDirectivesBlock(chapter.sequences()),
                 scenario.config().language()
         ));
     }

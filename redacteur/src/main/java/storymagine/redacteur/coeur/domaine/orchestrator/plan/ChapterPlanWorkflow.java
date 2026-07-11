@@ -14,6 +14,7 @@ import storymagine.redacteur.coeur.domaine.story.WrittenChapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -24,7 +25,10 @@ import java.util.stream.Collectors;
  *                          sequence directive) — beat by beat, literal.
  * - B PlanFactsCritic    : respect of already-established facts (sheets, checks, entity state).
  * - C PlanCoherenceCritic: internal coherence of the plan (no external grounding needed).
- * - D PlanContinuityCritic: narrative continuity with the story already written (summary).
+ * - D PlanContinuityCritic: narrative continuity with the plans of earlier chapters of this book.
+ *                          Skipped for the book's first chapter (nothing earlier to compare
+ *                          against) — a skipped critic is not logged and does not enter the
+ *                          average/elimination score, so it never dilutes the others.
  * - E PlanDramaCritic    : dramaturgical effort, relative to the intensity the instruction calls for.
  * B/C/D/E all apply the same "consigne fait foi" primacy rule — only A judges fidelity itself,
  * so it needs no such exemption. See PlanGoalCritic.md for the full design rationale.
@@ -99,7 +103,7 @@ public class ChapterPlanWorkflow {
             long cohMs = ms(t0);
 
             t0 = System.nanoTime();
-            PlanContinuityCriticOutput continuity = planContinuityCriticStep.run(scenario, chapter, story);
+            Optional<PlanContinuityCriticOutput> continuity = planContinuityCriticStep.run(scenario, chapter, story);
             long contMs = ms(t0);
 
             t0 = System.nanoTime();
@@ -114,15 +118,18 @@ public class ChapterPlanWorkflow {
             log.critic("PlanGoalCritic",       goal.score(),       goalMs,  goal.problems());
             log.critic("PlanFactsCritic",      facts.score(),      factsMs, facts.problems());
             log.critic("PlanCoherenceCritic",  coherence.score(),  cohMs,   coherence.problems());
-            log.critic("PlanContinuityCritic", continuity.score(), contMs,  continuity.problems());
+            continuity.ifPresent(c -> log.critic("PlanContinuityCritic", c.score(), contMs, c.problems()));
             log.critic("PlanDramaCritic",      drama.score(),      dramaMs, drama.problems());
 
+            // Only critics that actually ran contribute to the average/elimination score —
+            // a skipped critic (nothing to compare against) must not dilute the others.
+            List<Double> scores = new ArrayList<>(List.of(goal.score(), facts.score(), coherence.score(), drama.score()));
+            continuity.ifPresent(c -> scores.add(c.score()));
+
             double  elimination   = config.qualityLevel().planEliminationThreshold();
-            double  minScore      = Math.min(goal.score(), Math.min(facts.score(),
-                                     Math.min(coherence.score(), Math.min(continuity.score(), drama.score()))));
+            double  minScore      = scores.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
             boolean eliminated    = minScore < elimination;
-            double  avg           = (goal.score() + facts.score() + coherence.score()
-                                     + continuity.score() + drama.score()) / 5.0;
+            double  avg           = scores.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
             double  avgThreshold  = config.qualityLevel().planAverageThreshold();
             boolean passed        = avg >= avgThreshold && !eliminated;
             boolean isLastAttempt = attempt == maxAttempts - 1;
@@ -143,7 +150,7 @@ public class ChapterPlanWorkflow {
             if (passed || isLastAttempt) break;
 
             wc.setCoherence(mergeFeedback(goal.problems(), facts.problems(), coherence.problems(),
-                    continuity.problems(), drama.problems()));
+                    continuity.map(PlanContinuityCriticOutput::problems).orElse(List.of()), drama.problems()));
         }
 
         // Restore the best plan found across all passes

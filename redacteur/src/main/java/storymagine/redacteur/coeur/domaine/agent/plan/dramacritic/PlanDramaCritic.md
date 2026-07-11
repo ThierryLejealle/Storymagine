@@ -15,11 +15,22 @@ La clause de primauté ici est différente des autres : pas "un écart voulu n'e
 défaut" mais "le niveau jugé est relatif à ce que la consigne demande, pas absolu" — l'intensité
 elle-même est fixée par l'auteur, pas par le critic.
 
+**Correctif 2026-07-11** : la première version ne recevait que le but et la description du
+chapitre entier — jamais les directives par séquence. Un vrai cas de production l'a révélé : un
+chapitre au ton d'ensemble intense (Thierry quitte tout pour rejoindre Christelle) contenait une
+séquence délibérément calme (Christelle seule chez elle, convalescence) — le critic, jugeant
+cette séquence contre l'intensité globale du chapitre faute de voir sa directive propre, l'a
+signalée en DEFAUT_SIGNIFICATIF comme "statique". Sa propre clause de primauté ne pouvait pas
+s'appliquer au bon niveau de granularité. Corrigé : l'agent reçoit maintenant `sequenceDirectives`
+(comme `PlanGoalCritic`) — la primauté s'applique désormais séquence par séquence, pas seulement
+au niveau du chapitre entier.
+
 ## Ce qu'il vérifie
 - DEFAUT_MAJEUR : le plan livre très en dessous de l'intensité annoncée par la consigne (la
   description promet une confrontation ou une révélation, les beats restent polis/statiques).
 - DEFAUT_SIGNIFICATIF : une séquence est vide d'incident — ses beats ne font que reformuler la
-  directive ou décrire un décor sans qu'il ne se passe rien, même tranquillement.
+  directive ou décrire un décor sans qu'il ne se passe rien, même tranquillement — ET sa propre
+  directive n'appelle pas un moment calme ou transitionnel.
 - AMELIORATION : des beats se répètent, ou un détail concret manquant rendrait un moment plus
   vivant dans l'intensité prévue.
 

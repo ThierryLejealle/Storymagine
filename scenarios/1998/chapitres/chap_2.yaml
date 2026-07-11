@@ -35,19 +35,24 @@ sequences:
     directive: >
       Christelle et Thierry vont manger ensemble le soir. Avec Corinne et Catherine
       Corinne et Catherine se rencontrent et sympathisent aussi
-      Christelle et Thierry décide de se promener le soir sur la plage
+      Christelle et Thierry décide de se retrouver pour le repas du soir.
     min_words: 500
 
   # Séquence avec rupture narrative intentionnelle (ellipse, saut temporel)
   # no_transition: true → supprime la continuité avec la séquence précédente
   - type: explicit
     directive: >
-      Repas tous les 4 avec Corinne et Catherine. Tout le monde sympathise.
+      Christelle et Thierry avaient décidé de se retrouver pour le repas du soir.
+      Christelle est venue avec Corine et Thierry avec Catherine.
+      Catherine et Corinne se rencontrent.
+      Repas tous les 4 (Thierry, Christelle, Corinne et Catherine). 
+      Tout le monde sympathise.
     min_words: 300
     lore: ["PLAGE"]
 
   - type: explicit
     directive: >
+      Christelle et Thierry décident de se promener le soir sur la plage après le repas.
       Christelle et Thierry vont se promener sur la plage tous les deux après le repas
       Balade sur une plage de sable fin en fin de journée, par une belle soirée d'été pour Christelle et Thierry
       Longue promenade sur le sable, les pieds dans l'eau

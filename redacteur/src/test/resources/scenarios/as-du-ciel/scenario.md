@@ -1,6 +1,6 @@
 title: "L'As du Ciel"
 language: fr
-default_sequence_words: 250
+default_sequence_words: 300
 context_window: 32768
 writing_example: "example.md"
 # TEST sequence_style_check

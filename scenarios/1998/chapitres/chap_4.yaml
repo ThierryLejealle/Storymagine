@@ -33,13 +33,18 @@ sequences:
   - type: explicit
     directive: >
       La semaine de Christelle, Corinne et Catherine est terminée.
-      Elles prennent le bus pour aller ver l'aéroport (Catherine) ou le train (Corinne et Christelle).
+      Catherine, Corinne et Christelle prennent le bus pour quitter l'UCPA. 
       Thierry leur dit au revoir et les voit monter dans le bus
       Le bus s'en va
+      Le bus dépose Catherine a la gare, puis Christelle et Corinne à l'aéroport.
+      Catherine rentre à Paris en train
+      Christelle et Corinne rentrent à Nantes en avion.
+      Thierry reste tout seul à l'UCPA.
     min_words: 500
 
   - type: explicit
     directive: >
+      Cette scene se passe à Nantes et ne parle que de Christelle.
       Scene avec Christelle seule chez elle à Nantes.
       Le lundi, Christelle se fait opérer de la cheville à l'hopital
       Elle rentre chez elle le lendemain après l'opération qui s'est bien passée. 
@@ -48,6 +53,7 @@ sequences:
 
   - type: explicit
     directive: >
+      Cette scene se passe à l'UCPA et ne parle que Thierry.
       Scene avec Thierry seul
       Thierry n'arrive plus à penser à autre chose qu'à Christelle.
       Le centre UCPA lui parait vide ; aucune activité ne l'intéresse
@@ -57,7 +63,7 @@ sequences:
 
   - type: explicit
     directive: >
-      Le Mardi
+      Le lendemain.
       Contexte : Thierry à l'UCPA Saint-Cyprien, Christelle dans son appartement à Nantes ; ils parlent au téléphone.
       Thierry décide de faire une folie, il appelle Christelle et lui dit qu'il veut la retrouver.
       Qu'il est prêt à tout quitter pour la rejoindre
