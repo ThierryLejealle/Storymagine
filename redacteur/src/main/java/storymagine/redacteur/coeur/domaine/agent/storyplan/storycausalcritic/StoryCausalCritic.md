@@ -13,7 +13,7 @@ défaut, même si elle décrit un événement soudain ou non expliqué — ce so
   d'un chapitre à l'autre
 
 ## Format de sortie
-Format à 3 paliers, identique à `PlanNarrativeCritic`/`PlanCoherenceCritic` :
+Format à 3 paliers, identique aux critics de plan (`PlanCoherenceCritic` et consorts) :
 ```
 AMELIORATION : ...
 DEFAUT_SIGNIFICATIF : ...

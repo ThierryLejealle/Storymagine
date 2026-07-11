@@ -323,4 +323,20 @@ public final class ScenarioFormatters {
                 .filter(d -> !d.isBlank())
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Numbered per-sequence directives (raw author text, not the enriched planner description
+     * with focus/lore/constraints folded in) — for critics verifying beat-level fidelity to
+     * what the author literally asked for in each sequence.
+     */
+    public static String sequenceDirectivesBlock(List<Sequence> sequences) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < sequences.size(); i++) {
+            String directive = sequences.get(i).directive();
+            if (directive == null || directive.isBlank()) continue;
+            if (sb.length() > 0) sb.append("\n\n");
+            sb.append("Sequence ").append(i + 1).append(": ").append(directive.trim());
+        }
+        return sb.toString();
+    }
 }

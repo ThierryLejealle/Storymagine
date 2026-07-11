@@ -2,8 +2,10 @@ package storymagine.redacteur.coeur.domaine.orchestrator.plan;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.agent.plan.goalcritic.PlanGoalCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.factscritic.PlanFactsCriticOutput;
 import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCriticOutput;
-import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.continuitycritic.PlanContinuityCriticOutput;
+import storymagine.redacteur.coeur.domaine.agent.plan.dramacritic.PlanDramaCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
@@ -16,7 +18,16 @@ import java.util.stream.Collectors;
 
 /**
  * Orchestrates the planning phase for one chapter:
- * ChapterPlanner → critics (narrative + coherence + goal) → retry if any critic has a remark.
+ * ChapterPlanner → 5 orthogonal critics (goal, facts, coherence, continuity, drama) → retry if
+ * any critic has a remark.
+ * - A PlanGoalCritic     : fidelity to the author's instruction (chapter goal/description + each
+ *                          sequence directive) — beat by beat, literal.
+ * - B PlanFactsCritic    : respect of already-established facts (sheets, checks, entity state).
+ * - C PlanCoherenceCritic: internal coherence of the plan (no external grounding needed).
+ * - D PlanContinuityCritic: narrative continuity with the story already written (summary).
+ * - E PlanDramaCritic    : dramaturgical effort, relative to the intensity the instruction calls for.
+ * B/C/D/E all apply the same "consigne fait foi" primacy rule — only A judges fidelity itself,
+ * so it needs no such exemption. See PlanGoalCritic.md for the full design rationale.
  * Retry rule: any problem (AMELIORATION, DEFAUT_SIGNIFICATIF or DEFAUT_MAJEUR) triggers a new pass ;
  * also retries if any individual critic score falls below QualityLevel.planEliminationThreshold(),
  * even when the average would otherwise pass.
@@ -25,22 +36,28 @@ import java.util.stream.Collectors;
  */
 public class ChapterPlanWorkflow {
 
-    private final ChapterPlannerStep      chapterPlannerStep;
-    private final PlanNarrativeCriticStep planNarrativeCriticStep;
-    private final PlanCoherenceCriticStep planCoherenceCriticStep;
-    private final PlanGoalCriticStep      goalPlanCriticStep;
-    private final LogPort                 log;
+    private final ChapterPlannerStep        chapterPlannerStep;
+    private final PlanGoalCriticStep        planGoalCriticStep;
+    private final PlanFactsCriticStep       planFactsCriticStep;
+    private final PlanCoherenceCriticStep   planCoherenceCriticStep;
+    private final PlanContinuityCriticStep  planContinuityCriticStep;
+    private final PlanDramaCriticStep       planDramaCriticStep;
+    private final LogPort                   log;
 
     public ChapterPlanWorkflow(ChapterPlannerStep chapterPlannerStep,
-                        PlanNarrativeCriticStep planNarrativeCriticStep,
+                        PlanGoalCriticStep planGoalCriticStep,
+                        PlanFactsCriticStep planFactsCriticStep,
                         PlanCoherenceCriticStep planCoherenceCriticStep,
-                        PlanGoalCriticStep goalPlanCriticStep,
+                        PlanContinuityCriticStep planContinuityCriticStep,
+                        PlanDramaCriticStep planDramaCriticStep,
                         LogPort log) {
-        this.chapterPlannerStep      = chapterPlannerStep;
-        this.planNarrativeCriticStep = planNarrativeCriticStep;
-        this.planCoherenceCriticStep = planCoherenceCriticStep;
-        this.goalPlanCriticStep      = goalPlanCriticStep;
-        this.log                     = log;
+        this.chapterPlannerStep       = chapterPlannerStep;
+        this.planGoalCriticStep       = planGoalCriticStep;
+        this.planFactsCriticStep      = planFactsCriticStep;
+        this.planCoherenceCriticStep  = planCoherenceCriticStep;
+        this.planContinuityCriticStep = planContinuityCriticStep;
+        this.planDramaCriticStep      = planDramaCriticStep;
+        this.log                      = log;
     }
 
     /** Plans the current chapter in Story. Mutates Story via WrittenChapter.setPlan/setCoherence. */
@@ -70,30 +87,42 @@ public class ChapterPlanWorkflow {
             }
 
             t0 = System.nanoTime();
-            PlanNarrativeCriticOutput narrative = planNarrativeCriticStep.run(scenario, chapter, story);
-            long narrMs = ms(t0);
+            PlanGoalCriticOutput goal = planGoalCriticStep.run(scenario, chapter, story);
+            long goalMs = ms(t0);
+
+            t0 = System.nanoTime();
+            PlanFactsCriticOutput facts = planFactsCriticStep.run(scenario, chapter, story);
+            long factsMs = ms(t0);
 
             t0 = System.nanoTime();
             PlanCoherenceCriticOutput coherence = planCoherenceCriticStep.run(scenario, chapter, story);
             long cohMs = ms(t0);
 
             t0 = System.nanoTime();
-            PlanGoalCriticOutput goal = goalPlanCriticStep.run(scenario, chapter, story);
-            long goalMs = ms(t0);
+            PlanContinuityCriticOutput continuity = planContinuityCriticStep.run(scenario, chapter, story);
+            long contMs = ms(t0);
+
+            t0 = System.nanoTime();
+            PlanDramaCriticOutput drama = planDramaCriticStep.run(scenario, chapter, story);
+            long dramaMs = ms(t0);
 
             if (goal.score() == 10 && !goal.problems().isEmpty()) {
                 log.warn("PlanGoalCritic score 10 mais PROBLEME non vide : " + goal.problems());
                 goal = new PlanGoalCriticOutput(List.of(), goal.score());
             }
 
-            log.critic("PlanNarrativeCritic", narrative.score(), narrMs, narrative.problems());
-            log.critic("PlanCoherenceCritic", coherence.score(), cohMs,  coherence.problems());
-            log.critic("PlanGoalCritic",       goal.score(),      goalMs, goal.problems());
+            log.critic("PlanGoalCritic",       goal.score(),       goalMs,  goal.problems());
+            log.critic("PlanFactsCritic",      facts.score(),      factsMs, facts.problems());
+            log.critic("PlanCoherenceCritic",  coherence.score(),  cohMs,   coherence.problems());
+            log.critic("PlanContinuityCritic", continuity.score(), contMs,  continuity.problems());
+            log.critic("PlanDramaCritic",      drama.score(),      dramaMs, drama.problems());
 
             double  elimination   = config.qualityLevel().planEliminationThreshold();
-            double  minScore      = Math.min(narrative.score(), Math.min(coherence.score(), goal.score()));
+            double  minScore      = Math.min(goal.score(), Math.min(facts.score(),
+                                     Math.min(coherence.score(), Math.min(continuity.score(), drama.score()))));
             boolean eliminated    = minScore < elimination;
-            double  avg           = (narrative.score() + coherence.score() + goal.score()) / 3.0;
+            double  avg           = (goal.score() + facts.score() + coherence.score()
+                                     + continuity.score() + drama.score()) / 5.0;
             double  avgThreshold  = config.qualityLevel().planAverageThreshold();
             boolean passed        = avg >= avgThreshold && !eliminated;
             boolean isLastAttempt = attempt == maxAttempts - 1;
@@ -113,7 +142,8 @@ public class ChapterPlanWorkflow {
 
             if (passed || isLastAttempt) break;
 
-            wc.setCoherence(mergeFeedback(narrative.problems(), coherence.problems(), goal.problems()));
+            wc.setCoherence(mergeFeedback(goal.problems(), facts.problems(), coherence.problems(),
+                    continuity.problems(), drama.problems()));
         }
 
         // Restore the best plan found across all passes
@@ -127,11 +157,14 @@ public class ChapterPlanWorkflow {
         log.chapterPlan(chapter.title(), wc.plan());
     }
 
-    private static String mergeFeedback(List<String> p1, List<String> p2, List<String> p3) {
+    private static String mergeFeedback(List<String> p1, List<String> p2, List<String> p3,
+                                         List<String> p4, List<String> p5) {
         List<String> all = new ArrayList<>();
         all.addAll(p1);
         all.addAll(p2);
         all.addAll(p3);
+        all.addAll(p4);
+        all.addAll(p5);
         return all.stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
     }
 

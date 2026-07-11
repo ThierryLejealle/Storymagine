@@ -9,9 +9,9 @@ import storymagine.redacteur.coeur.domaine.agent.Agent;
 import storymagine.redacteur.coeur.domaine.agent.commun.CriticOutputParser;
 
 /**
- * Evaluates character arcs across all chapter plans of the book — book-level equivalent of
- * PlanNarrativeCritic. Only judges what the plan ADDS beyond the author's brief (description +
- * goal), given first for each chapter — the brief itself is never a defect.
+ * Evaluates character arcs across all chapter plans of the book. Only judges what the plan
+ * ADDS beyond the author's brief (description + goal), given first for each chapter — the
+ * brief itself is never a defect.
  * Source: NarrativeCritiqueContext.evalArcs.
  */
 public class StoryNarrativeCritic implements Agent {

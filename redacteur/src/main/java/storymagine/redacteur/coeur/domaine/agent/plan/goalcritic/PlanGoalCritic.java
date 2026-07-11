@@ -1,48 +1,21 @@
 package storymagine.redacteur.coeur.domaine.agent.plan.goalcritic;
 
-import java.util.List;
-
 import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.LanguageNames;
 import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
-import storymagine.redacteur.coeur.domaine.agent.commun.ProblemScoreParser;
+import storymagine.redacteur.coeur.domaine.agent.commun.CriticOutputParser;
 
 /**
- * Evaluates whether a chapter plan fulfils its declared narrative goal ("but du chapitre").
- * Judges narrative function, not prose quality or coherence — those are other critics' job.
- * Source: NarrativeGoalContext.evaluatePlan.
+ * Axis A of the chapter-plan critic suite: does the plan deliver, beat by beat, every
+ * explicit element of the author's instruction (chapter goal, description, and each
+ * sequence's directive)? This IS the comparison to the instruction — no primacy clause
+ * needed, unlike the other plan critics.
  */
 public class PlanGoalCritic implements Agent {
-
-    private static final String SYSTEM =
-    """
-Tu évalues si un PLAN DE CHAPITRE remplit son objectif narratif spécifique.
-Ne juge pas la qualité littéraire, ni la cohérence globale du roman — c'est le rôle d'un autre agent, jamais le tien.
-Uniquement : le plan avance-t-il clairement et concrètement vers la consigne et l'objectif narratif de ce chapitre ?
-Si la consigne ou l'objectif de ce chapitre sont fournis, tout element du plan qui en decoule directement n'est pas un defaut — ne le signale pas.
-
-Procède dans cet ordre :
-1. Analyse le plan entier.
-2. Note tous les défauts et axes d'amélioration PAR RAPPORT A LA CONSIGNE ET A L'OBJECTIF DE CE CHAPITRE (jamais la cohérence générale, jamais la qualité littéraire).
-3. Liste en sortie les défauts trouvés.
-
-Écris UNIQUEMENT le FORMAT STRICT ci-dessous — ne produis pas les étapes intermédiaires 1 et 2 dans ta réponse.
-FORMAT STRICT :
-PROBLEME: une ligne par problème, ou [RIEN] si aucun problème.
-Rien d'autre : ni texte avant ni texte apres.
-
-Exemple 1 - deux problèmes (objectif du chapitre : "installer la méfiance de Pierre envers son capitaine") :
-PROBLEME: "Le plan ne fait jamais interagir Pierre et le capitaine — la méfiance ne peut pas s'installer si rien ne la déclenche"
-PROBLEME: "La S3 montre au contraire Pierre complimentant chaleureusement le capitaine, ce qui va à l'encontre de l'objectif"
-
-Exemple 2 - aucun probleme trouve :
-PROBLEME: [RIEN]
-
-En français.
-""";
 
     private static final String AGENT_NAME = "PlanGoalCritic";
 
@@ -58,18 +31,69 @@ En français.
     }
 
     public PlanGoalCriticOutput call(PlanGoalCriticInput input) {
+        String system = buildSystem(input.language());
+
         int ctx = llm.contextWindow();
         TruncHelper t = TruncHelper.create();
         String user = PromptBuilder.create()
-                .section("Consigne de l'auteur (ce chapitre)",  t.text(input.chapterDescription(), ctx * 4 / 12, "chapterDescription"))
-                .section("Objectif narratif de ce chapitre",    input.chapterGoal())
-                .section("Objectif global du roman (contexte)", t.text(input.bookGoal(), 1600, "bookGoal"))
-                .section("Plan à évaluer",                      t.text(input.plan(),     ctx * 4 / 2, "plan"))
-                .raw("Analyse si ce plan avance vers la consigne et l'objectif narratif de ce chapitre, puis liste tes PROBLEME:.")
+                .section("Chapter goal",         t.text(input.chapterGoal(), 1600, "chapterGoal"))
+                .section("Chapter description",  t.text(input.chapterDescription(), ctx * 4 / 12, "chapterDescription"))
+                .section("Sequence directives",  t.text(input.sequenceDirectives(), ctx * 4 / 8, "sequenceDirectives"))
+                .section("Book goal (context)",  t.text(input.bookGoal(), 1600, "bookGoal"))
+                .section("Plan",                 t.text(input.plan(), ctx * 4 / 2, "plan"))
+                .raw("Check the plan against the goal, the description and each sequence directive, then list your findings.")
                 .build();
         t.logIfTruncated(log, agentName());
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
-        List<String> problems = ProblemScoreParser.parseProblems(raw);
-        return new PlanGoalCriticOutput(problems, ProblemScoreParser.scoreFromProblemCount(problems.size()));
+
+        String raw = llm.generate(system, user, 0.3, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
+        return new PlanGoalCriticOutput(CriticOutputParser.parseProblems(raw), CriticOutputParser.calculateScore(raw));
+    }
+
+    private static String buildSystem(String language) {
+        return """
+            You are PlanGoalCritic. Your single mission: verify that the chapter plan delivers,
+            beat by beat, every explicit element of the author's instruction.
+
+            INPUT
+            - Chapter goal: what the chapter must achieve.
+            - Chapter description: how the author describes the chapter.
+            - Sequence directives: what each sequence must contain.
+            - Plan: the generated plan (sequences and beats).
+
+            WHAT TO CHECK
+            Go through the goal, the description and each directive, element by element,
+            and find where the plan delivers each one.
+            - DEFAUT_MAJEUR: an explicit element is missing from the plan, or the plan states its opposite.
+            - DEFAUT_SIGNIFICATIF: an element is present but distorted — wrong sequence,
+              weakened to the point of changing its meaning, or delivered only by implication.
+            - AMELIORATION: an element is delivered but vaguely; the plan could state it more directly.
+
+            OUT OF SCOPE
+            Do not judge the plan's internal consistency, established story facts,
+            or dramatic quality — other critics handle those. What the plan adds beyond
+            the instruction is not your concern either: you only track what the instruction
+            asks and the plan fails to deliver.
+
+            OUTPUT FORMAT
+            Write exactly these three sections, in this order, and nothing else —
+            no score, no comment, no introduction:
+            AMELIORATION:
+            DEFAUT_SIGNIFICATIF:
+            DEFAUT_MAJEUR:
+            Under each header, one line per problem, starting with "- " and naming the
+            sequence concerned. If a section has no problem, write the single line [RIEN].
+
+            EXAMPLE
+            Sequence 2 directive: "Mara refuses the smugglers' offer."
+            Plan, sequence 2: "Mara hesitates, then accepts the smugglers' offer."
+            Expected output:
+            AMELIORATION:
+            [RIEN]
+            DEFAUT_SIGNIFICATIF:
+            [RIEN]
+            DEFAUT_MAJEUR:
+            - Sequence 2: the directive says Mara refuses the offer, the plan makes her accept it.
+            """
+            + "\nWrite your findings in " + LanguageNames.english(language) + ".\n";
     }
 }

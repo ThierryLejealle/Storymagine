@@ -23,7 +23,9 @@ public class PlanGoalCriticStep {
                 plan,
                 chapter.description(),
                 chapter.goal(),
-                ScenarioFormatters.bookGoal(scenario)
+                ScenarioFormatters.sequenceDirectivesBlock(chapter.sequences()),
+                ScenarioFormatters.bookGoal(scenario),
+                scenario.config().language()
         ));
     }
 }

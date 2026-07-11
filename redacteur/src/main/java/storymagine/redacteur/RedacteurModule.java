@@ -12,8 +12,10 @@ import storymagine.redacteur.coeur.domaine.agent.storyplan.storyfidelitycritic.S
 import storymagine.redacteur.coeur.domaine.agent.storyplan.storynarrativecritic.StoryNarrativeCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner.ChapterPlanner;
 import storymagine.redacteur.coeur.domaine.agent.plan.goalcritic.PlanGoalCritic;
+import storymagine.redacteur.coeur.domaine.agent.plan.factscritic.PlanFactsCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCritic;
-import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.plan.continuitycritic.PlanContinuityCritic;
+import storymagine.redacteur.coeur.domaine.agent.plan.dramacritic.PlanDramaCritic;
 import storymagine.redacteur.coeur.domaine.agent.chapter.goalcritic.ChapterGoalCritic;
 import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.ChapterCoherenceCritic;
 import storymagine.redacteur.coeur.domaine.agent.chapter.dreamcritic.ChapterDreamCritic;
@@ -38,8 +40,10 @@ import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlannerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanGoalCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanFactsCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanCoherenceCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanNarrativeCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanContinuityCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanDramaCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlanWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryCausalCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryFidelityCriticStep;
@@ -124,10 +128,12 @@ public class RedacteurModule {
                                             LogPort log, HtmlExportPort htmlExport,
                                             BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
         // --- Plan agents ---
-        var chapterPlanner      = new ChapterPlanner(llm, log);
-        var planNarrativeCritic = new PlanNarrativeCritic(llm, log);
-        var planCoherenceCritic = new PlanCoherenceCritic(llm, log);
-        var goalPlanCritic      = new PlanGoalCritic(llm, log);
+        var chapterPlanner       = new ChapterPlanner(llm, log);
+        var planGoalCritic       = new PlanGoalCritic(llm, log);
+        var planFactsCritic      = new PlanFactsCritic(llm, log);
+        var planCoherenceCritic  = new PlanCoherenceCritic(llm, log);
+        var planContinuityCritic = new PlanContinuityCritic(llm, log);
+        var planDramaCritic      = new PlanDramaCritic(llm, log);
 
         // --- Writer agents ---
         var writer                  = new Writer(llm, log);
@@ -158,10 +164,12 @@ public class RedacteurModule {
         var storyCausalCritic    = new StoryCausalCritic(llm, log);
 
         // --- Plan steps ---
-        var chapterPlannerStep      = new ChapterPlannerStep(chapterPlanner, beatsConfig);
-        var planNarrativeCriticStep = new PlanNarrativeCriticStep(planNarrativeCritic);
-        var planCoherenceCriticStep = new PlanCoherenceCriticStep(planCoherenceCritic);
-        var goalPlanCriticStep      = new PlanGoalCriticStep(goalPlanCritic);
+        var chapterPlannerStep       = new ChapterPlannerStep(chapterPlanner, beatsConfig);
+        var planGoalCriticStep       = new PlanGoalCriticStep(planGoalCritic);
+        var planFactsCriticStep      = new PlanFactsCriticStep(planFactsCritic);
+        var planCoherenceCriticStep  = new PlanCoherenceCriticStep(planCoherenceCritic);
+        var planContinuityCriticStep = new PlanContinuityCriticStep(planContinuityCritic);
+        var planDramaCriticStep      = new PlanDramaCriticStep(planDramaCritic);
 
         // --- Story plan steps ---
         var storyFidelityCriticStep  = new StoryFidelityCriticStep(storyFidelityCritic);
@@ -192,8 +200,8 @@ public class RedacteurModule {
 
         // --- Workflows ---
         var chapterPlanWorkflow = new ChapterPlanWorkflow(
-            chapterPlannerStep, planNarrativeCriticStep, planCoherenceCriticStep,
-            goalPlanCriticStep, log);
+            chapterPlannerStep, planGoalCriticStep, planFactsCriticStep, planCoherenceCriticStep,
+            planContinuityCriticStep, planDramaCriticStep, log);
 
         var storyPlanWorkflow = new StoryPlanWorkflow(
             chapterPlanWorkflow, storyFidelityCriticStep, storyNarrativeCriticStep, storyCausalCriticStep, log);

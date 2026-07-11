@@ -1,9 +1,9 @@
 # StoryNarrativeCritic
 
 ## Rôle
-Équivalent livre de `PlanNarrativeCritic` : analyse les arcs narratifs des personnages sur
-l'ensemble des plans de chapitres du livre. Exécuté par `StoryPlanWorkflow` une fois que tous
-les chapitres ont été planifiés, avant toute rédaction.
+Analyse les arcs narratifs des personnages sur l'ensemble des plans de chapitres du livre.
+Exécuté par `StoryPlanWorkflow` une fois que tous les chapitres ont été planifiés, avant toute
+rédaction.
 
 ## Ce qu'il vérifie
 Uniquement ce que le plan **ajoute au-delà de la consigne de l'auteur** (description + objectif
@@ -15,7 +15,7 @@ ce sont des choix de l'auteur.
 - Ajout redondant d'un chapitre à l'autre
 
 ## Format de sortie
-Format à 3 paliers, identique à `PlanNarrativeCritic`/`PlanCoherenceCritic` :
+Format à 3 paliers, identique aux critics de plan (`PlanCoherenceCritic` et consorts) :
 ```
 AMELIORATION : ...
 DEFAUT_SIGNIFICATIF : ...

@@ -22,7 +22,7 @@ un départ. Ce cas de figure n'est ni un ajout d'arc ni une contradiction causal
 c'est un défaut de fidélité, le rôle propre de cet agent.
 
 ## Format de sortie
-Format à 3 paliers, identique à `PlanNarrativeCritic`/`PlanCoherenceCritic` :
+Format à 3 paliers, identique aux critics de plan (`PlanCoherenceCritic` et consorts) :
 ```
 AMELIORATION : ...
 DEFAUT_SIGNIFICATIF : ...

@@ -33,22 +33,21 @@ class WorkflowLogTest {
     void planWorkflow_standard_logsAllPlanAgents() {
         CapturingLogPort log = new CapturingLogPort();
         var mock = MockModelCallPort.builder(8192)
-            .when("editeur narratif",                      MockModelCallPort.CRITIC_PASS)
-            .when("verificateur de coherence",             MockModelCallPort.CRITIC_PASS)
-            .when("PLAN DE CHAPITRE remplit son objectif", MockModelCallPort.SCORE_PASS)
-            .when("archiviste d'un roman",                 "Resume du chapitre.")
+            .when("archiviste d'un roman", "Resume du chapitre.")
             .otherwise(MockModelCallPort.UNIVERSAL_PASS)
             .build();
 
         RedacteurModule.assemble(mock, new ScenarioFileAdapter(), log)
             .generate(scenarioRoot, GenerationConfig.simple());
 
-        assertTrue(log.hasPhase("PLAN"),                 "Expected PLAN phase header");
-        assertTrue(log.hasStep("ChapterPlanner"),        "Expected ChapterPlanner step");
-        assertTrue(log.hasCritic("PlanNarrativeCritic"), "Expected PlanNarrativeCritic logged");
-        assertTrue(log.hasCritic("PlanCoherenceCritic"), "Expected PlanCoherenceCritic logged");
-        assertTrue(log.hasCritic("PlanGoalCritic"),      "Expected PlanGoalCritic logged");
-        assertTrue(log.hasScore("PASS"),                 "Expected PASS outcome logged");
+        assertTrue(log.hasPhase("PLAN"),                  "Expected PLAN phase header");
+        assertTrue(log.hasStep("ChapterPlanner"),         "Expected ChapterPlanner step");
+        assertTrue(log.hasCritic("PlanGoalCritic"),       "Expected PlanGoalCritic logged");
+        assertTrue(log.hasCritic("PlanFactsCritic"),      "Expected PlanFactsCritic logged");
+        assertTrue(log.hasCritic("PlanCoherenceCritic"),  "Expected PlanCoherenceCritic logged");
+        assertTrue(log.hasCritic("PlanContinuityCritic"), "Expected PlanContinuityCritic logged");
+        assertTrue(log.hasCritic("PlanDramaCritic"),      "Expected PlanDramaCritic logged");
+        assertTrue(log.hasScore("PASS"),                  "Expected PASS outcome logged");
     }
 
     // ------------------------------------------------------------------
@@ -105,10 +104,7 @@ class WorkflowLogTest {
     void planOnly_doesNotLogWriteOrEval() {
         CapturingLogPort log = new CapturingLogPort();
         var mock = MockModelCallPort.builder(8192)
-            .when("editeur narratif",                      MockModelCallPort.CRITIC_PASS)
-            .when("verificateur de coherence",             MockModelCallPort.CRITIC_PASS)
-            .when("PLAN DE CHAPITRE remplit son objectif", MockModelCallPort.SCORE_PASS)
-            .when("archiviste d'un roman",                 "Resume.")
+            .when("archiviste d'un roman", "Resume.")
             .otherwise(MockModelCallPort.UNIVERSAL_PASS)
             .build();
 

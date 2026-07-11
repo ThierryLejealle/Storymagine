@@ -4,7 +4,6 @@ import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCohere
 import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCriticInput;
 import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCriticOutput;
 import storymagine.redacteur.coeur.domaine.orchestrator.common.ScenarioFormatters;
-import storymagine.redacteur.coeur.domaine.orchestrator.common.StoryFormatters;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.story.Story;
@@ -20,14 +19,10 @@ public class PlanCoherenceCriticStep {
 
     public PlanCoherenceCriticOutput run(Scenario scenario, Chapter chapter, Story story) {
         String plan = story.currentChapter().orElseThrow().plan();
-        String enrichedPlan = ScenarioFormatters.enrichPlanJson(plan, chapter.sequences());
         return agent.call(new PlanCoherenceCriticInput(
-                enrichedPlan,
-                chapter.description(),
-                chapter.goal(),
-                String.join("\n", ScenarioFormatters.planChecks(scenario, chapter)),
-                ScenarioFormatters.planCharactersText(chapter),
-                StoryFormatters.entityState(story.worldState())
+                plan,
+                ScenarioFormatters.sequenceDirectivesBlock(chapter.sequences()),
+                scenario.config().language()
         ));
     }
 }
