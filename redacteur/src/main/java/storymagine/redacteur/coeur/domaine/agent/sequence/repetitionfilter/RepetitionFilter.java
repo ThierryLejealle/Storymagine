@@ -49,7 +49,7 @@ public class RepetitionFilter implements Agent {
             + "\n\n### Expressions candidates à bannir :\n"
             + candidateList
             + "\n\nRetourne uniquement les expressions à bannir (hors leitmotivs protégés).";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         return new RepetitionFilterOutput(parseList(raw));
     }
 

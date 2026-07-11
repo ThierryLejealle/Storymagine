@@ -31,12 +31,14 @@ Le résultat `ChapterPlannerOutput.sequencePlans()` contient les chaînes format
 - bookGoal : 1/16 du contexte
 - characters : 1/8
 - constraints, focusText, loreText, entityState, coherence : 1/12 chacun
-- storySoFar : 1/8
+- summary : 1/8 (`SummaryBudget`, même fraction que le slot `summary` du Writer)
 
 ## Contraintes
 - Règles sur les beats : au moins 6 par séquence, filmables à la caméra (action/réaction/parole/perception sensorielle)
 - `forbiddenPhrases` injectées dans le system prompt
 - En correction, le plan précédent est injecté dans le user prompt (slot 1/4 du contexte)
+- Consomme le côté `constraint()` des `Requirement` du scénario (jamais `check()`) —
+  préfixées dans le prompt par "Assure-toi que chacun des points suivants est respecté :"
 
 ## Source Redacteur
 `story.context.ScenarioPlannerContext` (méthodes `planInternal`, `planChapterWithCorrection`, `parseAndFormatJson`)

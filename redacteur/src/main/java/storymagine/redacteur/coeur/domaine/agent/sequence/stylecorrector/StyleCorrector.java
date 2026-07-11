@@ -1,33 +1,42 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
-import storymagine.redacteur.coeur.domaine.agent.Agent;
+import storymagine.redacteur.coeur.domaine.agent.AgentCorrector;
+import storymagine.redacteur.coeur.domaine.agent.commun.CorrectionParser;
+import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Corrects stylistic weaknesses directly via (FAUX → JUSTE) phrase pairs.
  * Does not explain problems — patches inline like other Correctors.
  */
-public class StyleCorrector implements Agent {
+public class StyleCorrector implements AgentCorrector {
 
     private static final String AGENT_NAME = "SequenceStyleCorrector";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public StyleCorrector(ModelCallPort llm) {
+    @Override
+    public RetryStrategy retryStrategy() { return RetryStrategy.RATIO_THRESHOLD; }
+
+    public StyleCorrector(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public StyleCorrectorOutput call(StyleCorrectorInput input) {
         String system = buildSystem(input);
         String user   = buildUser(input);
-        String raw    = llm.generate(system, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
+        String raw    = llm.generate(system, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         return new StyleCorrectorOutput(parseFindings(raw));
     }
 
@@ -81,6 +90,12 @@ public class StyleCorrector implements Agent {
                   JUSTE: "Ils se turent."
                 - FAUX: "Leurs regards se croiserent dans un moment de comprehension mutuelle tacite."
                   JUSTE: "Leurs regards se croiserent."
+
+                FAUX doit etre recopie mot pour mot, en entier — jamais de "..." pour abreger un passage long.
+                Ni FAUX ni JUSTE ne portent de commentaire ou de justification apres la citation.
+                  MAUVAIS : - FAUX: "...ce cadre idyllique." (Repetition structurelle)
+                  BON     : - FAUX: "...ce cadre idyllique."
+
                 Exemple 2 - aucun defaut :
                 PAS DE CORRECTION""";
 
@@ -96,36 +111,19 @@ public class StyleCorrector implements Agent {
         int guideSlot = ctx * 4 / 8;
         int exSlot    = ctx * 4 / 6;
 
-        String styleSection    = (in.styleGuide()      != null && !in.styleGuide().isBlank())      ? "### Guide de style\n"                        + trunc(in.styleGuide(),      guideSlot) + "\n\n" : "";
-        String criteriaSection = (in.qualityCriteria() != null && !in.qualityCriteria().isBlank()) ? "### Criteres de qualite\n"                   + trunc(in.qualityCriteria(), guideSlot) + "\n\n" : "";
-        String exampleSection  = (in.writingExample()  != null && !in.writingExample().isBlank())  ? "### Exemple de reference (style attendu)\n"  + trunc(in.writingExample(),  exSlot)    + "\n\n" : "";
-
-        return styleSection
-                + criteriaSection
-                + exampleSection
-                + "### Texte a corriger\n" + trunc(in.text(), textSlot)
-                + "\n\nCorrige ce texte. Donne les corrections FAUX/JUSTE.";
+        TruncHelper t = TruncHelper.create();
+        String user = PromptBuilder.create()
+                .section("Guide de style", t.text(in.styleGuide(), guideSlot, "styleGuide"))
+                .section("Criteres de qualite", t.text(in.qualityCriteria(), guideSlot, "qualityCriteria"))
+                .section("Exemple de reference (style attendu)", t.text(in.writingExample(), exSlot, "writingExample"))
+                .section("Texte a corriger", t.text(in.text(), textSlot, "text"))
+                .raw("Corrige ce texte. Donne les corrections FAUX/JUSTE.")
+                .build();
+        t.logIfTruncated(log, agentName());
+        return user;
     }
 
     private static List<StyleCorrectorFinding> parseFindings(String response) {
-        List<StyleCorrectorFinding> findings = new ArrayList<>();
-        if (response == null || response.trim().startsWith("PAS DE CORRECTION")) return findings;
-        String faux = null;
-        for (String line : response.split("\n")) {
-            String t = line.trim();
-            if (t.startsWith("FAUX:")) {
-                faux = t.substring("FAUX:".length()).trim().replaceAll("^\"|\"$", "");
-            } else if (t.startsWith("JUSTE:") && faux != null) {
-                String juste = t.substring("JUSTE:".length()).trim().replaceAll("^\"|\"$", "");
-                if (!faux.isBlank() && !juste.isBlank()) findings.add(new StyleCorrectorFinding(faux, juste));
-                faux = null;
-            }
-        }
-        return findings;
-    }
-
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
+        return CorrectionParser.parse(response, "PAS DE CORRECTION", StyleCorrectorFinding::new);
     }
 }

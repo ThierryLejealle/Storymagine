@@ -104,9 +104,10 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                             .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
                             .incrementAndGet();
         long   t0     = System.currentTimeMillis();
-        String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt);
+        Boolean resolvedThink = resolveThink(ctx.think() != null ? ctx.think() : (think ? Boolean.TRUE : Boolean.FALSE));
+        String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt, resolvedThink);
         try {
-            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel());
+            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel(), ctx.think());
             log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
@@ -118,12 +119,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     }
 
     private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature,
-                                        String agentLabel) {
+                                        String agentLabel, Boolean thinkOverride) {
         while (true) {
             try {
                 return streamMode
-                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel)
-                    : sendSync(systemPrompt, userPrompt, temperature, agentLabel);
+                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride)
+                    : sendSync(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride);
             } catch (ContextOverflowException e) {
                 int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
                 if (newSize <= contextWindowSize) {
@@ -172,7 +173,16 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     @Override public String  modelParamSize()     { return cachedModelInfo != null ? cachedModelInfo.parameterSize : ""; }
     @Override public String  modelQuantization()  { return cachedModelInfo != null ? cachedModelInfo.quantization  : ""; }
     @Override public String  modelFamily()        { return cachedModelInfo != null ? cachedModelInfo.family        : ""; }
-    @Override public boolean supportsThinking()   { return cachedModelInfo != null && cachedModelInfo.supportsThinking; }
+    @Override
+    public boolean supportsThinking() {
+        // La famille gemma4 réfléchit nativement même quand /api/show ne déclare pas la capacité
+        // (import hf.co/ mal enregistré côté Ollama — voir evols/2026-07-09-2319-...). On la considère
+        // donc toujours "thinking" ici. resolveThink() reste basé sur le champ brut cachedModelInfo
+        // .supportsThinking (pas sur cette méthode) : il continue de neutraliser un think=true explicite
+        // quand Ollama le rejetterait techniquement, override ou pas.
+        if (cachedModelInfo != null && "gemma4".equalsIgnoreCase(cachedModelInfo.family)) return true;
+        return cachedModelInfo != null && cachedModelInfo.supportsThinking;
+    }
 
     @Override
     public String modelInfoBlock() {
@@ -246,8 +256,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // -------------------------------------------------------------------------
 
     private LlmResult sendSync(String systemPrompt, String userPrompt, double temperature,
-                                String agentLabel) {
-        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature);
+                                String agentLabel, Boolean thinkOverride) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride);
 
         HttpRequest request;
         try {
@@ -280,7 +290,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                     throw new RuntimeException("Ollama error : " + resp.error);
                 }
                 String text = resp.message != null ? resp.message.content : "";
-                logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration);
+                logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration, req.think);
                 return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration);
 
             } catch (RuntimeException e) {
@@ -311,8 +321,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // -------------------------------------------------------------------------
 
     private LlmResult sendStreaming(String systemPrompt, String userPrompt, double temperature,
-                                     String agentLabel) {
-        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature);
+                                     String agentLabel, Boolean thinkOverride) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride);
         req.stream = true;
 
         HttpRequest request;
@@ -331,7 +341,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         Exception lastCause     = null;
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
             try {
-                return executeStreaming(request, agentLabel);
+                return executeStreaming(request, agentLabel, req.think);
             } catch (ContextOverflowException e) {
                 throw e;
             } catch (Exception e) {
@@ -352,7 +362,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
             "Ollama stream : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
     }
 
-    private LlmResult executeStreaming(HttpRequest request, String agentLabel) {
+    private LlmResult executeStreaming(HttpRequest request, String agentLabel, Boolean think) {
         // Obtenir les headers HTTP — quasi-instantané sur Ollama local
         CompletableFuture<HttpResponse<InputStream>> cf =
             http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
@@ -422,7 +432,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
             throw new RuntimeException("Erreur lecture stream Ollama : " + e.getMessage(), e);
         }
 
-        logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration);
+        logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration, think);
         return new LlmResult(content.toString(), promptTokens, evalTokens, evalDuration);
     }
 
@@ -450,7 +460,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // Helpers communs
     // -------------------------------------------------------------------------
 
-    private OllamaRequest buildOllamaRequest(String systemPrompt, String userPrompt, double temperature) {
+    private OllamaRequest buildOllamaRequest(String systemPrompt, String userPrompt, double temperature,
+                                              Boolean thinkOverride) {
         OllamaRequest req = new OllamaRequest();
         req.model = model;
         req.options.put("num_ctx",        contextWindowSize);
@@ -459,7 +470,10 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         req.options.put("top_p",          topP);
         req.options.put("repeat_penalty", repeatPenalty);
         if (numPredict >= 0) req.options.put("num_predict", numPredict);
-        req.think    = think ? Boolean.TRUE : null;
+        // thinkOverride (LlmCallContext) prime sur le réglage par défaut de l'adaptateur.
+        // false est envoyé explicitement (jamais omis) : un champ absent laisse Ollama appliquer
+        // son comportement par défaut, qui est "réflexion activée" pour les modèles qui la supportent.
+        req.think = resolveThink(thinkOverride != null ? thinkOverride : (think ? Boolean.TRUE : Boolean.FALSE));
         req.messages = List.of(
             new OllamaMessage("system", systemPrompt),
             new OllamaMessage("user",   userPrompt)
@@ -467,11 +481,23 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         return req;
     }
 
-    private void logLlmCall(String agentLabel, int promptTokens, int evalTokens, long evalDurationNs) {
+    /**
+     * Neutralise une demande d'activation explicite du thinking si le modèle probé ne la supporte
+     * pas (capacité "thinking" absente de /api/show — certains imports hf.co/ rejettent think=true
+     * en HTTP 400 même quand le modèle réfléchit très bien par défaut). Dans ce cas, on retombe sur
+     * "pas de préférence" (champ absent) plutôt que de faire échouer l'appel.
+     */
+    private Boolean resolveThink(Boolean wanted) {
+        if (Boolean.TRUE.equals(wanted) && cachedModelInfo != null && !cachedModelInfo.supportsThinking)
+            return null;
+        return wanted;
+    }
+
+    private void logLlmCall(String agentLabel, int promptTokens, int evalTokens, long evalDurationNs, Boolean think) {
         long   ms  = evalDurationNs > 0 ? evalDurationNs / 1_000_000L : 0;
         double tps = evalTokens > 0 && evalDurationNs > 0
             ? evalTokens / (evalDurationNs / 1_000_000_000.0) : 0;
-        log.llmCall(agentLabel, ms, promptTokens, evalTokens, tps);
+        log.llmCall(agentLabel, ms, promptTokens, evalTokens, tps, think);
     }
 
     private OllamaModelInfo fetchModelInfo() {

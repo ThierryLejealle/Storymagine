@@ -1,6 +1,9 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
 
@@ -26,22 +29,28 @@ public class PlanFidelityCritic implements Agent {
     private static final String AGENT_NAME = "SequencePlanFidelityCritic";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public PlanFidelityCritic(ModelCallPort llm) {
+    public PlanFidelityCritic(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public PlanFidelityCriticOutput call(PlanFidelityCriticInput input) {
         String beatsBlock = input.beats().stream()
                 .map(b -> "- " + b)
                 .collect(Collectors.joining("\n"));
-        String user = "### Beats du plan\n" + beatsBlock
-                + "\n\n### Texte rédigé\n" + trunc(input.sequenceText(), llm.contextWindow() * 4 / 2)
-                + "\n\nVérifie que chaque beat est développé dans le texte.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
+        TruncHelper t = TruncHelper.create();
+        String user = PromptBuilder.create()
+                .section("Beats du plan", beatsBlock)
+                .section("Texte rédigé", t.text(input.sequenceText(), llm.contextWindow() * 4 / 2, "sequenceText"))
+                .raw("Vérifie que chaque beat est développé dans le texte.")
+                .build();
+        t.logIfTruncated(log, agentName());
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         List<String> failures = parseFailures(raw);
         int score = Math.max(1, 10 - failures.size() * 3);
         return new PlanFidelityCriticOutput(failures, score);
@@ -58,10 +67,5 @@ public class PlanFidelityCritic implements Agent {
             }
         }
         return failures;
-    }
-
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
     }
 }

@@ -2,7 +2,7 @@ package storymagine.redacteur.coeur.domaine.orchestrator;
 
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.EvaluateWorkflow;
-import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanWorkflow;
+import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryPlanWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriteWorkflow;
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
@@ -14,26 +14,26 @@ import java.util.List;
 
 /**
  * Entry point for story generation.
- * Iterates over Scenario chapters and delegates each phase to the three workflows.
+ * Plans the whole book first (StoryPlanWorkflow), then writes and evaluates chapter by chapter.
  */
 public class StoryOrchestrator {
 
-    private final PlanWorkflow     planWorkflow;
-    private final WriteWorkflow    writeWorkflow;
-    private final EvaluateWorkflow evaluateWorkflow;
-    private final HtmlExportPort   htmlExport;
-    private final LogPort          log;
+    private final StoryPlanWorkflow storyPlanWorkflow;
+    private final WriteWorkflow     writeWorkflow;
+    private final EvaluateWorkflow  evaluateWorkflow;
+    private final HtmlExportPort    htmlExport;
+    private final LogPort           log;
 
-    public StoryOrchestrator(PlanWorkflow planWorkflow,
+    public StoryOrchestrator(StoryPlanWorkflow storyPlanWorkflow,
                              WriteWorkflow writeWorkflow,
                              EvaluateWorkflow evaluateWorkflow,
                              HtmlExportPort htmlExport,
                              LogPort log) {
-        this.planWorkflow     = planWorkflow;
-        this.writeWorkflow    = writeWorkflow;
-        this.evaluateWorkflow = evaluateWorkflow;
-        this.htmlExport       = htmlExport;
-        this.log              = log;
+        this.storyPlanWorkflow = storyPlanWorkflow;
+        this.writeWorkflow     = writeWorkflow;
+        this.evaluateWorkflow  = evaluateWorkflow;
+        this.htmlExport        = htmlExport;
+        this.log               = log;
     }
 
     public Story generate(Scenario scenario, GenerationConfig config) {
@@ -43,14 +43,19 @@ public class StoryOrchestrator {
         List<Chapter> chapters = scenario.chapters();
         log.phaseHeader("SCENARIO", scenario.config().title() + " — " + chapters.size() + " chapitre(s)");
 
+        log.phaseHeader("PLAN", null);
+        storyPlanWorkflow.run(scenario, story, config);
+
+        boolean runsWriting = config.qualityLevel().runsWriting();
+        if (runsWriting) {
+            log.phaseHeader("WRITE", null);
+        }
         for (int i = 0; i < chapters.size(); i++) {
             Chapter chapter = chapters.get(i);
-            story.startChapter(new ChapterId(chapter.title()));
-            log.phaseHeader("Chapitre " + (i + 1) + "/" + chapters.size(), chapter.title());
+            story.activateChapter(new ChapterId(chapter.title()));
 
-            planWorkflow.run(scenario, chapter, story, config);
-
-            if (config.qualityLevel().runsWriting()) {
+            if (runsWriting) {
+                log.phaseHeader("WRITE chapitre " + (i + 1) + "/" + chapters.size(), chapter.title());
                 writeWorkflow.run(scenario, chapter, story, config);
             }
 

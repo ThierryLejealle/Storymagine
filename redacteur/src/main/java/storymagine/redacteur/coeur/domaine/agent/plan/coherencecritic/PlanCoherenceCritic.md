@@ -1,14 +1,16 @@
 # PlanCoherenceCritic
 
 ## Rôle
-Vérifie la cohérence factuelle d'un plan de chapitre (checks, fiches personnages, contraintes, focus).
-Équivalent plan de `TextCoherenceCritic`. Ne juge pas la qualité narrative.
+Vérifie la cohérence factuelle d'un plan de chapitre (points à vérifier, fiches personnages).
+Équivalent plan de `ChapterCoherenceCritic`. Ne juge pas la qualité narrative.
+Consomme le côté `check()` des `Requirement` du scénario — jamais le côté `constraint()`.
 
 ## Ce qu'il vérifie
 - Faits établis et continuité factuelle
-- Contraintes explicites (checks)
+- Points à vérifier globaux (`checks`, côté check des Requirement)
+- Points à vérifier par séquence, injectés dans le plan JSON sous la clé `points_a_verifier`
+  (voir `ScenarioFormatters.enrichPlanJson`)
 - Fiches personnages : faits et psychologie
-- Éléments de focus requis
 
 ## Ce qu'il ignore
 - Progression narrative, qualité littéraire, grammaire, style
@@ -22,8 +24,8 @@ DEFAUT_MAJEUR : [texte] ou [RIEN]
 
 ## Définitions des tiers
 - **AMELIORATION** : détail factuel qui pourrait être plus précis ou conforme à la fiche
-- **DEFAUT_SIGNIFICATIF** : information qui contredit partiellement un fait établi ou un check
-- **DEFAUT_MAJEUR** : contradiction directe d'un check explicite ou d'un fait fondamental
+- **DEFAUT_SIGNIFICATIF** : information qui contredit partiellement un fait établi ou un point à vérifier
+- **DEFAUT_MAJEUR** : contradiction directe d'un point à vérifier explicite ou d'un fait fondamental
 
 ## Source Redacteur
 `story.context.CriticContext.evalPlanCoherence`

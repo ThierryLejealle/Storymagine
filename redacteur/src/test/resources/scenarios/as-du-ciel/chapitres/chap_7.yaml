@@ -27,10 +27,10 @@ sequences:
       comme si ses bras étaient des ailes. Lucie est là, à côté de lui. Pas de mots.
       Juste la lumière, l'air, le bleu profond au-dessus du bleu.
       Le ciel est impossible — trop silencieux, trop large, trop doux.
-    checks:
-      - "Pierre vole sans appareil mécanique — le corps seul dans le ciel"
-      - "Lucie est présente mais sans dialogue explicite"
-      - "L'atmosphère est onirique et symbolique, pas réaliste"
+    requirements:
+      - "| Pierre vole sans appareil mécanique — le corps seul dans le ciel"
+      - "| Lucie est présente mais sans dialogue explicite"
+      - "| L'atmosphère est onirique et symbolique, pas réaliste"
 
   - type: explicit
     directive: >
@@ -39,7 +39,7 @@ sequences:
       Puis le bleu pâlit. Il y a un bruit lointain, grave, mécanique.
       Pierre essaie de rester dans le ciel. Il ne peut plus.
       Le réveil vient avant qu'il soit prêt.
-    checks:
-      - "La dissolution du rêve est progressive — pas un réveil brutal sans transition"
-      - "Le bruit mécanique qui revient signale le retour au réel sans nommer explicitement le Spitfire"
-      - "Aucun fait de ce rêve ne constitue un événement canonique de la trame"
+    requirements:
+      - "| La dissolution du rêve est progressive — pas un réveil brutal sans transition"
+      - "| Le bruit mécanique qui revient signale le retour au réel sans nommer explicitement le Spitfire"
+      - "| Aucun fait de ce rêve ne constitue un événement canonique de la trame"

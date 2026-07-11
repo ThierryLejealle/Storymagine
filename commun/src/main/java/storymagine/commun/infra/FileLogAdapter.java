@@ -45,19 +45,21 @@ public class FileLogAdapter implements LogPort {
     private final Map<String, TraceState>      openTraces   = new ConcurrentHashMap<>();
 
     private static final class TraceState {
-        final String startTime;
-        final String agentName;
-        final int    localNum;
-        final String systemPrompt;
-        final String userPrompt;
+        final String  startTime;
+        final String  agentName;
+        final int     localNum;
+        final String  systemPrompt;
+        final String  userPrompt;
+        final Boolean think;
 
         TraceState(String startTime, String agentName, int localNum,
-                   String systemPrompt, String userPrompt) {
+                   String systemPrompt, String userPrompt, Boolean think) {
             this.startTime    = startTime;
             this.agentName    = agentName;
             this.localNum     = localNum;
             this.systemPrompt = systemPrompt;
             this.userPrompt   = userPrompt;
+            this.think        = think;
         }
     }
 
@@ -104,26 +106,34 @@ public class FileLogAdapter implements LogPort {
     }
 
     @Override
-    public void scoresSummary(double avg, boolean passed, String retryHint) {
+    public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
+                               boolean passed, String retryHint) {
         String hint = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
         if (avg <= 0 || Double.isNaN(avg)) {
             appendMaster(String.format("[%s]   -> %s%s%n", ts(), passed ? "PASS" : "RETRY", hint));
         } else {
             appendMaster(String.format(Locale.ROOT,
-                    "[%s]   -> moy %.2f  %s%s%n", ts(), avg, passed ? "PASS" : "RETRY", hint));
+                    "[%s]   -> moy %.2f (seuil %.1f)  min %.2f (elim %.1f)  %s%s%n",
+                    ts(), avg, avgThreshold, minScore, eliminationThreshold, passed ? "PASS" : "RETRY", hint));
         }
     }
 
     @Override
-    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
+    public void warn(String message) {
+        appendMaster(String.format("[%s]   [WARN] %s%n", ts(), message));
+    }
+
+    @Override
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think) {
         int  n    = llmCalls.incrementAndGet();
         long sumI = sumTokIn.addAndGet(tokIn);
         long sumO = sumTokOut.addAndGet(tokOut);
-        String tpsStr = tokPerSec > 0
+        String tpsStr   = tokPerSec > 0
                 ? String.format(Locale.ROOT, "  %.1f tok/s", tokPerSec) : "";
+        String thinkStr = Boolean.TRUE.equals(think) ? "  [think]" : "";
         appendMaster(String.format(Locale.ROOT,
-                "[%s]   [LLM #%3d]  %-28s  %,8dms  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
-                ts(), n, agentLabel, ms, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO)));
+                "[%s]   [LLM #%3d]  %-28s  %,8dms  %6d -> %5d tok%s%s  [sum in:%s out:%s]%n",
+                ts(), n, agentLabel, ms, tokIn, tokOut, tpsStr, thinkStr, fmtTok(sumI), fmtTok(sumO)));
     }
 
     @Override
@@ -182,11 +192,11 @@ public class FileLogAdapter implements LogPort {
 
     @Override
     public String llmCallOpen(String agentName, int localNum,
-                               String systemPrompt, String userPrompt) {
+                               String systemPrompt, String userPrompt, Boolean think) {
         int    num   = traceCounter.incrementAndGet();
         String stem  = String.format("%03d_%s_%d", num, agentName, localNum);
         String start = LocalDateTime.now().format(TRACE_TS);
-        TraceState state = new TraceState(start, agentName, localNum, systemPrompt, userPrompt);
+        TraceState state = new TraceState(start, agentName, localNum, systemPrompt, userPrompt, think);
         openTraces.put(stem, state);
         writeTraceFile(stem, state, null, -1);
         return stem;
@@ -210,6 +220,7 @@ public class FileLogAdapter implements LogPort {
         header.append("- Statut   : ").append(done ? "✅ OK" : "⏳ En cours…").append("\n");
         header.append("- Sys      : ~").append(state.systemPrompt.length() / 4).append(" tok\n");
         header.append("- Usr      : ~").append(state.userPrompt.length()    / 4).append(" tok\n");
+        header.append("- Think    : ").append(state.think == null ? "n/a" : (state.think ? "oui" : "non")).append("\n");
         if (done) {
             header.append("- Réponse  : ~").append(response.length() / 4).append(" tok\n");
             header.append("- Durée    : ").append(String.format("%.1f", elapsedMs / 1000.0)).append("s\n");

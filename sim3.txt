@@ -1,0 +1,6 @@
+pairs found: 4
+#1: found=False
+   wrong: "Une végétation environnante était d'une richesse exubérante, des hortensias aux teintes profondes se mêlant à un vert profond, créant un cadre presque théâtral pour ce lieu de villégiature sportif."
+#2: found=True
+#3: found=True
+#4: found=True

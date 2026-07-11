@@ -1,10 +1,12 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
-import storymagine.redacteur.coeur.domaine.agent.Agent;
+import storymagine.redacteur.coeur.domaine.agent.AgentCorrector;
+import storymagine.redacteur.coeur.domaine.agent.commun.CorrectionParser;
+import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -13,7 +15,7 @@ import java.util.List;
  * returns corrected rewrites for inline substitution.
  * Source: DeusInMachinaContext.
  */
-public class DeusInMachinaCorrector implements Agent {
+public class DeusInMachinaCorrector implements AgentCorrector {
 
     private static final String SYSTEM = """
             Tu lis un texte de roman et corriges les passages qui brisent l'immersion narrative —
@@ -29,13 +31,10 @@ public class DeusInMachinaCorrector implements Agent {
 
             PRINCIPE
             Ce texte a été produit par un LLM à partir de consignes de rédaction.
-            Les deux fuites principales à corriger :
-            — un fragment de consigne recopié dans la prose
-            — une confirmation que le LLM a suivi une instruction ("comme demandé", "conformément au plan", etc.)
-            Tout passage qui révèle l'existence de ces consignes au lecteur est une fuite.
-
-            TEST : pour chaque phrase suspecte, demande-toi — cette phrase existerait-elle si
-            aucune consigne ne l'avait provoquée ? Si non, c'est une fuite à corriger.
+            Une fuite est tout passage qui révèle au lecteur l'existence de ces consignes.
+            Elle prend cinq formes, détaillées ci-dessous.
+            TEST pour chaque phrase suspecte : cette phrase existerait-elle si aucune
+            consigne ne l'avait provoquée ? Si non, c'est une fuite à corriger.
 
             CINQ FORMES DE FUITES
 
@@ -47,15 +46,22 @@ public class DeusInMachinaCorrector implements Agent {
 
             2. FICHE PERSONNAGE DANS LA BOUCHE DU PERSONNAGE
             Un trait de personnage réapparaît dans le texte comme étiquette permanente plutôt qu'observation vivante.
+              RÈGLE : concerne uniquement les traits de caractère ou de comportement étiquetés comme permanents.
+              Les descriptions physiques ponctuelles ne sont PAS des fuites.
               FUITE : "Bertrand, taciturne comme toujours, garda le silence."
               FUITE : "Grâce à sa nature facile à vivre, il maintint son calme."
               OK    : "Bertrand fixa ses mains sans répondre."
+              OK    : "Ses yeux noisette, légèrement myopes, lui donnaient un air rêveur."
 
             3. ARTEFACT DE SCÉNARIO
-            Mots ou tournures qui appartiennent au script de fabrication, pas à la fiction.
+            Mots ou tournures qui appartiennent au script de fabrication, pas à la fiction :
+            un fragment de consigne recopié dans la prose, ou une confirmation qu'une
+            instruction a été suivie ("comme demandé", "conformément au plan", etc.).
+              RÈGLE : observer le rythme ou la dynamique d'une scène n'est pas un artefact.
               FUITE : "Dans cette scène, Pierre comprend que..."
               FUITE : "Conformément au plan prévu, Marie révèle enfin son secret."
               OK    : "Pierre s'arrêta net. La vérité venait de le frapper."
+              OK    : "...marquant une pause nette dans leurs échanges."
 
             4. LISTE NARRATIVISÉE
             Plusieurs phrases SÉPARÉES dont chacune coche une case — aucune n'a de poids propre.
@@ -78,6 +84,14 @@ public class DeusInMachinaCorrector implements Agent {
             - FAUX: "Pierre arriva. Il observa la pièce. Il déposa sa valise. Il chercha son contact."
               JUSTE: "Pierre posa sa valise et parcourut la pièce des yeux."
 
+            JUSTE ne change que ce qui constitue la fuite : conserve le sens, l'intention et les
+            faits du passage et du scénario — ne réécris rien d'autre.
+
+            FAUX doit être recopié mot pour mot, en entier — jamais de "..." pour abréger un passage long.
+            Ni FAUX ni JUSTE ne portent de commentaire ou de justification après la citation.
+              MAUVAIS : - FAUX: "...un point de repère humain." (Supprime l'étiquette d'action mécanique.)
+              BON     : - FAUX: "...un point de repère humain."
+
             Si le texte est propre : PAS DE CORRECTION — rien d'autre.
             En français. Sois précis et minutieux pour trouver toutes les fuites avérées, même mineures.""";
 
@@ -88,44 +102,27 @@ public class DeusInMachinaCorrector implements Agent {
     @Override
     public String agentName() { return AGENT_NAME; }
 
+    @Override
+    public RetryStrategy retryStrategy() { return RetryStrategy.DECREASING_AND_RATIO_THRESHOLD; }
+
     public DeusInMachinaCorrector(ModelCallPort llm) {
         this.llm = llm;
     }
 
     public DeusInMachinaCorrectorOutput call(DeusInMachinaCorrectorInput input) {
-        // Section optionnelle : contraintes actives (en premier, pour que le modèle les lise avant le texte)
-        String constraintsSection = (input.constraints() != null && !input.constraints().isBlank())
-                ? "Contraintes de rédaction actives (pour référence) :\n" + input.constraints() + "\n\n"
-                : "";
-        String user = constraintsSection
-                + "Texte à corriger :\n" + input.text()
-                + "\n\nCorrige les fuites mécaniques. Réponds CORRECTIONS: (avec liste) ou PAS DE CORRECTION.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text().trim();
+        String user = PromptBuilder.create()
+                .section("Consigne de séquence", input.sequenceDirective())
+                .section("Plan de séquence",     input.sequencePlan())
+                .raw(input.checks() == null || input.checks().isBlank()
+                        ? "" : "Points de vérification actifs (pour référence) :\n" + input.checks())
+                .raw("Texte à corriger :\n" + input.text())
+                .raw("Corrige les fuites mécaniques. Réponds CORRECTIONS: (avec liste) ou PAS DE CORRECTION.")
+                .build();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text().trim();
         return new DeusInMachinaCorrectorOutput(parseFindings(raw));
     }
 
     private static List<DeusInMachinaCorrectorFinding> parseFindings(String response) {
-        if (response == null || response.trim().startsWith("PAS DE CORRECTION")) return List.of();
-        List<DeusInMachinaCorrectorFinding> result = new ArrayList<>();
-        String[] lines = response.split("\n");
-        String wrong = null;
-        for (String line : lines) {
-            String t = line.trim();
-            if (t.startsWith("- FAUX:") || t.startsWith("FAUX:")) {
-                wrong = unquote(t.replaceFirst("^-?\\s*FAUX:", "").trim());
-            } else if (t.startsWith("JUSTE:") && wrong != null) {
-                String correct = unquote(t.substring("JUSTE:".length()).trim());
-                if (!wrong.isBlank() && !correct.isBlank())
-                    result.add(new DeusInMachinaCorrectorFinding(wrong, correct));
-                wrong = null;
-            }
-        }
-        return result;
-    }
-
-    private static String unquote(String s) {
-        if (s.length() >= 2 && s.startsWith("\"") && s.endsWith("\""))
-            return s.substring(1, s.length() - 1);
-        return s;
+        return CorrectionParser.parse(response, "PAS DE CORRECTION", DeusInMachinaCorrectorFinding::new);
     }
 }

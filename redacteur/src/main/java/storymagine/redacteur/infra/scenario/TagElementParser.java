@@ -10,9 +10,14 @@ import java.util.List;
  */
 class TagElementParser {
 
-    enum Section { GLOBAL, PLAN, WRITER }
+    enum Section { GLOBAL, PLAN, WRITER, CHECK }
 
-    record TagBlock(String tag, String globalContent, String planContent, String writerContent) {}
+    /**
+     * checkContent is optional and only meaningful for FocusElement — LoreElement and
+     * Personnage simply ignore it. Kept on one shared TagBlock so the parsing loop
+     * (sections, [TAG] markers, HTML comment stripping) stays mutualized for all callers.
+     */
+    record TagBlock(String tag, String globalContent, String planContent, String writerContent, String checkContent) {}
 
     /**
      * Parses a single-block file (no [TAG] markers) into one TagBlock with a null tag.
@@ -23,6 +28,7 @@ class TagElementParser {
         StringBuilder global = new StringBuilder();
         StringBuilder plan   = new StringBuilder();
         StringBuilder writer = new StringBuilder();
+        StringBuilder check  = new StringBuilder();
         Section section = Section.GLOBAL;
 
         for (String raw : content.split("\n")) {
@@ -31,13 +37,15 @@ class TagElementParser {
             if (line.equals("#COMMON") || line.equals("# COMMON")) { section = Section.GLOBAL; continue; }
             if (line.equals("#PLAN")   || line.equals("# PLAN"))   { section = Section.PLAN;   continue; }
             if (line.equals("#WRITER") || line.equals("# WRITER")) { section = Section.WRITER; continue; }
-            appendTo(section, global, plan, writer, line);
+            if (line.equals("#CHECK")  || line.equals("# CHECK"))  { section = Section.CHECK;  continue; }
+            appendTo(section, global, plan, writer, check, line);
         }
 
         return new TagBlock(null,
                 trimOrNull(global.toString()),
                 trimOrNull(plan.toString()),
-                trimOrNull(writer.toString()));
+                trimOrNull(writer.toString()),
+                trimOrNull(check.toString()));
     }
 
     /** Parses a full file content into a list of TagBlocks. */
@@ -49,6 +57,7 @@ class TagElementParser {
         StringBuilder global  = new StringBuilder();
         StringBuilder plan    = new StringBuilder();
         StringBuilder writer  = new StringBuilder();
+        StringBuilder check   = new StringBuilder();
 
         for (String raw : content.split("\n")) {
             String line = raw.stripTrailing();
@@ -58,48 +67,51 @@ class TagElementParser {
             if (line.equals("#COMMON") || line.equals("# COMMON")) { section = Section.GLOBAL; continue; }
             if (line.equals("#PLAN")   || line.equals("# PLAN"))   { section = Section.PLAN;   continue; }
             if (line.equals("#WRITER") || line.equals("# WRITER")) { section = Section.WRITER; continue; }
+            if (line.equals("#CHECK")  || line.equals("# CHECK"))  { section = Section.CHECK;  continue; }
 
             if (line.startsWith("[") && line.contains("]")) {
                 int close = line.indexOf(']');
                 String newTag = line.substring(1, close).trim();
                 if (!newTag.isBlank()) {
                     if (currentTag != null) {
-                        result.add(flush(currentTag, global, plan, writer));
-                        global.setLength(0); plan.setLength(0); writer.setLength(0);
+                        result.add(flush(currentTag, global, plan, writer, check));
+                        global.setLength(0); plan.setLength(0); writer.setLength(0); check.setLength(0);
                     }
                     section    = Section.GLOBAL;
                     currentTag = newTag;
                     String rest = line.substring(close + 1).trim();
-                    if (!rest.isBlank()) appendTo(section, global, plan, writer, rest);
+                    if (!rest.isBlank()) appendTo(section, global, plan, writer, check, rest);
                     continue;
                 }
             }
 
             if (currentTag != null) {
-                appendTo(section, global, plan, writer, line);
+                appendTo(section, global, plan, writer, check, line);
             }
         }
 
         if (currentTag != null) {
-            result.add(flush(currentTag, global, plan, writer));
+            result.add(flush(currentTag, global, plan, writer, check));
         }
 
         return result;
     }
 
-    private static void appendTo(Section s, StringBuilder g, StringBuilder p, StringBuilder w, String line) {
+    private static void appendTo(Section s, StringBuilder g, StringBuilder p, StringBuilder w, StringBuilder c, String line) {
         switch (s) {
             case GLOBAL -> g.append(line).append('\n');
             case PLAN   -> p.append(line).append('\n');
             case WRITER -> w.append(line).append('\n');
+            case CHECK  -> c.append(line).append('\n');
         }
     }
 
-    private static TagBlock flush(String tag, StringBuilder g, StringBuilder p, StringBuilder w) {
+    private static TagBlock flush(String tag, StringBuilder g, StringBuilder p, StringBuilder w, StringBuilder c) {
         return new TagBlock(tag,
                 trimOrNull(g.toString()),
                 trimOrNull(p.toString()),
-                trimOrNull(w.toString()));
+                trimOrNull(w.toString()),
+                trimOrNull(c.toString()));
     }
 
     static String trimOrNull(String s) {

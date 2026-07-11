@@ -1,10 +1,5 @@
 ## Agents en attente (dossier temp/)
 
-- [NarrativeArcAnalyzer + CausalAnalyzer] Analyser TOUS les plans avant toute rédaction (pas chapitre par chapitre).
-  Idée architecturale : planifier tous les chapitres d'abord, puis rédiger. Ces agents auraient alors
-  tout le matériau disponible et pourraient détecter incohérences narratives et causales sur l'ensemble.
-  Actuellement désactivés car ils opéraient sur les plans après coup (trop tard).
-
 - [ChapterStyleChecker] Refaire en couple Checker/Corrector à l'image des autres critics de chapitre
   (format AMELIORATION / DEFAUT_MINEUR / DEFAUT_SIGNIFICATIF). À intégrer dans [EVALUER CHAPITRE].
 

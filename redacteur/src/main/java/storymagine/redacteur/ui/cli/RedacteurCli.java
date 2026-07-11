@@ -19,6 +19,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.infra.HtmlFileExportAdapter;
 import storymagine.redacteur.infra.StoryExporter;
+import storymagine.redacteur.infra.scenario.ScenarioFileAdapter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -144,7 +145,9 @@ public class RedacteurCli {
         var htmlExport      = new HtmlFileExportAdapter(fileLog::runDir);
         var beatsConfig     = buildBeatsConfig(props);
         var correctorConfig = buildCorrectorConfig(props);
-        var service         = RedacteurModule.assemble(ollama, selectedModel, log, htmlExport, beatsConfig, correctorConfig);
+        OllamaAdapter llm = ollama.adapter(selectedModel, log);
+        var service = RedacteurModule.assemble(
+            llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig, correctorConfig);
         var scenarios = service.listScenarios(scenarioRoot);
         if (scenarios.isEmpty()) {
             System.err.println("ERREUR : aucun scenario dans '" + scenarioRoot + "'.");
@@ -211,7 +214,7 @@ public class RedacteurCli {
         // -- 7. Chargement du modele + info materiel
         System.out.print("Chargement du modele... ");
         try {
-            ollama.adapter(selectedModel).probe();
+            llm.probe();
             System.out.println("OK");
         } catch (Exception e) {
             System.out.println("(echec probe : " + e.getMessage() + ")");
@@ -345,7 +348,7 @@ public class RedacteurCli {
     private static CorrectorConfig buildCorrectorConfig(Properties props) {
         float threshold      = Float.parseFloat(props.getProperty("corrector.repeat.threshold.per.word", "0.010"));
         int   minCorrections = Integer.parseInt( props.getProperty("corrector.repeat.min.corrections",   "7"));
-        int   maxPasses      = Integer.parseInt( props.getProperty("corrector.repeat.max.passes",        "2"));
+        int   maxPasses      = Integer.parseInt( props.getProperty("corrector.repeat.max.passes",        "3"));
         return new CorrectorConfig(threshold, minCorrections, maxPasses);
     }
 

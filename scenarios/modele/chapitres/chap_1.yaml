@@ -24,9 +24,9 @@ defaults:
   # focus: tags ou texte libre transmis au Planner + Writer pour orienter la tonalité
   focus: ["TAG_UN", "TAG_DEUX"]
 
-  # checks: vérifications transmises au SequenceChecker pour chaque séquence
-  checks:
-    - "Vérification applicable à toutes les séquences du chapitre"
+  # requirements: "contrainte | check" transmis au Planner/Writer et au SequenceChecker
+  requirements:
+    - "| Vérification applicable à toutes les séquences du chapitre"
 
 sequences:
 
@@ -41,8 +41,8 @@ sequences:
       Le LLM reçoit ce texte comme instruction de rédaction.
     character_sheets: ["personnage_trois"]
     focus: ["TAG_TROIS"]
-    checks:
-      - "Un élément précis qui doit être présent dans le texte rédigé"
+    requirements:
+      - "| Un élément précis qui doit être présent dans le texte rédigé"
     min_words: 500
 
   # Séquence avec rupture narrative intentionnelle (ellipse, saut temporel)

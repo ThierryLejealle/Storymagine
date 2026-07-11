@@ -25,8 +25,7 @@ sequences:
       LIMITE : s'arrêter à l'installation de Maya. Aucun mot, aucun regard appuyé, aucun événement.
     focus: ["WAGON"]
     lore: ["GARE"]
-    constraints: Pas de contact, pas de discussion, aucun regard direct entre les personnages.
-    checks: "Vérifie qu'il n'y a pas de contact ou discussion entre les personnages"
+    requirements: "Pas de contact, pas de discussion, aucun regard direct entre les personnages. | Il n'y a pas de contact ou discussion entre les personnages"
     min_words: 300
 
   - type: explicit

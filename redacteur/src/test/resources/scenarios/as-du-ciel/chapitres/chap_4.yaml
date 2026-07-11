@@ -30,10 +30,10 @@ sequences:
       Il note les coordonnées, les temps de réaction, les sorties ennemies.
       Sa main s'arrête sur un nom : Spitfire MkIX, immatriculation inconnue. Il a rompu
       la formation pour couvrir son ailier. Wolf note cela aussi.
-    checks:
-      - "Wolf est du côté allemand — pas de perspective britannique dans cette séquence"
-      - "L'action de Pierre (rupture de formation) est notée mais pas nommée explicitement"
-      - "L'atmosphère est sobre et professionnelle — pas de diabolisation ni de sentimentalisme"
+    requirements:
+      - "| Wolf est du côté allemand — pas de perspective britannique dans cette séquence"
+      - "| L'action de Pierre (rupture de formation) est notée mais pas nommée explicitement"
+      - "| L'atmosphère est sobre et professionnelle — pas de diabolisation ni de sentimentalisme"
 
   - type: explicit
     directive: >
@@ -41,6 +41,6 @@ sequences:
       ne rentrera pas. Wolf ne le mentionne pas dans le rapport — ce n'est pas son rôle.
       Mais avant d'éteindre la lampe, il relit la dernière ligne : pilote adverse — tactique
       inhabituelle — à surveiller. Puis il éteint.
-    checks:
-      - "La scène se termine sur un état stable — Wolf range son rapport et passe à autre chose"
-      - "Pas de cliffhanger ouvert qui empêcherait la trame principale de reprendre"
+    requirements:
+      - "| La scène se termine sur un état stable — Wolf range son rapport et passe à autre chose"
+      - "| Pas de cliffhanger ouvert qui empêcherait la trame principale de reprendre"

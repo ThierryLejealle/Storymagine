@@ -22,10 +22,10 @@ sequences:
       Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin
       résonne au loin. Sur le tarmac, les Spitfires sont alignés dans la brume,
       hélices immobiles. Il pose son sac et regarde le ciel.
-    checks:
-      - "Pierre est décrit comme observateur passif — il regarde, il ne touche pas encore"
-      - "L'escadrille est présente mais distante, Pierre n'est pas intégré dans le groupe"
-      - "Le Spitfire est nommé 'Grey Ghost' ou 'Spitfire' — jamais un autre nom"
+    requirements:
+      - "| Pierre est décrit comme observateur passif — il regarde, il ne touche pas encore"
+      - "| L'escadrille est présente mais distante, Pierre n'est pas intégré dans le groupe"
+      - "| Le Spitfire est nommé 'Grey Ghost' ou 'Spitfire' — jamais un autre nom"
 
   - type: explicit
     directive: >
@@ -34,10 +34,10 @@ sequences:
       son numéro de machine et une seule phrase : demain, à l'aube.
     character_sheets: ["pierre_moreau", "commandant_bertrand"]
     focus: ["CAMARADERIE"]
-    checks:
-      - "Bertrand reste froid et autoritaire — aucune chaleur humaine, aucun encouragement"
-      - "La scène dure deux minutes maximum dans le récit — pas de longue conversation"
-      - "Pierre repart avec uniquement son numéro de machine, rien de plus"
+    requirements:
+      - "| Bertrand reste froid et autoritaire — aucune chaleur humaine, aucun encouragement"
+      - "| La scène dure deux minutes maximum dans le récit — pas de longue conversation"
+      - "| Pierre repart avec uniquement son numéro de machine, rien de plus"
 
   - type: explicit
     directive: >

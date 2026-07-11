@@ -31,13 +31,14 @@ public class TeeLogAdapter implements LogPort {
     }
 
     @Override
-    public void scoresSummary(double avg, boolean passed, String retryHint) {
-        delegates.forEach(d -> d.scoresSummary(avg, passed, retryHint));
+    public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
+                               boolean passed, String retryHint) {
+        delegates.forEach(d -> d.scoresSummary(avg, avgThreshold, minScore, eliminationThreshold, passed, retryHint));
     }
 
     @Override
-    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
-        delegates.forEach(d -> d.llmCall(agentLabel, ms, tokIn, tokOut, tokPerSec));
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think) {
+        delegates.forEach(d -> d.llmCall(agentLabel, ms, tokIn, tokOut, tokPerSec, think));
     }
 
     @Override
@@ -61,11 +62,26 @@ public class TeeLogAdapter implements LogPort {
     }
 
     @Override
+    public void sequenceRetained(int bestPass, int totalPasses, double bestScore) {
+        delegates.forEach(d -> d.sequenceRetained(bestPass, totalPasses, bestScore));
+    }
+
+    @Override
+    public void chapterRetained(int bestPass, int totalPasses, double bestScore) {
+        delegates.forEach(d -> d.chapterRetained(bestPass, totalPasses, bestScore));
+    }
+
+    @Override
+    public void warn(String message) {
+        delegates.forEach(d -> d.warn(message));
+    }
+
+    @Override
     public String llmCallOpen(String agentName, int localNum,
-                               String systemPrompt, String userPrompt) {
+                               String systemPrompt, String userPrompt, Boolean think) {
         String handle = "";
         for (LogPort d : delegates) {
-            String h = d.llmCallOpen(agentName, localNum, systemPrompt, userPrompt);
+            String h = d.llmCallOpen(agentName, localNum, systemPrompt, userPrompt, think);
             if (!h.isEmpty()) handle = h;
         }
         return handle;

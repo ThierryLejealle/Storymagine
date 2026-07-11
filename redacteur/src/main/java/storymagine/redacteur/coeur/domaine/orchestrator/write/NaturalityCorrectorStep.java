@@ -1,5 +1,6 @@
 package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
+import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorInput;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorOutput;
@@ -15,5 +16,9 @@ public class NaturalityCorrectorStep {
 
     public NaturalityCorrectorOutput run(String text) {
         return agent.call(new NaturalityCorrectorInput(text));
+    }
+
+    public RetryStrategy retryStrategy() {
+        return agent.retryStrategy();
     }
 }

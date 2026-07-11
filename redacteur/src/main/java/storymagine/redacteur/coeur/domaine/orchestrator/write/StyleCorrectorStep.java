@@ -1,5 +1,6 @@
 package storymagine.redacteur.coeur.domaine.orchestrator.write;
 
+import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
 import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorInput;
 import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrectorOutput;
@@ -17,9 +18,13 @@ public class StyleCorrectorStep {
     public StyleCorrectorOutput run(String text, Scenario scenario) {
         return agent.call(new StyleCorrectorInput(
                 text,
-                null,
-                null,
+                scenario.writingStyle(),
+                scenario.quality(),
                 scenario.writingExample()
         ));
+    }
+
+    public RetryStrategy retryStrategy() {
+        return agent.retryStrategy();
     }
 }

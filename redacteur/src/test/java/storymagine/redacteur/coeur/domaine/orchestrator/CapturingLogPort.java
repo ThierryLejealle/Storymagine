@@ -10,10 +10,11 @@ import java.util.List;
  */
 public class CapturingLogPort implements LogPort {
 
-    public final List<String> phases  = new ArrayList<>();
-    public final List<String> steps   = new ArrayList<>();
-    public final List<String> critics = new ArrayList<>();
-    public final List<String> scores  = new ArrayList<>();
+    public final List<String> phases         = new ArrayList<>();
+    public final List<String> steps          = new ArrayList<>();
+    public final List<String> critics        = new ArrayList<>();
+    public final List<String> scores         = new ArrayList<>();
+    public final List<String> planRetentions = new ArrayList<>();
 
     @Override
     public void phaseHeader(String label, String detail) {
@@ -31,17 +32,27 @@ public class CapturingLogPort implements LogPort {
     }
 
     @Override
-    public void scoresSummary(double avg, boolean passed, String retryHint) {
+    public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
+                               boolean passed, String retryHint) {
         scores.add(passed ? "PASS" : "RETRY");
     }
 
-    @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps) {}
+    @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps, Boolean think) {}
     @Override public void chapterPlan(String title, String plan) {}
     @Override public void sequenceText(String title, int idx, String text) {}
     @Override public void sessionEnd() {}
 
+    @Override
+    public void planRetained(int bestAttempt, int totalAttempts, double bestScore) {
+        planRetentions.add(bestAttempt + "/" + totalAttempts + "@" + String.format("%.1f", bestScore));
+    }
+
     public boolean hasPhase(String fragment) {
         return phases.stream().anyMatch(p -> p.contains(fragment));
+    }
+
+    public long countPhase(String fragment) {
+        return phases.stream().filter(p -> p.contains(fragment)).count();
     }
 
     public boolean hasStep(String name) {

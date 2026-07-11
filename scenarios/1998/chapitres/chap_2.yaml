@@ -7,6 +7,7 @@ type: imperative
 description: >
   Christelle & Thierry se sont rencontrés au tir à l'Arc.
   Ils vont passer beaucoup de moments ensemble
+  Des moments à 2 entrecoupés par des moments ou le groupe (avec Catherine et Corinne) va se lier d'amitié et partager les repas et différents activités
 
 # setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
 # Ex : "Le lendemain matin, dans la salle de mess de la base."
@@ -14,13 +15,15 @@ description: >
 
 # goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
 goal: >
-  Ce chapitre raconte la semaine à l'UCPA
+  Ce chapitre raconte la semaine à l'UCPA, en choisissant quelques moments clés de rencontre entre Thierry & Christelle.
 
 # defaults: héritées par toutes les séquences (merge additif)
 defaults:
   # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
   # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
   character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
+  focus: >
+    ["UCPA"]
   lore: >
     ["UCPA"]
     "Un été magnifique et ensoleilé au bord de la mer"
@@ -39,11 +42,25 @@ sequences:
   # no_transition: true → supprime la continuité avec la séquence précédente
   - type: explicit
     directive: >
+      Repas tous les 4 avec Corinne et Catherine. Tout le monde sympathise.
+    min_words: 300
+    lore: ["PLAGE"]
+
+  - type: explicit
+    directive: >
+      Christelle et Thierry vont se promener sur la plage tous les deux après le repas
       Balade sur une plage de sable fin en fin de journée, par une belle soirée d'été pour Christelle et Thierry
       Longue promenade sur le sable, les pieds dans l'eau
-      Repas tous les 4 avec Corinne et Catherine
       Une scene potentiellement très romantique (mais attention : pas d'action romantique, ce sont juste des amis)
-      RAPPEL : Ni Catherine ni Corinne dans cette scene
+      ATTENTION : Ni Catherine ni Corinne dans cette scene
+    min_words: 1000
+    lore: ["PLAGE"]
+
+  - type: explicit
+    directive: >
+      Le groupe : Corinne, Christelle, Catherine et Thierry devient ami.
+      Ils mangent souvent ensemble et se retrouvent pour des activités
+      Imagine les activités à l'UCPA sur la base de la description
     min_words: 1000
     lore: ["PLAGE"]
 
@@ -56,3 +73,5 @@ sequences:
       Le dernier jour, Christelle et Thierry décident de s'inscrire pour une longue balade à Colioure organisée par l'UCPA
     min_words: 1000
     lore: ["PLAGE"]
+
+

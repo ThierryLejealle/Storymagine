@@ -16,11 +16,20 @@ public interface LogPort {
     /** Logs a critic result: score, timing, and problems (empty list = passed cleanly). */
     void critic(String name, double score, long ms, List<String> problems);
 
-    /** Summarises the pass/retry outcome for a group of critics. avg <= 0 means not applicable. */
-    void scoresSummary(double avg, boolean passed, String retryHint);
+    /**
+     * Summarises the pass/retry outcome for a group of critics. avg <= 0 means not applicable.
+     * avgThreshold is the average score required to pass, shown alongside avg for readability.
+     * minScore is the lowest individual critic score, shown alongside eliminationThreshold so
+     * the elimination check (any critic below eliminationThreshold forces a retry) is visible.
+     */
+    void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
+                        boolean passed, String retryHint);
 
-    /** Called after each LLM generate() call with agent label, timing and token counts. */
-    void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec);
+    /**
+     * Called after each LLM generate() call with agent label, timing, token counts, and whether
+     * reasoning ("thinking") was actually requested for this call (null = model has no such capability).
+     */
+    void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think);
 
     /** Saves the final plan text for a chapter (file log only — console NOOP). */
     void chapterPlan(String chapterTitle, String planText);
@@ -54,9 +63,10 @@ public interface LogPort {
 
     /**
      * Opens an LLM call trace (before generate()). Returns an opaque handle for llmCallClose.
+     * think = whether reasoning was requested for this call (null = model has no such capability).
      * Default implementation is a no-op returning an empty handle.
      */
-    default String llmCallOpen(String agentName, int localNum, String systemPrompt, String userPrompt) {
+    default String llmCallOpen(String agentName, int localNum, String systemPrompt, String userPrompt, Boolean think) {
         return "";
     }
 
@@ -72,8 +82,8 @@ public interface LogPort {
         @Override public void phaseHeader(String l, String d) {}
         @Override public void step(String n, long ms, String note) {}
         @Override public void critic(String n, double s, long ms, List<String> p) {}
-        @Override public void scoresSummary(double avg, boolean passed, String hint) {}
-        @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps) {}
+        @Override public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold, boolean passed, String hint) {}
+        @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps, Boolean think) {}
         @Override public void chapterPlan(String t, String plan) {}
         @Override public void sequenceText(String t, int i, String txt) {}
         @Override public void sessionEnd() {}

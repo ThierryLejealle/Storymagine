@@ -13,7 +13,6 @@ import storymagine.redacteur.coeur.domaine.story.WrittenChapter;
 import storymagine.redacteur.coeur.domaine.story.WrittenSequence;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /** Activates Writer for one sequence. Pass rewriteProblems=null for the first attempt. */
@@ -26,14 +25,9 @@ public class WriterStep {
     }
 
     public WriterOutput run(Scenario scenario, Chapter chapter, Sequence sequence, Story story,
-                            String sequencePlan, String actionsText, String rewriteProblems) {
-        WrittenChapter wc        = story.currentChapter().orElseThrow();
-        boolean        isRewrite = rewriteProblems != null;
-
-        String chapterPlan = wc.plan();
-        if (isRewrite) {
-            chapterPlan = chapterPlan + "\n\n### Problèmes à corriger\n" + rewriteProblems;
-        }
+                            String sequencePlan, String rewriteProblems) {
+        boolean isRewrite = rewriteProblems != null;
+        WrittenChapter wc = story.currentChapter().orElseThrow();
 
         String stitch = sequence.overrides().stitch() != null ? sequence.overrides().stitch() : scenario.config().stitch();
 
@@ -44,19 +38,16 @@ public class WriterStep {
                 ScenarioFormatters.personnages(merge(chapter.defaults().characters(), sequence.additions().characters()), true),
                 ScenarioFormatters.focusText(merge(chapter.defaults().focus(), sequence.additions().focus()), true),
                 ScenarioFormatters.loreText(merge(chapter.defaults().lore(), sequence.additions().lore()), true),
-                actionsText,
-                chapterPlan,
-                lastSentences(wc, 3),
+                rewriteProblems,
+                previousSequenceText(wc),
                 StoryFormatters.entityState(story.worldState()),
-                story.storySoFar(),
+                story.summary(),
                 sequencePlan,
                 story.repetitionMemory().forbiddenPhrases(),
                 story.repetitionMemory().forbiddenThemes(),
-                null,
                 ScenarioFormatters.writerConstraints(scenario, chapter, sequence),
-                null,
+                scenario.writingStyle(),
                 scenario.writingExample(),
-                null,
                 chapter.setting(),
                 stitch
         ));
@@ -69,13 +60,11 @@ public class WriterStep {
         return result;
     }
 
-    private static String lastSentences(WrittenChapter wc, int count) {
+    /** Full raw text of the last written sequence in this chapter — untruncated, "" if none yet. */
+    private static String previousSequenceText(WrittenChapter wc) {
         List<WrittenSequence> seqs = wc.sequences();
         if (seqs.isEmpty()) return "";
         WrittenSequence last = seqs.get(seqs.size() - 1);
-        if (!last.hasText()) return "";
-        String[] sentences = last.text().split("(?<=[.!?])\\s+");
-        int from = Math.max(0, sentences.length - count);
-        return String.join(" ", Arrays.copyOfRange(sentences, from, sentences.length));
+        return last.hasText() ? last.text() : "";
     }
 }

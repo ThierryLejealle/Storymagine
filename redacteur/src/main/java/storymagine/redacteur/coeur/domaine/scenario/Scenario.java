@@ -18,15 +18,14 @@ public class Scenario {
     private final PersonnagePool   personnages;
     private final FocusPool        focus;
     private final LorePool         lore;
-    private final CheckList        checks;
-    private final ConstraintList   constraints;
+    private final RequirementList  requirements;
     private final List<Chapter>    chapters;
 
     public Scenario(ScenarioConfig config,
                     String bookGoal, String quality, String writingStyle, String keepPhrases,
                     String writingExample,
                     PersonnagePool personnages, FocusPool focus, LorePool lore,
-                    CheckList checks, ConstraintList constraints, List<Chapter> chapters) {
+                    RequirementList requirements, List<Chapter> chapters) {
         this.config         = config;
         this.bookGoal       = bookGoal;
         this.quality        = quality;
@@ -36,8 +35,7 @@ public class Scenario {
         this.personnages    = personnages;
         this.focus          = focus;
         this.lore           = lore;
-        this.checks         = checks;
-        this.constraints    = constraints;
+        this.requirements   = requirements;
         this.chapters       = List.copyOf(chapters);
     }
 
@@ -64,7 +62,6 @@ public class Scenario {
     public PersonnagePool  personnages()    { return personnages; }
     public FocusPool       focus()          { return focus; }
     public LorePool        lore()           { return lore; }
-    public CheckList       checks()         { return checks; }
-    public ConstraintList  constraints()    { return constraints; }
+    public RequirementList requirements()   { return requirements; }
     public List<Chapter>   chapters()       { return chapters; }
 }

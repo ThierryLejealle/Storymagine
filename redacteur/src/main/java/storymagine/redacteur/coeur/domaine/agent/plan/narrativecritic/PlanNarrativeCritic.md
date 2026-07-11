@@ -1,7 +1,7 @@
 # PlanNarrativeCritic
 
 ## Rôle
-Évalue l'arc narratif d'un plan de chapitre. Équivalent plan de `TextNarrativeCritic`.
+Évalue l'arc narratif d'un plan de chapitre. Équivalent plan de `ChapterNarrativeCritic`.
 Ne juge pas la cohérence factuelle — uniquement la progression dramatique.
 
 ## Format de sortie (3 lignes strictes)

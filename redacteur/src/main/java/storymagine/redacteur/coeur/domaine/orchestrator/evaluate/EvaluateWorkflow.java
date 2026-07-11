@@ -6,25 +6,35 @@ import storymagine.redacteur.coeur.domaine.scenario.Chapter;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.story.Story;
 
-/** Post-production phase: compresses the story summary after each chapter is validated. */
+/** Post-production phase: summarizes the chapter into the running story summary after validation. */
 public class EvaluateWorkflow {
 
-    private final StoryCompressorStep storyCompressorStep;
-    private final LogPort             log;
+    private final ChapterSummaryStep chapterSummaryStep;
+    private final LogPort            log;
 
-    public EvaluateWorkflow(StoryCompressorStep storyCompressorStep, LogPort log) {
-        this.storyCompressorStep = storyCompressorStep;
-        this.log                 = log;
+    public EvaluateWorkflow(ChapterSummaryStep chapterSummaryStep, LogPort log) {
+        this.chapterSummaryStep = chapterSummaryStep;
+        this.log                = log;
     }
 
-    /** Compresses the story and updates the current chapter summary. */
+    /** Appends the chapter summary to the story, compressing it first if it has grown past budget. */
     public void run(Scenario scenario, Chapter chapter, Story story, GenerationConfig config) {
         log.phaseHeader("POST-PROD", null);
 
-        long t0            = System.nanoTime();
-        var  compressorOut = storyCompressorStep.run(story);
-        story.currentChapter().orElseThrow().setSummary(compressorOut.summary());
-        log.step("StoryCompressor", ms(t0), null);
+        long t0 = System.nanoTime();
+        ChapterSummaryResult result = chapterSummaryStep.run(story);
+
+        int appendDelta = result.wordsAfterAppend() - result.wordsBefore();
+        log.step("ChapterSummarizer", ms(t0),
+                result.wordsBefore() + " -> " + result.wordsAfterAppend() + " mots (+" + appendDelta + ")");
+
+        if (result.compressed()) {
+            log.warn("Résumé : seuil dépassé (" + result.wordsAfterAppend() + " > " + result.threshold()
+                    + " mots) — compaction déclenchée");
+            int compressDelta = result.wordsFinal() - result.wordsAfterAppend();
+            log.step("SummaryCompressor", ms(t0),
+                    result.wordsAfterAppend() + " -> " + result.wordsFinal() + " mots (" + compressDelta + ")");
+        }
     }
 
     private static long ms(long nanoStart) {

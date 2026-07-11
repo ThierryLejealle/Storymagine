@@ -7,6 +7,6 @@ package storymagine.redacteur.coeur.domaine.orchestrator.write;
 public record CorrectorConfig(float repeatThresholdPerWord, int minCorrectionsForRetry, int maxRetryPasses) {
 
     public static CorrectorConfig defaults() {
-        return new CorrectorConfig(0.010f, 7, 2);
+        return new CorrectorConfig(0.010f, 7, 3);
     }
 }

@@ -64,7 +64,7 @@ public class FocusActionFilter implements Agent {
                 + actionsSection
                 + "Filtre et retiens uniquement les éléments pertinents.";
 
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         return parseResponse(raw, input.groupNames(), input.actionCategories());
     }
 

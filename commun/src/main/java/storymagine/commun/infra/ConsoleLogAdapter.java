@@ -17,6 +17,15 @@ public class ConsoleLogAdapter implements LogPort {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final int    NAME_W  = 30;
     private static final String SEP     = "  ";
+    private static final String ANSI_RESET   = "[0m";
+    private static final String ANSI_BOLD    = "[1m";
+    private static final String ANSI_RED     = "[31m";
+    private static final String ANSI_GREEN   = "[32m";
+    private static final String ANSI_YELLOW  = "[33m";
+    private static final String ANSI_BLUE    = "[34m";
+    private static final String ANSI_CYAN    = "[36m";
+    private static final String ANSI_ORANGE  = "[38;5;208m";
+    private static final String ANSI_MAGENTA = "[35m";
 
     private final AtomicInteger llmCalls    = new AtomicInteger(0);
     private final AtomicLong    sumTokIn    = new AtomicLong(0);
@@ -29,54 +38,60 @@ public class ConsoleLogAdapter implements LogPort {
     @Override
     public void phaseHeader(String label, String detail) {
         if (detail == null || detail.isBlank()) {
-            printf("%n[%s] [%s]%n", ts(), label);
+            printf("%n[%s] " + ANSI_BOLD + ANSI_BLUE + "[%s]" + ANSI_RESET + "%n", ts(), label);
         } else {
-            printf("%n[%s] [%s] %s%n", ts(), label, detail);
+            printf("%n[%s] " + ANSI_BOLD + ANSI_BLUE + "[%s] %s" + ANSI_RESET + "%n", ts(), label, detail);
         }
     }
 
     @Override
     public void step(String name, long ms, String note) {
         String noteStr = (note != null && !note.isBlank()) ? SEP + note : "";
-        printf("[%s]   %-" + NAME_W + "s  %5ds%s%n", ts(), name, ms / 1000, noteStr);
+        printf("[%s]   " + ANSI_CYAN + "%-" + NAME_W + "s" + ANSI_RESET + "  %5ds%s%n",
+               ts(), name, ms / 1000, noteStr);
     }
 
     @Override
     public void critic(String name, double score, long ms, List<String> problems) {
-        String tag = problems.isEmpty() ? SEP + "OK" : "";
-        printf("[%s]   %-" + NAME_W + "s  %5.2f  %5ds%s%n",
+        String tag   = problems.isEmpty() ? SEP + "OK" : "";
+        String color = scoreColor(score);
+        printf("[%s]   " + color + "%-" + NAME_W + "s  %5.2f  %5ds%s" + ANSI_RESET + "%n",
                ts(), name, score, ms / 1000, tag);
         if (score >= 10.0) {
             for (String p : problems) {
-                printf("[%s]     ! %s%n", ts(), p);
+                printf("[%s]     " + ANSI_RED + "! %s" + ANSI_RESET + "%n", ts(), p);
             }
         }
     }
 
     @Override
-    public void scoresSummary(double avg, boolean passed, String retryHint) {
-        String hint = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
+    public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
+                               boolean passed, String retryHint) {
+        String hint   = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
+        String status = (passed ? ANSI_GREEN : ANSI_RED) + (passed ? "PASS" : "RETRY") + ANSI_RESET;
         if (avg <= 0 || Double.isNaN(avg)) {
-            printf("[%s]   -> %s%s%n", ts(), passed ? "PASS" : "RETRY", hint);
+            printf("[%s]   -> %s%s%n", ts(), status, hint);
         } else {
-            printf("[%s]   -> moy %.2f  %s%s%n", ts(), avg, passed ? "PASS" : "RETRY", hint);
+            printf("[%s]   -> moy %.2f (seuil %.1f)  min %.2f (elim %.1f)  %s%s%n",
+                   ts(), avg, avgThreshold, minScore, eliminationThreshold, status, hint);
         }
     }
 
     @Override
     public void warn(String message) {
-        printf("[%s]   [WARN] %s%n", ts(), message);
+        printf("[%s]   " + ANSI_RED + "[WARN]" + ANSI_RESET + " %s%n", ts(), message);
     }
 
     @Override
-    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {
+    public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think) {
         int    n    = llmCalls.incrementAndGet();
         long   sumI = sumTokIn.addAndGet(tokIn);
         long   sumO = sumTokOut.addAndGet(tokOut);
         sumMs.addAndGet(ms);
-        String tpsStr = tokPerSec > 0 ? String.format("  %.1f tok/s", tokPerSec) : "";
-        printf("[%s]   [LLM #%3d]  %-28s  %5ds  %6d -> %5d tok%s  [sum in:%s out:%s]%n",
-               ts(), n, agentLabel, ms / 1000, tokIn, tokOut, tpsStr, fmtTok(sumI), fmtTok(sumO));
+        String tpsStr   = tokPerSec > 0 ? String.format("  %.1f tok/s", tokPerSec) : "";
+        String thinkStr = Boolean.TRUE.equals(think) ? "  [think]" : "";
+        printf("[%s]   " + ANSI_MAGENTA + "[LLM #%3d]" + ANSI_RESET + "  %-28s  %5ds  %6d -> %5d tok%s%s  [sum in:%s out:%s]%n",
+               ts(), n, agentLabel, ms / 1000, tokIn, tokOut, tpsStr, thinkStr, fmtTok(sumI), fmtTok(sumO));
     }
 
     @Override
@@ -87,19 +102,19 @@ public class ConsoleLogAdapter implements LogPort {
 
     @Override
     public void planRetained(int bestAttempt, int totalAttempts, double bestScore) {
-        printf("[%s]   -> plan retenu : tentative %d/%d  moy %.2f%n",
+        printf("[%s]   " + ANSI_GREEN + "-> plan retenu : tentative %d/%d  moy %.2f" + ANSI_RESET + "%n",
                ts(), bestAttempt, totalAttempts, bestScore);
     }
 
     @Override
     public void sequenceRetained(int bestPass, int totalPasses, double bestScore) {
-        printf("[%s]   -> sequence retenue : passe %d/%d  moy %.2f%n",
+        printf("[%s]   " + ANSI_GREEN + "-> sequence retenue : passe %d/%d  moy %.2f" + ANSI_RESET + "%n",
                ts(), bestPass, totalPasses, bestScore);
     }
 
     @Override
     public void chapterRetained(int bestPass, int totalPasses, double bestScore) {
-        printf("[%s]   -> chapitre retenu : passe %d/%d  moy %.2f%n",
+        printf("[%s]   " + ANSI_GREEN + "-> chapitre retenu : passe %d/%d  moy %.2f" + ANSI_RESET + "%n",
                ts(), bestPass, totalPasses, bestScore);
     }
 
@@ -123,14 +138,14 @@ public class ConsoleLogAdapter implements LogPort {
         String fmt = "║  %-24s : %-" + (W - 28) + "s  ║%n";
 
         System.out.println();
-        System.out.println(top);
-        printf(fmt, "Appels LLM", calls);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + top + ANSI_RESET);
+        printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Appels LLM", calls);
         if (totIn > 0) {
-            printf(fmt, "Tokens in",  fmtTokLong(totIn));
-            printf(fmt, "Tokens out", fmtTokLong(totOut));
+            printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens in",  fmtTokLong(totIn));
+            printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens out", fmtTokLong(totOut));
         }
-        printf(fmt, "Duree totale", fmtDuration(elapsed));
-        System.out.println(bot);
+        printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Duree totale", fmtDuration(elapsed));
+        System.out.println(ANSI_BOLD + ANSI_BLUE + bot + ANSI_RESET);
         System.out.println();
     }
 
@@ -142,6 +157,14 @@ public class ConsoleLogAdapter implements LogPort {
 
     private static String ts() {
         return LocalTime.now().format(TIME);
+    }
+
+    private static String scoreColor(double score) {
+        if (score >= 10.0) return ANSI_BLUE;
+        if (score >= 8.0)  return ANSI_GREEN;
+        if (score >= 5.0)  return ANSI_YELLOW;
+        if (score >= 3.0)  return ANSI_ORANGE;
+        return ANSI_RED;
     }
 
     private static String fmtTok(long tok) {

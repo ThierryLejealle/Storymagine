@@ -1,1 +1,0 @@
-- La séquence respecte-t-elle sa limite ? (ce qui est écrit ne déborde pas sur la séquence suivante)

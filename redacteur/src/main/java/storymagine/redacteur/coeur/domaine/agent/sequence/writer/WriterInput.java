@@ -6,10 +6,13 @@ import java.util.List;
  * All content pre-assembled by the service layer before calling Writer.
  * Corresponds to SequencePackage + write parameters from WriterContext.
  *
- * @param isRewrite       true when rewriting a rejected sequence (problems injected in chapterPlan)
- * @param sequencePlan    optional per-sequence plan slice from ChapterPlanner; overrides sequenceDescription
- * @param loopJournal     numbered one-liners from loop iterations (empty for IMPERATIVE chapters)
- * @param stitch          opening-transition rule; null means use built-in default
+ * @param isRewrite            true when rewriting a rejected sequence (problems carried by rewriteProblems)
+ * @param sequencePlan         optional per-sequence plan slice from ChapterPlanner; overrides sequenceDescription
+ * @param rewriteProblems      problems to fix, non-null only when isRewrite — never the whole chapter plan,
+ *                             so the Writer is never shown other sequences' beats (spoiler risk)
+ * @param previousSequenceText full text of the last written sequence in this chapter, raw and untruncated;
+ *                             null/blank if this is the chapter's first sequence
+ * @param stitch               opening-transition rule; null means use built-in default
  */
 public record WriterInput(
     String sequenceDescription,
@@ -18,19 +21,16 @@ public record WriterInput(
     String charactersText,
     String focusText,
     String loreText,
-    String actionsText,
-    String chapterPlan,
-    String prevSentences,
+    String rewriteProblems,
+    String previousSequenceText,
     String entityState,
-    String storySoFar,
+    String summary,
     String sequencePlan,
     List<String> forbiddenPhrases,
     List<String> forbiddenThemes,
-    String loopJournal,
     String redactionConstraints,
     String styleGuide,
     String writingExample,
-    String sequenceContext,
     String setting,
     String stitch
 ) {}

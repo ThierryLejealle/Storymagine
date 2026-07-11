@@ -3,7 +3,7 @@ package storymagine.redacteur.coeur.domaine.story;
 import java.util.ArrayList;
 import java.util.List;
 
-/** A chapter as it is built during writing: plan, written sequences, and compressed summary. */
+/** A chapter as it is built during writing: plan and written sequences. */
 public class WrittenChapter {
 
     private final ChapterId             id;
@@ -11,7 +11,6 @@ public class WrittenChapter {
     private List<String>                sequencePlans = List.of();
     private String                      coherence;
     private final List<WrittenSequence> sequences = new ArrayList<>();
-    private String                      summary;
 
     public WrittenChapter(ChapterId id) {
         this.id = id;
@@ -24,7 +23,6 @@ public class WrittenChapter {
     public void addSequence(WrittenSequence seq)              { sequences.add(seq); }
     /** Clears all written sequences — used before a chapter-level rewrite. */
     public void clearSequences()                             { sequences.clear(); }
-    public void setSummary(String summary)                   { this.summary = summary; }
 
     public ChapterId             id()             { return id; }
     /** Plan produced by ChapterPlanner — null until planning phase completes. */
@@ -34,8 +32,6 @@ public class WrittenChapter {
     /** Critic feedback accumulated across planning retries — null on first attempt. */
     public String                coherence()      { return coherence; }
     public List<WrittenSequence> sequences()      { return List.copyOf(sequences); }
-    /** Summary produced by StoryCompressor — null until chapter is compressed. */
-    public String                summary()        { return summary; }
 
     /** Full chapter prose: all sequence texts joined with a blank line. */
     public String fullText() {

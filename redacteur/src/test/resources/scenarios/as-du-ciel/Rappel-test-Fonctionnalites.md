@@ -140,9 +140,9 @@ directive: >
   ...
   Il est midi — le soleil est au zénith. La lumière aveugle par instants, venant de face.
   Ce détail du soleil est impératif : il doit être présent et sensible dans la scène.
-checks:
-  - "Le soleil au zénith ou midi est explicitement présent dans la scène"
-  - "L'éblouissement ou la lumière frontale affecte Pierre pendant le combat"
+requirements:
+  - "| Le soleil au zénith ou midi est explicitement présent dans la scène"
+  - "| L'éblouissement ou la lumière frontale affecte Pierre pendant le combat"
 ```
 
 **Ce qu'on attend**

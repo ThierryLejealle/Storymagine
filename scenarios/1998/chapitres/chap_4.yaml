@@ -5,8 +5,11 @@ type: imperative
 
 # description: synopsis narratif du chapitre → transmis au Planner
 description: >
-  Corinne et Christelle rentrent à Nantes. Catherine à Paris. Thierry reste seul pour la deuxième semaine
-  Thierry va abandonner sa deuxieme semaine et rejoindre Christelle
+  Corinne et Christelle rentrent à Nantes. 
+  Christelle se fait opérer la cheville à l'hopital puis rentre chez elle le lendemain.
+  Catherine est rentrée à Paris mais on ne développera pas son personnage dans ce chapitre. 
+  Thierry reste seul pour la deuxième semaine
+  Thierry va abandonner sa deuxieme semaine, passer vite fait à Paris et rejoindre Christelle à Nantes.
 
 # setting: courte didascalie spatio-temporelle → injectée dans Planner + Writer (optionnel)
 # Ex : "Le lendemain matin, dans la salle de mess de la base."
@@ -14,14 +17,16 @@ description: >
 
 # goal: but dramatique du chapitre → transmis au Planner + NarrativeGoalContext
 goal: >
-  Ce chapitre raconte le retour à Nantes & Paris
+  Ce chapitre est focalisé sur le retour de Christelle à Nantes, Thierry qui décide de tout quitter, passer par Paris et retrouver Christelle à Nantes.
 
 # defaults: héritées par toutes les séquences (merge additif)
 defaults:
   # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
   # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
   character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
-  
+  focus: >
+    ["UCPA"]
+
 sequences:
 
   # Séquence complète avec tous les champs
@@ -37,8 +42,8 @@ sequences:
     directive: >
       Scene avec Christelle seule chez elle à Nantes.
       Le lundi, Christelle se fait opérer de la cheville à l'hopital
-      Elle rentre chez elle le soir après l'opération. 
-      Elle doit utiliser des béquilles dans son appartement.
+      Elle rentre chez elle le lendemain après l'opération qui s'est bien passée. 
+      CONSIGNE : A partir de maintenant elle doit utiliser des béquilles dans son appartement.
     min_words: 500
 
   - type: explicit
@@ -47,6 +52,7 @@ sequences:
       Thierry n'arrive plus à penser à autre chose qu'à Christelle.
       Le centre UCPA lui parait vide ; aucune activité ne l'intéresse
       Il réalise qu'il est tombé amoureux
+      Il décide de faire livrer un gros bouquet de fleurs à Christelle.
     min_words: 500
 
   - type: explicit
@@ -62,6 +68,8 @@ sequences:
 
   - type: explicit
     directive: >
+      Le lendemain Thierry a pris le train pour aller à Nantes.
+      Le train arrive à Nantes.
       Consigne : changement de décor:  la gare de Nantes
       Thierry sort du TGV et se rend chez Christelle
       Il sonne

@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Parses tiered critic output (AMELIORATION / DEFAUT_SIGNIFICATIF / DEFAUT_MAJEUR)
  * and computes a score from the tier counts.
- * Used by the four main critics: TextNarrativeCritic, TextCoherenceCritic,
+ * Used by the four main critics: ChapterNarrativeCritic, ChapterCoherenceCritic,
  * PlanNarrativeCritic, PlanCoherenceCritic.
  */
 public final class CriticOutputParser {

@@ -2,6 +2,8 @@
 à cette altitude et cette heure, la texture des nuages, la lumière rasante du matin ou du
 soir, le silence absolu à 6000 mètres que seul le moteur brise, l'horizon qui se courbe
 légèrement. Pierre vit dans le ciel. C'est sa maison et sa tombe.
+# CHECK
+Le ciel est-il décrit avec un détail sensoriel concret (couleur, lumière, silence, horizon) — pas juste mentionné en passant ?
 
 [MACHINE] Le Spitfire est un être vivant. Décris ses vibrations au démarrage — l'hélice qui
 cherche sa cadence, la chaleur du moteur Merlin qui monte dans le cockpit, l'odeur d'huile
@@ -14,6 +16,8 @@ Mains qui serrent le manche trop fort. Vision tunnel lors d'une attaque adverse.
 qui se dilate dans les deux secondes avant d'appuyer sur la gâchette. L'adrénaline après
 le combat : les mains tremblent, les genoux sont en coton. Ne jamais écrire "il avait peur".
 Toujours montrer comment la peur passe dans le corps.
+# CHECK
+La peur est-elle montrée par un signe corporel concret (gorge, mains, vision, tremblement) — jamais nommée directement ("il avait peur") ?
 
 [CAMARADERIE] Les pilotes ne se disent pas qu'ils s'aiment. Ils se le montrent par des
 petites choses : une cigarette tendue sans un mot, une main sur l'épaule deux secondes et

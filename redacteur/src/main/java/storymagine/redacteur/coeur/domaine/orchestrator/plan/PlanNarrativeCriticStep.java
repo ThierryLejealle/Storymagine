@@ -22,6 +22,7 @@ public class PlanNarrativeCriticStep {
         return agent.call(new PlanNarrativeCriticInput(
                 plan,
                 ScenarioFormatters.bookGoal(scenario),
+                chapter.description(),
                 chapter.goal()
         ));
     }

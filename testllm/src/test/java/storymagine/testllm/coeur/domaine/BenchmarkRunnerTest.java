@@ -1,6 +1,7 @@
 package storymagine.testllm.coeur.domaine;
 
 import org.junit.jupiter.api.Test;
+import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.coeur.ports.ModelEntry;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,6 +31,7 @@ class BenchmarkRunnerTest {
             @Override public int detectContext(String m)                                        { return 4096; }
             @Override public boolean detectThinking(String m)                                  { return false; }
             @Override public LongSupplier vramSampler(String m)                                { return () -> 512L; }
+            @Override public Supplier<HardwareUsage> hardwareSampler()                         { return () -> HardwareUsage.ABSENT; }
             @Override public int configuredCtx()                                               { return 4096; }
             @Override public boolean isLargeModel(long sz)                                     { return false; }
         };
@@ -54,7 +57,7 @@ class BenchmarkRunnerTest {
     private static ModelCallPort callPortTexts(int... lengths) {
         AtomicInteger idx = new AtomicInteger(0);
         return new ModelCallPort() {
-            @Override public LlmResult generate(String s, String u, double t) {
+            @Override public LlmResult generate(String s, String u, double t, LlmCallContext ctx) {
                 int len = lengths[Math.min(idx.getAndIncrement(), lengths.length - 1)];
                 return new LlmResult("x".repeat(len), 0, 0, 0L);
             }
@@ -118,7 +121,7 @@ class BenchmarkRunnerTest {
         // run 1 OK, run 2 FAIL, run 3 OK → elapsed.size()=2, texts.size()=3
         AtomicInteger call = new AtomicInteger(0);
         ModelCallPort port = new ModelCallPort() {
-            @Override public LlmResult generate(String s, String u, double t) {
+            @Override public LlmResult generate(String s, String u, double t, LlmCallContext ctx) {
                 if (call.getAndIncrement() == 1) throw new RuntimeException("timeout");
                 return new LlmResult("x".repeat(100), 0, 0, 0L);
             }

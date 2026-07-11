@@ -14,10 +14,8 @@ public class SequenceDto {
     public List<String> focus;
     @JsonDeserialize(using = LoreStringDeserializer.class)
     public String       lore;
-    @JsonDeserialize(using = PlanWriterListDeserializer.class)
-    public PlanWriterListDto checks;
-    @JsonDeserialize(using = PlanWriterListDeserializer.class)
-    public PlanWriterListDto constraints;
+    @JsonDeserialize(using = RequirementListDeserializer.class)
+    public RequirementListDto requirements;
     public Integer      min_words;
     public String       stitch;
     public Boolean      no_transition;

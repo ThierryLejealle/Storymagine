@@ -27,10 +27,10 @@ sequences:
       Pierre appuie sur la détente. Rien. Il recommence. Rien. La mitrailleuse est enraillée.
       En face, le FW190 de l'attaque surprise tourne déjà pour un second passage sur Henri.
       Pierre n'a que la manœuvre. Il se place entre l'ennemi et son ailier.
-    checks:
-      - "La mitrailleuse enraillée est la prémisse centrale — explicitement présente"
-      - "Pierre ne peut pas tirer — aucun tir n'a lieu dans cette séquence"
-      - "La physique reste réaliste : Pierre manœuvre avec un vrai Spitfire MkIX"
+    requirements:
+      - "| La mitrailleuse enraillée est la prémisse centrale — explicitement présente"
+      - "| Pierre ne peut pas tirer — aucun tir n'a lieu dans cette séquence"
+      - "| La physique reste réaliste : Pierre manœuvre avec un vrai Spitfire MkIX"
 
   - type: explicit
     directive: >
@@ -38,7 +38,7 @@ sequences:
       Il interpose son appareil, il menace sans pouvoir tenir sa menace.
       L'ennemi finit par décrocher — soit par prudence, soit par manque de carburant.
       Pierre et Henri rentrent. La mitrailleuse se dégrippera au sol, une simple pièce coincée.
-    checks:
-      - "Le dénouement reste plausible dans les lois de la physique aérienne de 1944"
-      - "Les personnages agissent de façon cohérente avec leurs caractères habituels"
-      - "Aucun fait de cette digression ne devient un fait de la trame principale"
+    requirements:
+      - "| Le dénouement reste plausible dans les lois de la physique aérienne de 1944"
+      - "| Les personnages agissent de façon cohérente avec leurs caractères habituels"
+      - "| Aucun fait de cette digression ne devient un fait de la trame principale"

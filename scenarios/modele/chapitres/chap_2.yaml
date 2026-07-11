@@ -29,6 +29,6 @@ sequences:
     directive: >
       Ce que la perspective alternative vit / observe / fait dans cette scène.
       Terminer sur un moment de calme ou de clôture — pas un cliffhanger ouvert.
-    checks:
-      - "La scène reste dans la perspective déclarée — pas de retour à la trame principale"
-      - "L'état final est stable : la scène se ferme proprement"
+    requirements:
+      - "| La scène reste dans la perspective déclarée — pas de retour à la trame principale"
+      - "| L'état final est stable : la scène se ferme proprement"

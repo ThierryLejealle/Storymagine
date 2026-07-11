@@ -5,6 +5,7 @@ Il mettre en oeuvre un logique multi-agent pour évaluer, critiquer et guider la
 L'outil devra s'adapter aux contraintes des petits modèles, notamment un contexte limité
 
 # Style de codage
+Toujours enregistrer les fichiers texte en UTF-8 sans BOM. Ne jamais utiliser UTF-8 with BOM.
 Le projet est en Anglais.
 Le projet est codé en Java, en architecture hexagonale : privilégier un découpage par modules fonctionnels et des POJO
   - Exemple : un module "commun" (pour l'adapteur ollama), un module "testeur" pour tester les LLM, un module redacteur pour la fonctionnalité de rédaction d'histoire, ..

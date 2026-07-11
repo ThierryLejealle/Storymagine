@@ -22,4 +22,6 @@ sequences:
       Une soirée calme. Personne ne parle de demain. Jules inspecte le Grey Ghost une
       dernière fois, sans le savoir. Pierre écrit une lettre à Lucie. La radio joue
       du jazz dans la salle commune. Chaque détail ordinaire pèse d'un poids inédit.
+    # Exemple de focus inline avec check optionnel (syntaxe "texte | check") — s'ajoute au focus du chapitre
+    focus: ["La lettre de Pierre à Lucie est un objet concret dans la scène | La lettre à Lucie est-elle un objet physique manipulé dans la scène (papier, stylo, enveloppe) — pas juste évoquée ?"]
     min_words: 600

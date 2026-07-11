@@ -1,10 +1,8 @@
 package storymagine.redacteur.coeur.domaine.orchestrator.common;
 
 import storymagine.redacteur.coeur.domaine.scenario.Chapter;
-import storymagine.redacteur.coeur.domaine.scenario.Check;
-import storymagine.redacteur.coeur.domaine.scenario.CheckList;
-import storymagine.redacteur.coeur.domaine.scenario.Constraint;
-import storymagine.redacteur.coeur.domaine.scenario.ConstraintList;
+import storymagine.redacteur.coeur.domaine.scenario.Requirement;
+import storymagine.redacteur.coeur.domaine.scenario.RequirementList;
 import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.scenario.Sequence;
 import storymagine.redacteur.coeur.domaine.scenario.focus.FocusElement;
@@ -95,6 +93,24 @@ public final class ScenarioFormatters {
         return sb.toString();
     }
 
+    /**
+     * Check side of each focus item, for Critics verifying that focus elements were actually
+     * used. Optional — items without a check (no "# CHECK" section, no "|" in inline text)
+     * are simply skipped. No plan/writer split: one check applies to both phases.
+     */
+    public static List<String> focusChecks(List<FocusItem> items) {
+        if (items == null || items.isEmpty()) return List.of();
+        List<String> result = new ArrayList<>();
+        for (FocusItem item : items) {
+            String check = switch (item) {
+                case FocusRef ref -> ref.resolved() != null ? ref.resolved().checkContent() : null;
+                case FocusInline inline -> inline.check();
+            };
+            if (check != null && !check.isBlank()) result.add(check);
+        }
+        return result;
+    }
+
     public static String loreText(List<LoreItem> items, boolean forWriter) {
         if (items == null || items.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
@@ -116,79 +132,94 @@ public final class ScenarioFormatters {
         return sb.toString();
     }
 
-    public static String planConstraints(ConstraintList constraints) {
-        return constraints.planConstraints().stream()
-                .map(Constraint::text)
+    public static String planConstraints(RequirementList requirements) {
+        return requirements.planRequirements().stream()
+                .map(Requirement::constraint)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 
-    public static String writerConstraints(ConstraintList constraints) {
-        return constraints.writerConstraints().stream()
-                .map(Constraint::text)
+    public static String writerConstraints(RequirementList requirements) {
+        return requirements.writerRequirements().stream()
+                .map(Requirement::constraint)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 
-    public static List<String> planChecks(CheckList checks) {
-        return checks.planChecks().stream().map(Check::text).collect(Collectors.toList());
+    public static List<String> planChecks(RequirementList requirements) {
+        return requirements.planRequirements().stream()
+                .map(Requirement::check)
+                .filter(t -> t != null && !t.isBlank())
+                .collect(Collectors.toList());
     }
 
-    public static List<String> writerChecks(CheckList checks) {
-        return checks.writerChecks().stream().map(Check::text).collect(Collectors.toList());
+    public static List<String> writerChecks(RequirementList requirements) {
+        return requirements.writerRequirements().stream()
+                .map(Requirement::check)
+                .filter(t -> t != null && !t.isBlank())
+                .collect(Collectors.toList());
     }
 
     // ── Merged accessors: scenario + chapter (plan phase) ────────────────────
 
     public static String planConstraints(Scenario scenario, Chapter chapter) {
-        return Stream.of(scenario.constraints(), chapter.defaults().constraints())
-                .flatMap(cl -> cl.planConstraints().stream())
-                .map(Constraint::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements())
+                .flatMap(rl -> rl.planRequirements().stream())
+                .map(Requirement::constraint)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 
     public static List<String> planChecks(Scenario scenario, Chapter chapter) {
-        return Stream.of(scenario.checks(), chapter.defaults().checks())
-                .flatMap(cl -> cl.planChecks().stream())
-                .map(Check::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements())
+                .flatMap(rl -> rl.planRequirements().stream())
+                .map(Requirement::check)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.toList());
     }
 
     // ── Merged accessors: scenario + chapter (chapter-level write phase) ─────
 
     public static String writerConstraints(Scenario scenario, Chapter chapter) {
-        return Stream.of(scenario.constraints(), chapter.defaults().constraints())
-                .flatMap(cl -> cl.writerConstraints().stream())
-                .map(Constraint::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements())
+                .flatMap(rl -> rl.writerRequirements().stream())
+                .map(Requirement::constraint)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 
     public static List<String> writerChecks(Scenario scenario, Chapter chapter) {
-        return Stream.of(scenario.checks(), chapter.defaults().checks())
-                .flatMap(cl -> cl.writerChecks().stream())
-                .map(Check::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements())
+                .flatMap(rl -> rl.writerRequirements().stream())
+                .map(Requirement::check)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.toList());
     }
 
     // ── Merged accessors: scenario + chapter + sequence (sequence-level) ─────
 
     public static String writerConstraints(Scenario scenario, Chapter chapter, Sequence sequence) {
-        return Stream.of(scenario.constraints(), chapter.defaults().constraints(),
-                         sequence.additions().constraints())
-                .flatMap(cl -> cl.writerConstraints().stream())
-                .map(Constraint::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements(),
+                         sequence.additions().requirements())
+                .flatMap(rl -> rl.writerRequirements().stream())
+                .map(Requirement::constraint)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 
     public static List<String> writerChecks(Scenario scenario, Chapter chapter, Sequence sequence) {
-        return Stream.of(scenario.checks(), chapter.defaults().checks(),
-                         sequence.additions().checks())
-                .flatMap(cl -> cl.writerChecks().stream())
-                .map(Check::text)
+        return Stream.of(scenario.requirements(), chapter.defaults().requirements(),
+                         sequence.additions().requirements())
+                .flatMap(rl -> rl.writerRequirements().stream())
+                .map(Requirement::check)
+                .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.toList());
     }
 
     /**
-     * Injects per-sequence metadata (checks, constraints, focus, lore) as extra JSON fields
+     * Injects per-sequence metadata (points à vérifier, focus, lore) as extra JSON fields
      * inside each sequence object of the plan JSON, co-located with beats/sensoriels/ton_et_rythme.
+     * Uses the check() side of Requirement — this JSON is read by PlanCoherenceCritic, a verifier.
      * Characters are not injected — they are shared globally across sequences.
      */
     public static String enrichPlanJson(String planJson, List<Sequence> sequences) {
@@ -229,17 +260,12 @@ public final class ScenarioFormatters {
 
     private static String buildSeqAnnotation(Sequence seq) {
         List<String> parts = new ArrayList<>();
-        List<Check> checks = seq.additions().checks().planChecks();
+        List<String> checks = planChecks(seq.additions().requirements());
         if (!checks.isEmpty()) {
             String arr = checks.stream()
-                .map(ch -> "\"" + jsonEscape(ch.text()) + "\"")
+                .map(ch -> "\"" + jsonEscape(ch) + "\"")
                 .collect(Collectors.joining(", "));
-            parts.add("  \"checks\": [" + arr + "]");
-        }
-        List<Constraint> cons = seq.additions().constraints().planConstraints();
-        if (!cons.isEmpty()) {
-            String text = cons.stream().map(Constraint::text).collect(Collectors.joining("; "));
-            parts.add("  \"contraintes\": \"" + jsonEscape(text) + "\"");
+            parts.add("  \"points_a_verifier\": [" + arr + "]");
         }
         String focus = focusText(seq.additions().focus(), false);
         if (!focus.isBlank()) parts.add("  \"focus\": \"" + jsonEscape(focus) + "\"");
@@ -286,7 +312,7 @@ public final class ScenarioFormatters {
         if (!l.isBlank()) sb.append("\nInformations utiles (lore) : ").append(l);
         String c = personnages(seq.additions().characters(), false);
         if (!c.isBlank()) sb.append("\nPersonnages présents : ").append(c);
-        String cons = planConstraints(seq.additions().constraints());
+        String cons = planConstraints(seq.additions().requirements());
         if (!cons.isBlank()) sb.append("\nContraintes : ").append(cons);
         return sb.toString();
     }

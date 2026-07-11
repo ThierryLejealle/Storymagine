@@ -11,10 +11,8 @@ public class ChapterDefaultsDto {
     public List<String> focus;
     @JsonDeserialize(using = LoreStringDeserializer.class)
     public String lore;
-    @JsonDeserialize(using = PlanWriterListDeserializer.class)
-    public PlanWriterListDto checks;
-    @JsonDeserialize(using = PlanWriterListDeserializer.class)
-    public PlanWriterListDto constraints;
+    @JsonDeserialize(using = RequirementListDeserializer.class)
+    public RequirementListDto requirements;
     public Integer planner_effort_in_lines;
     public Integer sequence_min_words;
 }

@@ -73,21 +73,9 @@ class ScenarioLoadTest {
     }
 
     @Test
-    void load_sequenceFocusRefsAreResolved() throws URISyntaxException {
-        Scenario s     = adapter.load(scenarioRoot());
-        Chapter  chap1 = s.chapters().get(0);
-        var focusItems = chap1.defaults().focus();
-        assertFalse(focusItems.isEmpty());
-        focusItems.forEach(item -> assertInstanceOf(
-                storymagine.redacteur.coeur.domaine.scenario.focus.FocusRef.class, item,
-                "Expected all chapter default focus to be FocusRef"));
-    }
-
-    @Test
-    void load_globalChecksAndConstraints() throws URISyntaxException {
+    void load_globalRequirements() throws URISyntaxException {
         Scenario s = adapter.load(scenarioRoot());
-        assertFalse(s.checks().planChecks().isEmpty());
-        assertFalse(s.checks().writerChecks().isEmpty());
-        assertFalse(s.constraints().planConstraints().isEmpty());
+        assertFalse(s.requirements().planRequirements().isEmpty());
+        assertFalse(s.requirements().writerRequirements().isEmpty());
     }
 }

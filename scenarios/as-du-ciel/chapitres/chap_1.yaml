@@ -22,10 +22,10 @@ sequences:
       Pierre arrive à la base à l'aube du 6 juin. Le bruit des moteurs Merlin
       résonne au loin. Sur le tarmac, les Spitfires sont alignés dans la brume,
       hélices immobiles. Il pose son sac et regarde le ciel.
-    checks:
-      - "Pierre est décrit comme observateur passif — il regarde, il ne touche pas encore"
-      - "L'escadrille est présente mais distante, Pierre n'est pas intégré dans le groupe"
-      - "Le Spitfire est nommé 'Grey Ghost' ou 'Spitfire' — jamais un autre nom"
+    requirements:
+      - "| Pierre est décrit comme observateur passif — il regarde, il ne touche pas encore"
+      - "| L'escadrille est présente mais distante, Pierre n'est pas intégré dans le groupe"
+      - "| Le Spitfire est nommé 'Grey Ghost' ou 'Spitfire' — jamais un autre nom"
 
   - type: explicit
     directive: >
@@ -34,20 +34,14 @@ sequences:
       son numéro de machine et une seule phrase : demain, à l'aube.
     character_sheets: ["pierre_moreau", "commandant_bertrand"]
     focus: ["CAMARADERIE"]
-    # Dualité checks/constraints : la contrainte cadre le planner/writer, le check vérifie le résultat.
-    checks:
+    # Requirement "contrainte | check" : la contrainte cadre le planner/writer, le check vérifie le résultat.
+    requirements:
       plan:
-        - "Le plan prévoit-il une scène courte, sans dialogue prolongé ?"
+        - "La rencontre Bertrand–Pierre ne dépasse pas une séquence courte — ne pas développer une conversation. | Le plan prévoit-il une scène courte, sans dialogue prolongé ?"
       writer:
-        - "Bertrand reste froid et autoritaire — aucune chaleur humaine, aucun encouragement"
-        - "La scène dure deux minutes maximum dans le récit — pas de longue conversation"
-        - "Pierre repart avec uniquement son numéro de machine, rien de plus"
-    constraints:
-      plan:
-        - "La rencontre Bertrand–Pierre ne dépasse pas une séquence courte — ne pas développer une conversation."
-      writer:
-        - "Bertrand ne sourit pas, ne tutoie pas, ne donne aucun conseil personnel à Pierre."
-        - "Pierre ne pose pas de questions — il écoute et repart."
+        - "Bertrand ne sourit pas, ne tutoie pas, ne donne aucun conseil personnel à Pierre. | Bertrand reste froid et autoritaire — aucune chaleur humaine, aucun encouragement"
+        - "Pierre ne pose pas de questions — il écoute et repart. | Pierre repart avec uniquement son numéro de machine, rien de plus"
+        - "| La scène dure deux minutes maximum dans le récit — pas de longue conversation"
 
   - type: explicit
     directive: >

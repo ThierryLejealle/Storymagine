@@ -59,13 +59,23 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
         try { lorePool       = loadLore(root);       } catch (IOException e) { errors.add(ScenarioError.invalidFormat("lore.md",       e.getMessage())); }
         try { personnagePool = loadPersonnages(root);} catch (IOException e) { errors.add(ScenarioError.invalidFormat("characters/",   e.getMessage())); }
 
-        validateChapters(root, focusPool, lorePool, personnagePool, errors);
+        int defaultSequenceWords;
+        try {
+            defaultSequenceWords = readYaml(root.resolve("scenario.md"), ScenarioConfigDto.class).default_sequence_words;
+        } catch (Exception e) {
+            defaultSequenceWords = 0;
+        }
+
+        validateChapters(root, focusPool, lorePool, personnagePool, defaultSequenceWords, errors);
 
         return errors;
     }
 
+    private static final int LOW_WORD_COUNT_THRESHOLD = 300;
+
     private void validateChapters(Path root, FocusPool focus, LorePool lore,
-                                   PersonnagePool personnages, List<ScenarioError> errors) {
+                                   PersonnagePool personnages, int defaultSequenceWords,
+                                   List<ScenarioError> errors) {
         List<Path> files;
         try (Stream<Path> stream = Files.list(root.resolve("chapitres"))) {
             files = stream.filter(p -> p.getFileName().toString().endsWith(".yaml"))
@@ -94,11 +104,21 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 validateRefs(dto.defaults.focus, dto.defaults.character_sheets, dto.defaults.lore,
                              focus, lore, personnages, name + " [defaults]", errors);
 
+            Integer chapterMinWords = dto.defaults != null ? dto.defaults.sequence_min_words : null;
+
             if (dto.sequences != null) {
                 for (int i = 0; i < dto.sequences.size(); i++) {
                     SequenceDto seq = dto.sequences.get(i);
                     validateRefs(seq.focus, seq.character_sheets, seq.lore,
                                  focus, lore, personnages, name + " [sequence " + (i + 1) + "]", errors);
+
+                    int effectiveMinWords = seq.min_words != null ? seq.min_words
+                            : chapterMinWords != null ? chapterMinWords
+                            : defaultSequenceWords;
+                    if (effectiveMinWords > 0 && effectiveMinWords < LOW_WORD_COUNT_THRESHOLD)
+                        System.out.println("AVERTISSEMENT : " + name + " [sequence " + (i + 1) + "] "
+                                + "min_words=" + effectiveMinWords + " est bas (< " + LOW_WORD_COUNT_THRESHOLD
+                                + " mots) — risque de derive accrue lors des passes de correction.");
                 }
             }
         }
@@ -147,20 +167,19 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
             String quality       = readOptionalDirective(root, "quality.md");
             String writingStyle  = readOptionalDirective(root, "style.md");
             String keepPhrases   = readOptionalDirective(root, "keep_phrases.md");
-            String writingExample = readOptionalFile(root, cfgDto.writing_example != null
+            String writingExample = readOptionalDirective(root, cfgDto.writing_example != null
                     ? cfgDto.writing_example : "example.md");
 
             PersonnagePool personnages = loadPersonnages(root);
             FocusPool      focus       = loadFocus(root);
             LorePool       lore        = loadLore(root);
-            CheckList      checks      = loadChecks(root);
-            ConstraintList constraints = loadConstraints(root);
+            RequirementList requirements = loadRequirements(root);
             List<Chapter>  chapters    = loadChapters(root, personnages, focus, lore);
 
             return new Scenario(config,
                     bookGoal, quality, writingStyle, keepPhrases,
                     writingExample, personnages, focus, lore,
-                    checks, constraints, chapters);
+                    requirements, chapters);
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to load scenario from " + root, e);
@@ -193,7 +212,7 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
 
         String content = Files.readString(file);
         List<FocusElement> elements = TagElementParser.parse(content).stream()
-                .map(b -> new FocusElement(b.tag(), b.globalContent(), b.planContent(), b.writerContent()))
+                .map(b -> new FocusElement(b.tag(), b.globalContent(), b.planContent(), b.writerContent(), b.checkContent()))
                 .toList();
         return new FocusPool(elements);
     }
@@ -209,16 +228,10 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
         return new LorePool(elements);
     }
 
-    private CheckList loadChecks(Path root) throws IOException {
-        Path file = root.resolve("checks.md");
-        if (!Files.exists(file)) return CheckList.EMPTY;
-        return CheckListParser.parseChecks(Files.readString(file));
-    }
-
-    private ConstraintList loadConstraints(Path root) throws IOException {
-        Path file = root.resolve("constraints.md");
-        if (!Files.exists(file)) return ConstraintList.EMPTY;
-        return CheckListParser.parseConstraints(Files.readString(file));
+    private RequirementList loadRequirements(Path root) throws IOException {
+        Path file = root.resolve("requirements.md");
+        if (!Files.exists(file)) return RequirementList.EMPTY;
+        return RequirementListParser.parse(Files.readString(file));
     }
 
     private List<Chapter> loadChapters(Path root, PersonnagePool personnages,
@@ -268,8 +281,7 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 resolvePersonnages(dto.character_sheets, personnages),
                 resolveFocusItems(dto.focus, focus),
                 LoreItemParser.parse(dto.lore, lore),
-                mapCheckList(dto.checks),
-                mapConstraintList(dto.constraints),
+                mapRequirementList(dto.requirements),
                 dto.planner_effort_in_lines,
                 dto.sequence_min_words);
     }
@@ -284,8 +296,7 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 resolvePersonnages(dto.character_sheets, personnages),
                 resolveFocusItems(dto.focus, focus),
                 LoreItemParser.parse(dto.lore, lore),
-                mapCheckList(dto.checks),
-                mapConstraintList(dto.constraints));
+                mapRequirementList(dto.requirements));
 
         return new Sequence(
                 parseNarrativeType(dto.type),
@@ -312,7 +323,7 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
                 .map(entry -> {
                     String tag = extractTag(entry);
                     if (tag != null) return (FocusItem) new FocusRef(tag, pool.find(tag).orElse(null));
-                    return (FocusItem) new FocusInline(entry.replaceAll("^\"|\"$", "").strip());
+                    return (FocusItem) FocusInline.parse(entry.replaceAll("^\"|\"$", "").strip());
                 })
                 .toList();
     }
@@ -328,18 +339,11 @@ public class ScenarioFileAdapter implements ScenarioReaderPort {
         return null;
     }
 
-    private CheckList mapCheckList(PlanWriterListDto dto) {
-        if (dto == null) return CheckList.EMPTY;
-        List<Check> plan   = merge(dto.global, dto.plan).stream().map(Check::new).toList();
-        List<Check> writer = merge(dto.global, dto.writer).stream().map(Check::new).toList();
-        return new CheckList(plan, writer);
-    }
-
-    private ConstraintList mapConstraintList(PlanWriterListDto dto) {
-        if (dto == null) return ConstraintList.EMPTY;
-        List<Constraint> plan   = merge(dto.global, dto.plan).stream().map(Constraint::new).toList();
-        List<Constraint> writer = merge(dto.global, dto.writer).stream().map(Constraint::new).toList();
-        return new ConstraintList(plan, writer);
+    private RequirementList mapRequirementList(RequirementListDto dto) {
+        if (dto == null) return RequirementList.EMPTY;
+        List<Requirement> plan   = merge(dto.global, dto.plan).stream().map(Requirement::parse).toList();
+        List<Requirement> writer = merge(dto.global, dto.writer).stream().map(Requirement::parse).toList();
+        return new RequirementList(plan, writer);
     }
 
     private List<String> merge(List<String> global, List<String> specific) {

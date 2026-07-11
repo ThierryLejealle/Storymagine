@@ -5,22 +5,27 @@ import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaConfig;
-import storymagine.redacteur.coeur.domaine.agent.global.storycompressor.StoryCompressor;
+import storymagine.redacteur.coeur.domaine.agent.global.chaptersummarizer.ChapterSummarizer;
+import storymagine.redacteur.coeur.domaine.agent.global.summarycompressor.SummaryCompressor;
+import storymagine.redacteur.coeur.domaine.agent.storyplan.storycausalcritic.StoryCausalCritic;
+import storymagine.redacteur.coeur.domaine.agent.storyplan.storyfidelitycritic.StoryFidelityCritic;
+import storymagine.redacteur.coeur.domaine.agent.storyplan.storynarrativecritic.StoryNarrativeCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner.ChapterPlanner;
-import storymagine.redacteur.coeur.domaine.agent.plan.goalchecker.GoalPlanChecker;
+import storymagine.redacteur.coeur.domaine.agent.plan.goalcritic.PlanGoalCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.coherencecritic.PlanCoherenceCritic;
 import storymagine.redacteur.coeur.domaine.agent.plan.narrativecritic.PlanNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.goalcritic.GoalTextCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.TextCoherenceCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.dreamcritic.TextDreamCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.TextNarrativeCritic;
-import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.TextWhatIfCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.goalcritic.ChapterGoalCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.coherencecritic.ChapterCoherenceCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.dreamcritic.ChapterDreamCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.narrativecritic.ChapterNarrativeCritic;
+import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.ChapterWhatIfCritic;
 import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic.DeusInMachinaCritic;
 import storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacorrector.DeusInMachinaCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCritic;
 import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCritic;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrector;
-import storymagine.redacteur.coeur.domaine.agent.sequence.proofreadercorrector.ProofreaderCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.grammarcorrector.GrammarCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.phrasingcorrector.PhrasingCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilter;
 import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTracker;
 import storymagine.redacteur.coeur.domaine.agent.sequence.writer.Writer;
@@ -28,25 +33,30 @@ import storymagine.redacteur.coeur.domaine.agent.sequence.stateextractor.StateEx
 import storymagine.redacteur.coeur.domaine.agent.sequence.stylecorrector.StyleCorrector;
 import storymagine.redacteur.coeur.domaine.orchestrator.StoryOrchestrator;
 import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.EvaluateWorkflow;
-import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.StoryCompressorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.evaluate.ChapterSummaryStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlannerStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.plan.GoalPlanCheckerStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanGoalCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanCoherenceCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanNarrativeCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.plan.PlanWorkflow;
+import storymagine.redacteur.coeur.domaine.orchestrator.plan.ChapterPlanWorkflow;
+import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryCausalCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryFidelityCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryNarrativeCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.storyplan.StoryPlanWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.DeusInMachinaCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.DeusInMachinaCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CheckCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.PlanFidelityCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.chapter.GoalTextCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextCoherenceCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextDreamCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextNarrativeCriticStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.chapter.TextWhatIfCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterGoalCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterCoherenceCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterDreamCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterNarrativeCriticStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.NaturalityCorrectorStep;
-import storymagine.redacteur.coeur.domaine.orchestrator.write.ProofreaderCorrectorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.GrammarCorrectorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.PhrasingCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionFilterStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionTrackerStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.StateExtractorStep;
@@ -114,43 +124,56 @@ public class RedacteurModule {
                                             LogPort log, HtmlExportPort htmlExport,
                                             BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
         // --- Plan agents ---
-        var chapterPlanner      = new ChapterPlanner(llm);
-        var planNarrativeCritic = new PlanNarrativeCritic(llm);
-        var planCoherenceCritic = new PlanCoherenceCritic(llm);
-        var goalPlanChecker     = new GoalPlanChecker(llm);
+        var chapterPlanner      = new ChapterPlanner(llm, log);
+        var planNarrativeCritic = new PlanNarrativeCritic(llm, log);
+        var planCoherenceCritic = new PlanCoherenceCritic(llm, log);
+        var goalPlanCritic      = new PlanGoalCritic(llm, log);
 
         // --- Writer agents ---
         var writer                  = new Writer(llm, log);
         var deusInMachinaCritic     = new DeusInMachinaCritic(llm);
         var deusInMachinaCorrector  = new DeusInMachinaCorrector(llm);
-        var goalTextCritic          = new GoalTextCritic(llm);
-        var proofreaderCorrector    = new ProofreaderCorrector(llm);
+        var goalTextCritic          = new ChapterGoalCritic(llm, log);
+        var grammarCorrector        = new GrammarCorrector(llm, log);
+        var phrasingCorrector       = new PhrasingCorrector(llm, log);
         var repetitionFilter        = new RepetitionFilter(llm);
-        var repetitionTracker       = new RepetitionTracker(llm);
-        var planFidelityCritic      = new PlanFidelityCritic(llm);
-        var checkCritic             = new CheckCritic(llm);
-        var styleCorrector          = new StyleCorrector(llm);
-        var stateExtractor          = new StateExtractor(llm);
-        var naturalityCorrector     = new NaturalityCorrector(llm);
-        var textCoherenceCritic  = new TextCoherenceCritic(llm);
-        var textDreamCritic      = new TextDreamCritic(llm);
-        var textNarrativeCritic  = new TextNarrativeCritic(llm);
-        var textWhatIfCritic     = new TextWhatIfCritic(llm);
+        var repetitionTracker       = new RepetitionTracker(llm, log);
+        var planFidelityCritic      = new PlanFidelityCritic(llm, log);
+        var checkCritic             = new CheckCritic(llm, log);
+        var styleCorrector          = new StyleCorrector(llm, log);
+        var stateExtractor          = new StateExtractor(llm, log);
+        var naturalityCorrector     = new NaturalityCorrector(llm, log);
+        var textCoherenceCritic  = new ChapterCoherenceCritic(llm, log);
+        var textDreamCritic      = new ChapterDreamCritic(llm, log);
+        var textNarrativeCritic  = new ChapterNarrativeCritic(llm, log);
+        var textWhatIfCritic     = new ChapterWhatIfCritic(llm, log);
 
         // --- Global agents ---
-        var storyCompressor = new StoryCompressor(llm);
+        var chapterSummarizer = new ChapterSummarizer(llm, log);
+        var summaryCompressor = new SummaryCompressor(llm);
+
+        // --- Story plan agents ---
+        var storyFidelityCritic  = new StoryFidelityCritic(llm, log);
+        var storyNarrativeCritic = new StoryNarrativeCritic(llm, log);
+        var storyCausalCritic    = new StoryCausalCritic(llm, log);
 
         // --- Plan steps ---
         var chapterPlannerStep      = new ChapterPlannerStep(chapterPlanner, beatsConfig);
         var planNarrativeCriticStep = new PlanNarrativeCriticStep(planNarrativeCritic);
         var planCoherenceCriticStep = new PlanCoherenceCriticStep(planCoherenceCritic);
-        var goalPlanCheckerStep     = new GoalPlanCheckerStep(goalPlanChecker);
+        var goalPlanCriticStep      = new PlanGoalCriticStep(goalPlanCritic);
+
+        // --- Story plan steps ---
+        var storyFidelityCriticStep  = new StoryFidelityCriticStep(storyFidelityCritic);
+        var storyNarrativeCriticStep = new StoryNarrativeCriticStep(storyNarrativeCritic);
+        var storyCausalCriticStep    = new StoryCausalCriticStep(storyCausalCritic);
 
         // --- Write steps ---
         var writerStep                  = new WriterStep(writer);
         var deusInMachinaCorrectorStep  = new DeusInMachinaCorrectorStep(deusInMachinaCorrector);
         var naturalityCorrectorStep     = new NaturalityCorrectorStep(naturalityCorrector);
-        var proofreaderCorrectorStep    = new ProofreaderCorrectorStep(proofreaderCorrector);
+        var grammarCorrectorStep        = new GrammarCorrectorStep(grammarCorrector);
+        var phrasingCorrectorStep       = new PhrasingCorrectorStep(phrasingCorrector);
         var deusInMachinaCriticStep     = new DeusInMachinaCriticStep(deusInMachinaCritic);
         var styleCorrectorStep          = new StyleCorrectorStep(styleCorrector);
         var planFidelityCriticStep      = new PlanFidelityCriticStep(planFidelityCritic);
@@ -158,23 +181,27 @@ public class RedacteurModule {
         var stateExtractorStep          = new StateExtractorStep(stateExtractor);
         var repetitionTrackerStep       = new RepetitionTrackerStep(repetitionTracker);
         var repetitionFilterStep        = new RepetitionFilterStep(repetitionFilter);
-        var textNarrativeCriticStep     = new TextNarrativeCriticStep(textNarrativeCritic);
-        var textCoherenceCriticStep     = new TextCoherenceCriticStep(textCoherenceCritic);
-        var textDreamCriticStep         = new TextDreamCriticStep(textDreamCritic);
-        var textWhatIfCriticStep        = new TextWhatIfCriticStep(textWhatIfCritic);
-        var goalTextCriticStep          = new GoalTextCriticStep(goalTextCritic);
+        var textNarrativeCriticStep     = new ChapterNarrativeCriticStep(textNarrativeCritic);
+        var textCoherenceCriticStep     = new ChapterCoherenceCriticStep(textCoherenceCritic);
+        var textDreamCriticStep         = new ChapterDreamCriticStep(textDreamCritic);
+        var textWhatIfCriticStep        = new ChapterWhatIfCriticStep(textWhatIfCritic);
+        var goalTextCriticStep          = new ChapterGoalCriticStep(goalTextCritic);
 
         // --- Evaluate steps ---
-        var storyCompressorStep = new StoryCompressorStep(storyCompressor);
+        var chapterSummaryStep = new ChapterSummaryStep(chapterSummarizer, summaryCompressor);
 
         // --- Workflows ---
-        var planWorkflow = new PlanWorkflow(
+        var chapterPlanWorkflow = new ChapterPlanWorkflow(
             chapterPlannerStep, planNarrativeCriticStep, planCoherenceCriticStep,
-            goalPlanCheckerStep, log);
+            goalPlanCriticStep, log);
+
+        var storyPlanWorkflow = new StoryPlanWorkflow(
+            chapterPlanWorkflow, storyFidelityCriticStep, storyNarrativeCriticStep, storyCausalCriticStep, log);
 
         var writeWorkflow = new WriteWorkflow(
             writerStep,
-            deusInMachinaCorrectorStep, naturalityCorrectorStep, proofreaderCorrectorStep,
+            phrasingCorrectorStep,
+            deusInMachinaCorrectorStep, naturalityCorrectorStep, grammarCorrectorStep,
             styleCorrectorStep, deusInMachinaCriticStep, planFidelityCriticStep, checkCriticStep,
             stateExtractorStep, repetitionTrackerStep, repetitionFilterStep,
             textNarrativeCriticStep, textCoherenceCriticStep,
@@ -182,9 +209,9 @@ public class RedacteurModule {
             goalTextCriticStep,
             correctorConfig, htmlExport, log);
 
-        var evaluateWorkflow = new EvaluateWorkflow(storyCompressorStep, log);
+        var evaluateWorkflow = new EvaluateWorkflow(chapterSummaryStep, log);
 
-        var orchestrator = new StoryOrchestrator(planWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, log);
+        var orchestrator = new StoryOrchestrator(storyPlanWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, log);
         return new RedacteurServiceImpl(scenarioReader, orchestrator);
     }
 }

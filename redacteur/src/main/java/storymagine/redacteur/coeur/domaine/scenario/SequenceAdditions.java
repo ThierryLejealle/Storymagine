@@ -10,26 +10,23 @@ import java.util.List;
 public class SequenceAdditions {
 
     public static final SequenceAdditions NONE =
-            new SequenceAdditions(List.of(), List.of(), List.of(), CheckList.EMPTY, ConstraintList.EMPTY);
+            new SequenceAdditions(List.of(), List.of(), List.of(), RequirementList.EMPTY);
 
     private final List<Personnage> characters;
     private final List<FocusItem>  focus;
     private final List<LoreItem>   lore;
-    private final CheckList        checks;
-    private final ConstraintList   constraints;
+    private final RequirementList  requirements;
 
     public SequenceAdditions(List<Personnage> characters, List<FocusItem> focus,
-                             List<LoreItem> lore, CheckList checks, ConstraintList constraints) {
-        this.characters  = List.copyOf(characters);
-        this.focus       = List.copyOf(focus);
-        this.lore        = List.copyOf(lore);
-        this.checks      = checks != null      ? checks      : CheckList.EMPTY;
-        this.constraints = constraints != null ? constraints : ConstraintList.EMPTY;
+                             List<LoreItem> lore, RequirementList requirements) {
+        this.characters   = List.copyOf(characters);
+        this.focus        = List.copyOf(focus);
+        this.lore         = List.copyOf(lore);
+        this.requirements = requirements != null ? requirements : RequirementList.EMPTY;
     }
 
-    public List<Personnage> characters()  { return characters; }
-    public List<FocusItem>  focus()       { return focus; }
-    public List<LoreItem>   lore()        { return lore; }
-    public CheckList        checks()      { return checks; }
-    public ConstraintList   constraints() { return constraints; }
+    public List<Personnage> characters()   { return characters; }
+    public List<FocusItem>  focus()        { return focus; }
+    public List<LoreItem>   lore()         { return lore; }
+    public RequirementList  requirements() { return requirements; }
 }

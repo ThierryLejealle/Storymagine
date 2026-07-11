@@ -23,6 +23,8 @@ defaults:
   # character_sheets: fiches chargées depuis characters/ et transmises au Planner + Writer
   # Ce sont des personnages POSSIBLES — pas forcément tous présents dans chaque scène
   character_sheets: ["Christelle", "Thierry", "Corinne", "Catherine"]
+  focus: >
+    ["UCPA"]
   lore: >
     ["UCPA"]
     "Un été magnifique et ensoleilé au bord de la mer"
@@ -43,6 +45,7 @@ sequences:
   # no_transition: true → supprime la continuité avec la séquence précédente
   - type: explicit
     directive: >
+      Lendemain matin, debut de matinée
       Le lendemain Christelle et Thierry vont chacun s'inscrire au tir à l'arc
       L'heure arrivée ils se dirigent ver le pas de tir
       IMPORTANT : aucune rencontre entre les 2 groupes pour le moment
@@ -51,10 +54,11 @@ sequences:
 
   - type: explicit
     directive: >
-      Christelle et Thierry se rencontrent : ils partagent la même cible pour le tir à l'arc
-      Ils tirent chacun plusieurs volées de flèches et discutent
-      Pour Thierry Christelle ressemble à une guerrière amazone avec son arc (soit SUBTIL AVEC CETTE INFORMATION)
-      Ils discutent et le courant passent rapidement
-      Ils decident de se retrouver après le repas pour se promener
+      Christelle et Thierry se rencontrent : ils se retrouvent affectés tous les deux à la même cible pour le tir à l'arc
+      Ils font connaissance. Ils discutent. 
+      Ils tirent chacun plusieurs volées de flèches et continuent à discuter
+      Thierry trouve Christelle charmante et pleine de vie ; elle ressemble à une guerrière amazone avec son arc (soit SUBTIL AVEC CETTE INFORMATION -> IL NE DIT RIEN ET NE LE LAISSE PAS PARAITRE)
+      Le courant passe rapidement entre les deux
+      Ils decident de se retrouver pour le repas puis de profiter de la plage et des longues soirées d'été pour se promener sur la plage.
       RAPPEL : Ni Catherine ni Corinne dans cette scene
     min_words: 1500

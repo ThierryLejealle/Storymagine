@@ -1,6 +1,8 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker;
 
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
 
@@ -44,12 +46,14 @@ public class RepetitionTracker implements Agent {
     private static final String AGENT_NAME = "SequenceRepetitionTracker";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public RepetitionTracker(ModelCallPort llm) {
+    public RepetitionTracker(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public RepetitionTrackerOutput call(RepetitionTrackerInput input) {
@@ -63,15 +67,17 @@ public class RepetitionTracker implements Agent {
             ? "Aucun pour l'instant."
             : input.alreadyThemes().stream().map(p -> "- " + p).collect(Collectors.joining("\n"));
 
+        TruncHelper t = TruncHelper.create();
         String user = "### Expressions déjà traquées (ne pas répéter dans EXPRESSIONS) :\n"
             + phrasesList
             + "\n\n### Schémas déjà traqués (ne pas répéter dans SCHÉMAS) :\n"
             + themesList
             + "\n\n### Texte à analyser :\n"
-            + trunc(input.text(), 10000)
+            + t.text(input.text(), 10000, "text")
             + "\n\nExtrais les expressions et schémas de ce texte.";
+        t.logIfTruncated(log, agentName());
 
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         return parseResult(raw);
     }
 
@@ -93,10 +99,5 @@ public class RepetitionTracker implements Agent {
             }
         }
         return new RepetitionTrackerOutput(phrases, themes);
-    }
-
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
     }
 }

@@ -10,24 +10,22 @@ import java.util.List;
 public class ChapterDefaults {
 
     public static final ChapterDefaults EMPTY =
-            new ChapterDefaults(List.of(), List.of(), List.of(), CheckList.EMPTY, ConstraintList.EMPTY, null, null);
+            new ChapterDefaults(List.of(), List.of(), List.of(), RequirementList.EMPTY, null, null);
 
     private final List<Personnage> characters;
     private final List<FocusItem>  focus;
     private final List<LoreItem>   lore;
-    private final CheckList        checks;
-    private final ConstraintList   constraints;
+    private final RequirementList  requirements;
     private final Integer          plannerEffortInLines;
     private final Integer          sequenceMinWords;
 
     public ChapterDefaults(List<Personnage> characters, List<FocusItem> focus,
-                           List<LoreItem> lore, CheckList checks, ConstraintList constraints,
+                           List<LoreItem> lore, RequirementList requirements,
                            Integer plannerEffortInLines, Integer sequenceMinWords) {
         this.characters           = List.copyOf(characters);
         this.focus                = List.copyOf(focus);
         this.lore                 = List.copyOf(lore);
-        this.checks               = checks != null      ? checks      : CheckList.EMPTY;
-        this.constraints          = constraints != null ? constraints : ConstraintList.EMPTY;
+        this.requirements         = requirements != null ? requirements : RequirementList.EMPTY;
         this.plannerEffortInLines = plannerEffortInLines;
         this.sequenceMinWords     = sequenceMinWords;
     }
@@ -35,8 +33,7 @@ public class ChapterDefaults {
     public List<Personnage> characters()         { return characters; }
     public List<FocusItem>  focus()              { return focus; }
     public List<LoreItem>   lore()               { return lore; }
-    public CheckList        checks()             { return checks; }
-    public ConstraintList   constraints()        { return constraints; }
+    public RequirementList  requirements()       { return requirements; }
     /** Minimum beats per sequence override for this chapter — null means inherit from scenario or agent default. */
     public Integer          plannerEffortInLines() { return plannerEffortInLines; }
     /** Target word count per sequence for this chapter — null means inherit from scenario config. */

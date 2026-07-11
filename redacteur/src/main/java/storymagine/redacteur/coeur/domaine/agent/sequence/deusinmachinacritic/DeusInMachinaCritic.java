@@ -1,5 +1,6 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.deusinmachinacritic;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
@@ -28,10 +29,8 @@ public class DeusInMachinaCritic implements Agent {
 
             PRINCIPE
             Ce texte a été produit par un LLM à partir de consignes de rédaction.
-            Les deux fuites principales à détecter :
-            — un fragment de consigne recopié dans la prose
-            — une confirmation que le LLM a suivi une instruction ("comme demandé", "conformément au plan", etc.)
-            Tout passage qui révèle l'existence de ces consignes au lecteur est une fuite.
+            Une fuite est tout passage qui révèle au lecteur l'existence de ces consignes.
+            Elle prend cinq formes, détaillées ci-dessous.
 
             TEST : pour chaque phrase suspecte, demande-toi — cette phrase trahit-elle
             l'existence d'une consigne de rédaction ? Un romancier humain qui écrirait
@@ -54,7 +53,9 @@ public class DeusInMachinaCritic implements Agent {
               OK    : "Ses yeux noisette, légèrement myopes, lui donnaient un air rêveur."
 
             3. ARTEFACT DE SCÉNARIO
-            Mots ou tournures qui appartiennent au script de fabrication, pas à la fiction.
+            Mots ou tournures qui appartiennent au script de fabrication, pas à la fiction :
+            un fragment de consigne recopié dans la prose, ou une confirmation qu'une
+            instruction a été suivie ("comme demandé", "conformément au plan", etc.).
               RÈGLE : la phrase doit être impossible sous la plume d'un romancier humain qui écrit librement.
               Observer le rythme ou la dynamique d'une scène n'est pas un artefact.
               FUITE : "Dans cette scène, Pierre comprend que..."
@@ -95,14 +96,15 @@ public class DeusInMachinaCritic implements Agent {
     }
 
     public DeusInMachinaCriticOutput call(DeusInMachinaCriticInput input) {
-        // Section optionnelle : contraintes actives (en premier, pour que le modèle les lise avant le texte)
-        String constraintsSection = (input.constraints() != null && !input.constraints().isBlank())
-                ? "Contraintes de rédaction actives (pour référence) :\n" + input.constraints() + "\n\n"
-                : "";
-        String user = constraintsSection
-                + "Texte à analyser :\n" + input.text()
-                + "\n\nRéponds FUITE (avec liste) ou OK.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text().trim();
+        String user = PromptBuilder.create()
+                .section("Consigne de séquence", input.sequenceDirective())
+                .section("Plan de séquence",     input.sequencePlan())
+                .raw(input.checks() == null || input.checks().isBlank()
+                        ? "" : "Points de vérification actifs (pour référence) :\n" + input.checks())
+                .raw("Texte à analyser :\n" + input.text())
+                .raw("Réponds FUITE (avec liste) ou OK.")
+                .build();
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text().trim();
         return new DeusInMachinaCriticOutput(parseLeaks(raw));
     }
 

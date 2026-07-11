@@ -1,6 +1,10 @@
 package storymagine.redacteur.coeur.domaine.agent.plan.chapterplanner;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.SummaryBudget;
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
 
@@ -18,7 +22,7 @@ public class ChapterPlanner implements Agent {
 
     private static final String JSON_PLANNER_SYSTEM = """
             Tu es le planificateur de scènes d'un roman.
-            Tu transformes chaque séquence en un plan opérationnel tout en respectant intégralement les instructions fournies.
+            Tu transformes chaque séquence en un plan de scène détaillé.
 
             Le chapitre est découpé en séquences indépendantes. Planifie-les toutes, dans l'ordre,
             sans déborder d'une séquence sur la suivante.
@@ -37,30 +41,33 @@ public class ChapterPlanner implements Agent {
             ]
 
             Règles pour les beats, par ordre de priorité :
-            1. Couvre TOUS les éléments de la consigne sans exception — la couverture est absolue.
-            2. Enrichis en développant les événements déjà présents — par des gestes, réactions, déplacements, détails matériels, sons ou dialogues. N'ajoute pas d'événement qui modifie les faits importants de la séquence, les personnages présents, leurs relations ou son issue. Jamais par des interprétations ou des conclusions.
-            3. Les éléments abstraits fournis dans les instructions (intentions, formulations, objectifs narratifs) décrivent un but à atteindre — ne les recopie jamais en beat. Traduis-les en événements observables : gestes, paroles, réactions visibles, détails sensoriels.
-            4. Ne développe jamais une séquence au-delà de la limite indiquée. Lorsqu'un événement marque la fin de la séquence, le dernier beat s'arrête exactement à cet événement.
-
+                1. Couvre TOUS les éléments de la consigne, sans exception.
+                2. Développe uniquement les événements déjà présents en ajoutant des gestes, réactions, déplacements, dialogues ou détails sensoriels.
+                3. Ne modifie jamais les faits importants de la séquence, les personnages présents, leurs relations ou son issue.
+                4. Les éléments abstraits des instructions (intentions, objectifs narratifs, formulations) sont des objectifs, pas des beats. Traduis-les toujours en événements observables : gestes, paroles, réactions visibles ou détails sensoriels.
+                5. Chaque beat doit montrer un fait observable. N'écris jamais d'interprétation, de conclusion ou de concept abstrait.
+                6. Ne dépasse jamais la fin de la séquence. Si un événement marque sa fin, le dernier beat s'arrête exactement à cet événement.
+            
             Nombre de beats par séquence :
-            Le nombre attendu est fourni dans la description de chaque séquence.
-            Choisis le découpage le plus naturel dans cette plage.
-            Augmente le nombre lorsque plusieurs événements importants devraient sinon être regroupés.
-            Réduis le nombre lorsqu'il faudrait découper artificiellement une même action en plusieurs beats.
+            - Le nombre attendu est fourni dans la description de chaque séquence.
+            - Choisis le découpage le plus naturel dans cette plage.
+            - Augmente le nombre lorsque plusieurs événements importants devraient sinon être regroupés.
+            - Réduis le nombre lorsqu'il faudrait découper artificiellement une même action en plusieurs beats.
 
             Contraintes sur les beats :
             - Chaque beat décrit un seul moment narratif. Il peut contenir plusieurs actions lorsqu'elles appartiennent au même mouvement.
             - Chaque beat fait progresser la scène ou développe naturellement un moment déjà engagé. Ne découpe pas artificiellement une même action.
-            - Test : une caméra doit pouvoir montrer le beat sans qu'un narrateur ait besoin de l'expliquer.
+            - Test : une caméra doit pouvoir montrer le beat.
             - Interdit : thèmes, symboles, interprétations, conclusions, états relationnels, concepts abstraits.
             - Évite les formulations qui expliquent la scène au lieu de la montrer. Lorsque les deux sont possibles, préfère un fait observable à son interprétation.
 
             Exemples (abstrait → observable) :
-            "Le silence s'installe."               →  "Personne ne parle pendant plusieurs secondes."
-            "Une proximité naît entre eux."        →  "Leurs épaules se rapprochent légèrement."
-            "La tension monte."                    →  "Après quelques secondes, Maya répond enfin."
-            "Le courant passe."                    →  "Leurs regards se croisent ; aucun ne détourne immédiatement les yeux."
-            "Une coexistence silencieuse s'établit." →  "Eddie tourne une page pendant que Maya regarde les champs."
+            - "Le silence s'installe."               →  "Personne ne parle pendant plusieurs secondes."
+            - "Une proximité naît entre eux."        →  "Leurs épaules se rapprochent légèrement."
+            - "La tension monte."                    →  "Après quelques secondes, Maya répond enfin."
+            - "Le courant passe."                    →  "Leurs regards se croisent ; aucun ne détourne immédiatement les yeux."
+            - "Une coexistence silencieuse s'établit." →  "Eddie tourne une page pendant que Maya regarde les champs."
+            
             En français.""";
 
     private static final String FREE_PLANNER_SYSTEM = """
@@ -79,11 +86,13 @@ public class ChapterPlanner implements Agent {
             En français.""";
 
     private static final String INNER_STATE_NOTE = """
+
             Si des éléments intérieurs ([État intérieur]) sont fournis,
             ils peuvent orienter les tensions et tournants narratifs —
             ne pas les mentionner explicitement dans le plan produit.""";
 
     private static final String FOCUS_LORE_NOTE = """
+    
             Focus et lore : la section « Éléments à utiliser (focus) — toutes les séquences »
             s'applique globalement à l'ensemble du chapitre — intègre ces éléments dans les séquences où ils s'y prêtent naturellement sans faire de redit direct.
             La section « Informations utiles (lore) — toutes les séquences » s'applique à l'ensemble du chapitre
@@ -94,19 +103,21 @@ public class ChapterPlanner implements Agent {
     private static final String AGENT_NAME = "ChapterPlanner";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public ChapterPlanner(ModelCallPort llm) {
+    public ChapterPlanner(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public ChapterPlannerOutput call(ChapterPlannerInput input) {
         boolean isCorrection = input.previousPlan() != null && !input.previousPlan().isBlank();
         String systemPrompt = buildSystem(input, isCorrection);
         String userPrompt   = buildUser(input, isCorrection);
-        String raw = llm.generate(systemPrompt, userPrompt, 0.7, LlmCallContext.of(agentName(), agentLabel())).text();
+        String raw = llm.generate(systemPrompt, userPrompt, 0.7, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         List<String> seqPlans = input.jsonMode() ? parseJsonSequences(raw, input.sequenceDescriptions()) : List.of();
         return new ChapterPlannerOutput(raw, seqPlans);
     }
@@ -135,51 +146,49 @@ public class ChapterPlanner implements Agent {
 
     private String buildUser(ChapterPlannerInput in, boolean isCorrection) {
         int ctx = llm.contextWindow();
-        int half = ctx * 4 / 2; // half context in chars (~4 chars/token)
 
-        StringBuilder sb = new StringBuilder();
-        appendSection(sb, "Objectif du livre",          trunc(in.bookGoal(),    ctx * 4 / 16),  half);
-        appendSection(sb, "Personnages de ce chapitre", trunc(in.characters(),  ctx * 4 / 8),   half);
-        appendSection(sb, "Contraintes",                trunc(in.constraints(), ctx * 4 / 12),  half);
-        String fPlan = trunc(in.focusText(), ctx * 4 / 12);
-        appendSection(sb, "Éléments à utiliser (focus) — toutes les séquences", fPlan, half);
-        String lPlan = trunc(in.loreText(), ctx * 4 / 12);
-        appendSection(sb, "Informations utiles (lore) — toutes les séquences", lPlan, half);
-        appendSection(sb, "État actuel des entités",    trunc(in.entityState(), ctx * 4 / 12),  half);
-        appendSection(sb, "État de cohérence",          trunc(in.coherence(),   ctx * 4 / 12),  half);
-        appendSection(sb, "Histoire jusqu'ici",         trunc(in.storySoFar(),  ctx * 4 / 8),   half);
+        TruncHelper t = TruncHelper.create();
+        String constraints = t.list(in.constraints(), ctx * 4 / 12, "constraints");
+        String fPlan = t.blockList(in.focusText(), ctx * 4 / 12, "focusText");
+        String lPlan = t.blockList(in.loreText(), ctx * 4 / 12, "loreText");
 
-        sb.append("\n\n### Chapitre à planifier\n")
-          .append("Titre : ").append(in.chapterTitle()).append("\n");
+        PromptBuilder pb = PromptBuilder.create()
+            .section("Objectif du livre",          t.text(in.bookGoal(),    ctx * 4 / 16, "bookGoal"))
+            .section("Personnages de ce chapitre", t.blockList(in.characters(),  ctx * 4 / 8, "characters"))
+            .section("Contraintes",
+                constraints.isBlank() ? "" : "Assure-toi que chacun des points suivants est respecté :\n" + constraints)
+            .section("Éléments à utiliser (focus) — toutes les séquences", fPlan)
+            .section("Informations utiles (lore) — toutes les séquences", lPlan)
+            .section("État actuel des entités",    t.list(in.entityState(), ctx * 4 / 12, "entityState"))
+            .section("Histoire jusqu'ici",         t.text(in.summary(),  SummaryBudget.charBudget(ctx), "summary"));
+
+        StringBuilder chapterBlock = new StringBuilder();
+        chapterBlock.append("### Chapitre à planifier\n")
+                    .append("Titre : ").append(in.chapterTitle()).append("\n");
         if (in.chapterSetting() != null && !in.chapterSetting().isBlank())
-            sb.append("Cadre : ").append(in.chapterSetting()).append("\n");
+            chapterBlock.append("Cadre : ").append(in.chapterSetting()).append("\n");
         if (in.chapterDescription() != null && !in.chapterDescription().isBlank())
-            sb.append("Description : ").append(in.chapterDescription()).append("\n");
-        appendSequencesBlock(sb, in.sequenceDescriptions());
-
-        if (in.problemsToFix() != null && !in.problemsToFix().isBlank()) {
-            sb.append("\n\n### Problèmes à ")
-              .append(isCorrection ? "corriger" : "éviter")
-              .append(" impérativement\n")
-              .append(in.problemsToFix());
-        }
+            chapterBlock.append("Description : ").append(in.chapterDescription()).append("\n");
+        appendSequencesBlock(chapterBlock, in.sequenceDescriptions());
+        pb.raw(chapterBlock.toString());
 
         if (isCorrection && in.previousPlan() != null) {
-            sb.append("\n\n### Plan précédent (à corriger)\n")
-              .append(trunc(in.previousPlan(), ctx * 4 / 4))
-              .append("\n\nCorrige chacun des problèmes listés. Produis le plan corrigé au format JSON.");
+            pb.section("Plan précédent (à corriger)", t.text(in.previousPlan(), ctx * 4 / 4, "previousPlan"));
+        }
+
+        if (in.problemsToFix() != null && !in.problemsToFix().isBlank()) {
+            String instruction = isCorrection
+                ? in.problemsToFix() + "\n\nCorrige chacun des points ci-dessus. Produis le plan corrigé au format JSON."
+                : in.problemsToFix();
+            pb.section("Problèmes à " + (isCorrection ? "corriger" : "éviter") + " impérativement", instruction);
         }
 
         if (in.jsonMode() && !in.sequenceDescriptions().isEmpty()) {
-            sb.append("\n\nProduis exactement ").append(in.sequenceDescriptions().size())
-              .append(" objet(s) dans le tableau JSON — un par séquence dans l'ordre.");
+            pb.raw("Produis exactement " + in.sequenceDescriptions().size()
+                + " objet(s) dans le tableau JSON — un par séquence dans l'ordre.");
         }
-        return sb.toString();
-    }
-
-    private void appendSection(StringBuilder sb, String title, String content, int budget) {
-        if (content == null || content.isBlank()) return;
-        sb.append("\n\n### ").append(title).append("\n").append(content);
+        t.logIfTruncated(log, agentName());
+        return pb.build();
     }
 
     private void appendSequencesBlock(StringBuilder sb, List<String> seqDescriptions) {
@@ -300,8 +309,4 @@ public class ChapterPlanner implements Agent {
         return result.toString();
     }
 
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
-    }
 }

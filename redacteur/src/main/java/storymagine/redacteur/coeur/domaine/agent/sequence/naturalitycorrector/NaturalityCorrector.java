@@ -1,17 +1,21 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
-import storymagine.redacteur.coeur.domaine.agent.Agent;
+import storymagine.redacteur.coeur.domaine.agent.AgentCorrector;
+import storymagine.redacteur.coeur.domaine.agent.commun.CorrectionParser;
+import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Detects LLM-style unnatural phrasing and provides direct rewrite suggestions.
  * Applied as a post-processing substitution on the final chapter text (like ProofreaderCorrector).
  */
-public class NaturalityCorrector implements Agent {
+public class NaturalityCorrector implements AgentCorrector {
 
     private static final String SYSTEM = """
             Tu es un directeur editorial tres exigeant. Tu evalues le TEXTE d'un chapitre
@@ -30,37 +34,49 @@ public class NaturalityCorrector implements Agent {
               (ex acceptable : "Elle sentit le monde se fissurer sous ses pieds." — image poetique
                ancree dans le ressenti du personnage, pas une analyse du narrateur)
 
-            Cherche en priorite :
-            - sur-interpretation narrative : le texte attribue une signification, une intention
-              ou une fonction a un geste alors que le geste seul suffirait
-              (ex : "Elle noua son foulard dans un geste protecteur et deliberement visible"
-               vs  "Elle noua son foulard")
-            - phrases de synthese : phrases qui resumment ou theorisent la situation
-              au lieu de montrer ce qui se passe
-              (ex : "Leurs deux territoires etaient desormais etablis dans un respect mutuel",
-                    "Une complicite tacite s'etait installee entre eux.")
-            - conclusions narratorielles : phrases qui expliquent au lecteur ce qu'il doit
-              comprendre au lieu de le laisser l'inferer
-              (ex : "Le silence n'etait plus un vide mais une forme de coexistence.",
-               "Quelque chose avait change entre eux.")
-            - langage conceptuel : concepts abstraits utilises la ou une situation, un geste
-              ou une perception concrete suffirait
-              (ex : "sa presence occupait l'espace", "une dynamique implicite",
-                    "il gerait la situation avec detachement")
-            - groupes nominaux artificiels : "le deploiement reflechi du foulard"
-              au lieu de "elle deplia son foulard"
-            - nom propre auto-referentiel : le texte emploie le prenom d'un personnage-focalisateur
-              la ou un pronom suffirait — artefact qui trahit une gestion par entites plutot que
-              par narration organique
-              (ex : "Lexy tendit sa main vers le medecin. Elle le voyait etudier attentivement
-                     les blessures de la main de Lexy."
-               vs  "Elle le voyait etudier attentivement les blessures de sa main.")
-            - vocabulaire de planification, d'optimisation ou d'analyse dans une narration
-              ordinaire : "optimise", "positionne strategiquement", "effectue une transition"
-            - ambiance expliquee : le texte nomme directement une atmosphere ou un effet emotionnel
-              au lieu de laisser les details concrets le faire ressentir
-              (ex : "Une atmosphere etrange regnait.", "La tension etait palpable.",
-                    "Il regnait une impression de menace.", "Une energie nouvelle envahissait la piece.")
+            Cherche en priorite ces 8 signatures :
+
+            1. GESTE SUR-INTERPRETE — une intention ou une fonction est plaquee sur un geste
+               qui se suffirait a lui-meme.
+               FAUX : "Elle croisa les bras, signalant ainsi son refus de poursuivre la conversation."
+               JUSTE : "Elle croisa les bras."
+
+            2. PHRASE-BILAN — la phrase resume ou theorise une situation au lieu de montrer
+               ce qui se passe.
+               FAUX : "Ils rirent ensemble pour la premiere fois, preuve que la glace etait enfin brisee."
+               JUSTE : "Ils rirent ensemble pour la premiere fois."
+
+            3. CONCEPT A LA PLACE DU CONCRET — un mot abstrait remplace une perception ou un etat concret.
+               FAUX : "Un sentiment de peur commencait a se manifester chez le vieil homme."
+               JUSTE : "Le vieil homme commencait a avoir peur."
+
+            4. ACTION NOMINALISEE — un verbe simple est remplace par un groupe nominal.
+               FAUX : "Elle procéda au déploiement réfléchi de son foulard."
+               JUSTE : "Elle déplia son foulard."
+
+            5. PRENOM AUTO-REFERENTIEL — le texte emploie le prenom d'un personnage-focalisateur
+               la ou un pronom suffirait — artefact qui trahit une gestion par entites plutot que
+               par narration organique.
+               FAUX : "Lexy tendit sa main vers le medecin. Elle le voyait etudier attentivement
+                       les blessures de la main de Lexy."
+               JUSTE : "Lexy tendit sa main vers le medecin. Elle le voyait etudier attentivement
+                        les blessures de sa main."
+
+            6. VOCABULAIRE DE MACHINE — planification, optimisation ou analyse dans une narration
+               ordinaire.
+               FAUX : "Elle optimisa la disposition des tasses avant l'arrivee de sa soeur."
+               JUSTE : "Elle rangea les tasses avant l'arrivee de sa soeur."
+
+            7. AMBIANCE EXPLIQUEE — le texte nomme directement une atmosphere ou un effet emotionnel
+               au lieu de laisser les details concrets le faire ressentir.
+               FAUX : "Une atmosphere etrange regnait dans la piece ; les volets claquaient."
+               JUSTE : "Les volets claquaient."
+
+            8. REFERENCE DE PERSONNAGE INCOHERENTE — le pronom ou l'article utilise pour un
+               personnage change sans raison dans le meme passage (le LLM se perd entre les
+               personnages, ce n'est pas une faute de francais mais une perte de contexte).
+               FAUX : "Il se figea sur le seuil. L'odeur familiere la frappa aussitot."
+               JUSTE : "Il se figea sur le seuil. L'odeur familiere le frappa aussitot."
 
             Pour chaque passage suspect, pose-toi ces questions :
             - Un romancier publierait-il naturellement cette phrase sans la retoucher ?
@@ -77,10 +93,26 @@ public class NaturalityCorrector implements Agent {
 
             Exemple :
             CORRECTIONS:
-            - FAUX: "Elle noua son foulard dans un geste protecteur et deliberement visible."
-              JUSTE: "Elle noua son foulard."
+            - FAUX: "Elle croisa les bras, signalant ainsi son refus de poursuivre la conversation."
+              JUSTE: "Elle croisa les bras."
 
-            ATTENTION : conserve le sens, le rythme et les informations — ne reecris que ce qui pose probleme.
+            FAUX doit être recopié mot pour mot, en entier — jamais de "..." pour abréger un passage long.
+            Ni FAUX ni JUSTE ne portent de commentaire ou de justification après la citation.
+              MAUVAIS : - FAUX: "...ce cadre idyllique." (Répétition structurelle)
+              BON     : - FAUX: "...ce cadre idyllique."
+
+            NE DENATURE JAMAIS LE TEXTE
+            Corrige par remplacement : la phrase JUSTE garde le sens, les faits, les evenements
+            et les actions de la phrase FAUX, en modifiant le moins de mots possible.
+            Ne resume jamais, ne compresse jamais — et ne change jamais qui fait quoi.
+
+            UNE SEULE suppression est autorisee : le commentaire accroche a une action, qui
+            explique son intention, sa signification ou ce qu'elle prouve
+            ("signalant ainsi...", "preuve que...", "un geste qui trahissait...").
+            Ce commentaire n'est pas une information du recit : c'est l'ecriture qui se commente
+            elle-meme. Supprime le commentaire, garde l'action mot pour mot (signatures 1 et 2).
+            Cette autorisation ne permet jamais de raccourcir le reste du texte.
+
             Une seule phrase par ligne JUSTE, sans variante, sans commentaire, sans explication.
 
             Si aucun passage n'est artificiel : retourner "PAS DE CORRECTION" — rien avant, rien apres.
@@ -90,51 +122,34 @@ public class NaturalityCorrector implements Agent {
     private static final String AGENT_NAME = "SequenceNaturalityCorrector";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public NaturalityCorrector(ModelCallPort llm) {
+    @Override
+    public RetryStrategy retryStrategy() { return RetryStrategy.RATIO_THRESHOLD; }
+
+    public NaturalityCorrector(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public NaturalityCorrectorOutput call(NaturalityCorrectorInput input) {
         int ctx = llm.contextWindow();
-        String user = "### Texte\n" + trunc(input.text(), ctx * 4 * 60 / 100)
-            + "\n\nAnalyse la naturalite du texte.";
-        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel())).text();
+        TruncHelper t = TruncHelper.create();
+        String user = PromptBuilder.create()
+            .section("Texte", t.text(input.text(), ctx * 4 * 60 / 100, "text"))
+            .raw("Analyse la naturalite du texte.")
+            .build();
+        t.logIfTruncated(log, agentName());
+        String raw = llm.generate(SYSTEM, user, 0.3, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         return new NaturalityCorrectorOutput(parseFindings(raw));
     }
 
     // ── Parser ───────────────────────────────────────────────────────────────
 
     private static List<NaturalityFinding> parseFindings(String raw) {
-        if (raw == null || raw.trim().startsWith("PAS DE CORRECTION")) return List.of();
-        List<NaturalityFinding> findings = new ArrayList<>();
-        String[] lines = raw.split("\n");
-        String wrong = null;
-        for (String line : lines) {
-            String t = line.trim();
-            if (t.startsWith("- FAUX:") || t.startsWith("FAUX:")) {
-                wrong = unquote(t.replaceFirst("^-?\\s*FAUX:", "").trim());
-            } else if (t.startsWith("JUSTE:") && wrong != null) {
-                String corrected = unquote(t.substring("JUSTE:".length()).trim());
-                if (!wrong.isBlank() && !corrected.isBlank())
-                    findings.add(new NaturalityFinding(wrong, corrected));
-                wrong = null;
-            }
-        }
-        return findings;
-    }
-
-    private static String unquote(String s) {
-        if (s.length() >= 2 && s.startsWith("\"") && s.endsWith("\""))
-            return s.substring(1, s.length() - 1);
-        return s;
-    }
-
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
+        return CorrectionParser.parse(raw, "PAS DE CORRECTION", NaturalityFinding::new);
     }
 }

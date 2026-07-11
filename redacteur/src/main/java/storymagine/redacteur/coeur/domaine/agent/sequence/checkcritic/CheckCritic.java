@@ -1,6 +1,9 @@
 package storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic;
 
+import storymagine.commun.coeur.domaine.prompt.PromptBuilder;
+import storymagine.commun.coeur.domaine.text.TruncHelper;
 import storymagine.commun.coeur.ports.LlmCallContext;
+import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.redacteur.coeur.domaine.agent.Agent;
 
@@ -27,22 +30,28 @@ public class CheckCritic implements Agent {
     private static final String AGENT_NAME = "SequenceCheckCritic";
 
     private final ModelCallPort llm;
+    private final LogPort       log;
 
     @Override
     public String agentName() { return AGENT_NAME; }
 
-    public CheckCritic(ModelCallPort llm) {
+    public CheckCritic(ModelCallPort llm, LogPort log) {
         this.llm = llm;
+        this.log = log;
     }
 
     public CheckCriticOutput call(CheckCriticInput input) {
         String checksBlock = input.checks().stream()
                 .map(c -> "- " + c)
                 .collect(Collectors.joining("\n"));
-        String user = "### Points de contrôle\n" + checksBlock
-                + "\n\n### Texte\n" + trunc(input.sequenceText(), llm.contextWindow() * 4 / 2)
-                + "\n\nVérifie que chaque point est respecté dans le texte.";
-        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel())).text();
+        TruncHelper t = TruncHelper.create();
+        String user = PromptBuilder.create()
+                .section("Points de contrôle", checksBlock)
+                .section("Texte", t.text(input.sequenceText(), llm.contextWindow() * 4 / 2, "sequenceText"))
+                .raw("Vérifie que chaque point est respecté dans le texte.")
+                .build();
+        t.logIfTruncated(log, agentName());
+        String raw = llm.generate(SYSTEM, user, 0.2, LlmCallContext.of(agentName(), agentLabel()).withThink(thinks())).text();
         List<String> failures = parseFailures(raw);
         int score = Math.max(1, 10 - failures.size() * 3);
         return new CheckCriticOutput(failures, score);
@@ -59,10 +68,5 @@ public class CheckCritic implements Agent {
             }
         }
         return failures;
-    }
-
-    private static String trunc(String s, int maxChars) {
-        if (s == null || s.isBlank()) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
     }
 }
