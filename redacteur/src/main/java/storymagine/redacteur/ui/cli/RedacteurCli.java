@@ -220,7 +220,10 @@ public class RedacteurCli {
             System.out.println("(echec probe : " + e.getMessage() + ")");
         }
         OllamaPsInfo ps = OllamaPsInfo.query(ollama.baseUrl(), selectedModel).orElse(null);
-        ModelHardwareDisplay.print("[redacteur] ", ps, gpus);
+        // Recapture apres chargement — le snapshot "gpus" du menu GPU (etape 1) date d'avant
+        // le probe et ne reflete plus la VRAM reellement occupee par le modele charge.
+        List<NvidiaSmiSnapshot.GpuStat> gpusAfterLoad = NvidiaSmiSnapshot.capture();
+        ModelHardwareDisplay.print("[redacteur] ", ps, gpusAfterLoad);
 
         // 8. Generation
         System.out.println();
