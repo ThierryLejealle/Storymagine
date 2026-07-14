@@ -16,6 +16,7 @@ public class CapturingLogPort implements LogPort {
     public final List<String> scores         = new ArrayList<>();
     public final List<String> planRetentions = new ArrayList<>();
     public final List<String> warnings       = new ArrayList<>();
+    public final List<String> infos          = new ArrayList<>();
 
     @Override
     public void phaseHeader(String label, String detail) {
@@ -34,8 +35,8 @@ public class CapturingLogPort implements LogPort {
 
     @Override
     public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
-                               boolean passed, String retryHint) {
-        scores.add(passed ? "PASS" : "RETRY");
+                               boolean passed, boolean forcedRetry, String retryHint) {
+        scores.add(passed && !forcedRetry ? "PASS" : passed ? "REFINE" : "RETRY");
     }
 
     @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps, Boolean think) {}
@@ -46,6 +47,11 @@ public class CapturingLogPort implements LogPort {
     @Override
     public void warn(String message) {
         warnings.add(message);
+    }
+
+    @Override
+    public void info(String message) {
+        infos.add(message);
     }
 
     @Override

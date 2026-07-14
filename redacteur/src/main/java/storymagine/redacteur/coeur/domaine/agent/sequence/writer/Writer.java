@@ -40,62 +40,73 @@ public class Writer implements Agent {
     private String buildSystem(WriterInput in) {
         // 1. Préfixe réécriture (optionnel — apparaît en tête du prompt)
         String rewritePrefix = !in.isRewrite() ? ""
-                : "RÉÉCRITURE — Un texte précédent a été jugé insuffisant par les critiques.\n"
-                  + "Corrige impérativement les problèmes listés dans la section \"### Problèmes à corriger\" des directives, avant toute autre considération.\n"
-                  + "Chaque problème doit être traité dans ce nouveau texte.\n";
+                : "REWRITE — A previous draft was judged insufficient by the critics.\n"
+                  + "You must fix the problems listed in the \"### Problèmes à corriger\" section of the directives, before any other consideration.\n"
+                  + "Every problem must be addressed in this new text.\n";
 
         // 2. Contrainte de longueur (suit le rôle de base) — qualité toujours exigée, seul le seuil chiffré varie
-        String lengthConstraint = "Développe la scène avec profondeur et précision sensorielles. "
+        String lengthConstraint = "Develop the scene with sensory depth and precision. "
                 + (in.minWords() > 0
-                    ? "Cette séquence fait au minimum " + in.minWords() + " mots."
-                    : "Cette séquence fait entre 300 et 800 mots.");
+                    ? "This sequence must be at least " + in.minWords() + " words long."
+                    : "This sequence is between 300 and 800 words long.")
+                + " If you reach the final beat before that length, deepen the beats already written "
+                + "(sensations, gestures, dialogue) — never invent new plot events to fill space.";
 
         // 3. Règle d'ouverture : stitch (consigne explicite de transition) > continuité par défaut > point d'entrée varié
         boolean hasStitch = in.stitch() != null && !in.stitch().isBlank();
         boolean hasPrev   = in.previousSequenceText() != null && !in.previousSequenceText().isBlank();
         String openingRule = hasStitch
-                ? "Applique cette consigne pour gérer le passage de la séquence précédente à celle que tu vas écrire : "
+                ? "Apply this instruction to handle the transition from the previous sequence to this one: "
                   + in.stitch()
                 : hasPrev
-                        ? "Raccorde au texte précédent sans le résumer ni le paraphraser — "
-                          + "ces phrases sont déjà écrites, ta première phrase est la suivante dans le récit : poursuis l'action. "
-                          + "Ne repose pas le décor ni l'ambiance générale déjà établis — "
-                          + "sauf si les directives te le demandent explicitement."
-                        : "La première phrase de cette séquence utilise un point d'entrée varié : "
-                          + "action physique, fragment de dialogue, détail sensoriel, pensée intérieure, objet ou geste isolé. "
-                          + "Ne commence ni par le prénom d'un personnage seul ni par un pronom sujet nu "
-                          + "('Il', 'Elle', 'Ils') — montre d'abord ce qui se passe, le personnage en est le sujet implicite.";
+                        ? "Continue directly from where the previous sequence's text stops — "
+                          + "those sentences are already written, your first sentence is the next one in the story: carry the action forward. "
+                          + "Do not restate the setting or the general atmosphere already established — "
+                          + "unless the directives explicitly ask for it."
+                        : "Vary the entry point of your first sentence: a physical action, a fragment of dialogue, "
+                          + "a sensory detail, an inner thought, an isolated object or gesture. "
+                          + "Never open on a bare character name or a bare subject pronoun "
+                          + "('He', 'She', 'They') — show something happening first; the character is its implicit subject.";
 
         return rewritePrefix
                 + """
-                Tu es un écrivain littéraire.
-                Tu suis les directives détaillées de l'auteur pour cette séquence, dans l'ordre indiqué —
-                chaque élément qu'elles décrivent DOIT apparaître dans le texte.
-                Tu peux enrichir la scène avec des actions, réactions, observations ou dialogues locaux —
-                à condition de ne pas modifier les éléments demandés, les relations entre personnages ni l'issue de la scène.
-                Tu ne produis QUE le texte narratif — aucun commentaire, aucun méta-texte.
-                En cas de conflit entre les instructions suivantes :
-                1. Directives détaillées de l'auteur
-                2. Contraintes de rédaction
-                3. Fiches personnages
-                4. Guide de style
-                5. Exemple de rédaction
+                You are a literary fiction writer.
+                Follow the author's detailed directives for this sequence, in the order given.
+                Every beat they list MUST appear in the text, in that same order — expand each beat into
+                prose; never copy a beat sentence as-is and never keep its number. Dialogue quoted in a
+                beat may be kept close to as written — the ban targets narrative/description beats, not
+                spoken lines.
+                You may enrich the scene with local actions, reactions, observations or dialogue, as long
+                as they do not alter the required elements, the relationships between characters, or the
+                outcome of the scene.
+                Output only the narrative text: no title, no headings, no beat numbers, no notes, no
+                meta-commentary before or after the prose.
+                If instructions conflict, apply this priority order:
+                1. Author's detailed directives
+                2. Writing requirements
+                3. Character sheets
+                4. Style guide
+                5. Writing example
                 6. Focus
                 7. Lore
-                Les expressions interdites, les schémas narratifs à éviter, l'état des entités déjà établi
-                et le texte précédent ne sont jamais soumis à cet arbitrage : ce sont des faits ou des
-                interdits absolus, toujours respectés quoi qu'il arrive.
+                Forbidden phrases, narrative patterns to avoid, already-established entity states and the
+                previous sequence's text are never part of this arbitration: they are absolute facts or
+                absolute bans, respected no matter what.
                 """
                 + lengthConstraint + "\n" + openingRule + "\n"
                 + """
-                Tu n'écris que les événements de cette séquence — aucune anticipation des événements des séquences suivantes.
-                Si la fiche d'un personnage précise un article et un pronom (ligne 'Article : X — pronom'),
-                respecte-les strictement dans tout le texte. Les traits visibles d'un personnage (tenue,
-                apparence physique, gestes récurrents) et son tempérament sont des faits non négociables —
-                ne cite ni ne paraphrase la fiche, incarne ces traits dans la prose.
-                Le texte ne doit pas donner l'impression d'avoir été rédigé par une IA : privilégie un
-                vocabulaire et des tournures usuels, évite les formulations qui sonnent artificiel. Cette
-                règle de naturel s'efface uniquement devant une consigne contraire explicite du guide de style.
+                Write only the events of this sequence — never anticipate later sequences.
+                If a character sheet specifies an article and pronoun (line 'Article : X — pronoun'),
+                apply them strictly throughout. A character's visible traits (clothing, physical
+                appearance, recurring gestures) and temperament are non-negotiable facts — never quote or
+                paraphrase the sheet; embody the traits through concrete behavior. Example: for "nervous,
+                bites her nails", write her tapping her fingers on the table, not "she was nervous".
+                The sensory notes are ingredients, not a checklist: weave some of them naturally into the
+                prose; do not enumerate them in one block.
+                The text must not read as machine-written: prefer everyday vocabulary and natural
+                phrasing, avoid wording that sounds artificial. This naturalness rule yields only to an
+                explicit contrary instruction in the style guide.
+                Write the prose in French.
                 """;
     }
 

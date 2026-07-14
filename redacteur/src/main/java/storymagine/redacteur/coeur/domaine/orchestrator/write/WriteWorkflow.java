@@ -15,6 +15,7 @@ import storymagine.redacteur.coeur.domaine.agent.chapter.whatifcritic.ChapterWha
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityFinding;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.commun.RetryStrategy;
+import storymagine.redacteur.coeur.domaine.agent.sequence.phraseextractor.PhraseExtractorOutput;
 import storymagine.redacteur.coeur.domaine.agent.sequence.phrasingcorrector.PhrasingCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.sequence.grammarcorrector.GrammarCorrectorOutput;
 import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilterOutput;
@@ -54,7 +55,9 @@ import java.util.stream.Collectors;
  *
  *   PHASE 2 — CORRECTORS  (skip if BROUILLON)
  *     PhrasingCorrector → DeusInMachinaCorrector → NaturalityCorrector → StyleCorrector → GrammarCorrector
- *     Patches applied inline via String.replace — no Writer retry.
+ *     Patches applied inline via TextPatcher — no Writer retry.
+ *     On a TextPatcher miss (citation doesn't match the text verbatim): PhraseExtractor relocates
+ *     the real passage and the patch is retried once before falling back to a warn log.
  *
  *   PHASE 3 — GLOBAL CRITIQUE  (skip if BROUILLON)
  *     All critics run together: DeusInMachinaCritic, StyleCritic, PlanFidelityCritic (if beats), CheckCritic (if checks).
@@ -91,6 +94,9 @@ public class WriteWorkflow {
     // Phase 2 — Correctors (ordered) — continued
     private final StyleCorrectorStep         styleCorrectorStep;
 
+    // Phase 2 — rescue when a Corrector's citation fails to match the text verbatim
+    private final PhraseExtractorStep        phraseExtractorStep;
+
     // Phase 3 — Critics (run together)
     private final DeusInMachinaCriticStep    deusInMachinaCriticStep;
     private final PlanFidelityCriticStep     planFidelityCriticStep;
@@ -118,6 +124,7 @@ public class WriteWorkflow {
                          NaturalityCorrectorStep naturalityCorrectorStep,
                          GrammarCorrectorStep grammarCorrectorStep,
                          StyleCorrectorStep styleCorrectorStep,
+                         PhraseExtractorStep phraseExtractorStep,
                          DeusInMachinaCriticStep deusInMachinaCriticStep,
                          PlanFidelityCriticStep planFidelityCriticStep,
                          CheckCriticStep checkCriticStep,
@@ -138,6 +145,7 @@ public class WriteWorkflow {
         this.naturalityCorrectorStep    = naturalityCorrectorStep;
         this.grammarCorrectorStep       = grammarCorrectorStep;
         this.styleCorrectorStep         = styleCorrectorStep;
+        this.phraseExtractorStep        = phraseExtractorStep;
         this.deusInMachinaCriticStep    = deusInMachinaCriticStep;
         this.planFidelityCriticStep     = planFidelityCriticStep;
         this.checkCriticStep            = checkCriticStep;
@@ -201,7 +209,7 @@ public class WriteWorkflow {
             }
 
             String hint = (!passed && !isLastAttempt) ? "CHAPITRE " + (chapPass + 2) + "/" + chapMaxAttempts : null;
-            log.scoresSummary(critique.avg(), config.qualityLevel().chapitreThreshold(), minScore, elimination, passed, hint);
+            log.scoresSummary(critique.avg(), config.qualityLevel().chapitreThreshold(), minScore, elimination, passed, false, hint);
 
             if (passed || isLastAttempt) break;
 
@@ -459,8 +467,8 @@ public class WriteWorkflow {
             if (avgPassed && eliminated)
                 log.warn(String.format("Sequence : note eliminatoire franchie (seuil %.1f) — relance forcee malgre une moyenne suffisante", elimination));
 
-            log.scoresSummary(avg, SEQUENCE_CRITIC_THRESHOLD, minScore, elimination,
-                               passed, (!passed && !isLast) ? "SEQUENCE " + (pass + 2) + "/" + (maxRetry + 1) : null);
+            log.scoresSummary(avg, SEQUENCE_CRITIC_THRESHOLD, minScore, elimination, passed, false,
+                               (!passed && !isLast) ? "SEQUENCE " + (pass + 2) + "/" + (maxRetry + 1) : null);
 
             if (avg > bestScore) { bestScore = avg; bestText = text; bestPass = pass + 1; }
             if (passed || isLast) break;
@@ -574,13 +582,27 @@ public class WriteWorkflow {
                                          Function<T, String> wrongOf, Function<T, String> correctOf) {
         String result = text;
         for (T f : findings) {
-            String wrong = wrongOf.apply(f);
-            TextPatcher.Result patched = TextPatcher.apply(result, wrong, correctOf.apply(f));
-            if (!patched.applied())
-                log.warn(correctorLabel + ": replace miss — phrase not found in text: " + wrong);
+            String wrong   = wrongOf.apply(f);
+            String correct = correctOf.apply(f);
+            TextPatcher.Result patched = TextPatcher.apply(result, wrong, correct);
+            if (!patched.applied()) {
+                patched = rescueWithPhraseExtractor(result, wrong, correct, correctorLabel);
+            }
             result = patched.text();
         }
         return result;
+    }
+
+    /** On a TextPatcher miss, asks PhraseExtractor to relocate the real passage and retries once. */
+    private TextPatcher.Result rescueWithPhraseExtractor(String text, String wrong, String correct,
+                                                           String correctorLabel) {
+        PhraseExtractorOutput relocated = phraseExtractorStep.run(text, wrong);
+        if (relocated.found()) {
+            TextPatcher.Result retried = TextPatcher.apply(text, relocated.phrase(), correct);
+            if (retried.applied()) return retried;
+        }
+        log.warn(correctorLabel + ": replace miss — phrase not found in text: " + wrong);
+        return new TextPatcher.Result(text, false);
     }
 
     private float ratio(int count, String text) {

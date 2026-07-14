@@ -57,4 +57,37 @@ public class Story {
         summary = compressedSummary;
         chapterSummaryDivisor *= 2;
     }
+
+    // ── Snapshot / restore — for checkpointing across a generation resume ─────
+
+    public record Snapshot(
+        List<WrittenChapter.Snapshot> chapters,
+        WorldState.Snapshot           worldState,
+        RepetitionMemory.Snapshot     repetitionMemory,
+        String                        summary,
+        int                           chapterSummaryDivisor
+    ) {}
+
+    public Snapshot snapshot() {
+        return new Snapshot(
+            chapters.stream().map(WrittenChapter::snapshot).toList(),
+            worldState.snapshot(),
+            repetitionMemory.snapshot(),
+            summary,
+            chapterSummaryDivisor
+        );
+    }
+
+    public static Story restore(Snapshot snap) {
+        Story story = new Story();
+        for (WrittenChapter.Snapshot chapterSnap : snap.chapters()) {
+            story.chapters.add(WrittenChapter.restore(chapterSnap));
+        }
+        story.worldState.restore(snap.worldState());
+        story.repetitionMemory.restore(snap.repetitionMemory());
+        story.summary = snap.summary();
+        story.chapterSummaryDivisor = snap.chapterSummaryDivisor();
+        story.currentIndex = story.chapters.isEmpty() ? -1 : story.chapters.size() - 1;
+        return story;
+    }
 }

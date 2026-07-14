@@ -63,9 +63,12 @@ class ChapterPlanWorkflowTest {
     }
 
     /**
-     * Number of RETRY outcomes logged anywhere in the run. Unlike PASS, this is unambiguous in
-     * these tests: the WRITE phase always passes cleanly (UNIVERSAL_PASS), so every RETRY here
-     * can only come from ChapterPlanWorkflow's own scoresSummary calls.
+     * Number of RETRY outcomes (real score failure : average and/or elimination) logged anywhere
+     * in the run. Unlike PASS, this is unambiguous in these tests: the WRITE phase always passes
+     * cleanly (UNIVERSAL_PASS), so every RETRY here can only come from ChapterPlanWorkflow's own
+     * scoresSummary calls. Distinct from REFINE, which only fires when scores actually passed but
+     * a retry is forced anyway by the FULL-only strict-first-attempt rule (see
+     * full_firstDraftHasARemark_forcesExactlyOneRetry_evenWhenAverageAndEliminationPass).
      */
     private static long retryCount(CapturingLogPort log) {
         return log.scores.stream().filter(s -> s.equals("RETRY")).count();
@@ -89,6 +92,7 @@ class ChapterPlanWorkflowTest {
         assertTrue(log.hasCritic("PlanDramaCritic"));
         assertEquals(CHAPTER_COUNT, chapterPlanAttempts(log),
             "One passing attempt per chapter — no retry when all 5 critics are clean");
+        assertFalse(log.hasScore("REFINE"), "No REFINE outcome expected when every critic passes");
         assertFalse(log.hasScore("RETRY"), "No RETRY outcome expected when every critic passes");
     }
 
@@ -112,7 +116,8 @@ class ChapterPlanWorkflowTest {
             "Every chapter must retry once (2 attempts) when one critic never clears "
             + "the elimination threshold");
         assertEquals(CHAPTER_COUNT * 2, retryCount(log),
-            "Every attempt of every chapter must report RETRY while PlanCoherenceCritic stays eliminated");
+            "Every attempt of every chapter must report RETRY (red, real score failure) while "
+            + "PlanCoherenceCritic stays eliminated");
     }
 
     @Test
@@ -134,7 +139,8 @@ class ChapterPlanWorkflowTest {
             "A single critic below the elimination threshold must force a retry even though "
             + "the 5-critic average clears planAverageThreshold");
         assertEquals(CHAPTER_COUNT * 2, retryCount(log),
-            "Elimination must force a RETRY on every attempt of every chapter despite the passing average");
+            "Elimination must force a RETRY (red, real score failure) on every attempt of every "
+            + "chapter despite the passing average");
     }
 
     @Test
@@ -158,8 +164,13 @@ class ChapterPlanWorkflowTest {
         assertEquals(CHAPTER_COUNT * 2, chapterPlanAttempts(log),
             "FULL: any remark at all on the first draft must force exactly one retry, even "
             + "though average and elimination both pass comfortably");
-        assertTrue(log.warnings.stream().anyMatch(w -> w.contains("premier jet")),
+        assertTrue(log.infos.stream().anyMatch(i -> i.contains("amelioration")),
             "The forced retry must be explained in the logs");
+        assertEquals(CHAPTER_COUNT, log.scores.stream().filter(s -> s.equals("REFINE")).count(),
+            "Retrying only because a remark remains (scores already passed) must report REFINE "
+            + "(orange), never RETRY (red) which is reserved for a real score failure");
+        assertEquals(0, retryCount(log),
+            "No RETRY expected here : average and elimination both pass, only the strict-first-attempt rule forces the extra pass");
         assertEquals(CHAPTER_COUNT, log.planRetentions.size(),
             "Every chapter used more than one attempt, so each must log which attempt/score was retained");
         assertTrue(log.planRetentions.stream().allMatch(r -> r.startsWith("1/2@")),

@@ -22,7 +22,8 @@ public final class StoryFormatters {
 
     /**
      * Parses StateExtractor output lines and applies them to WorldState.
-     * Line format: "ETAT: Entity: state" or "EVENT: event description".
+     * Line format: "ETAT: Entity → state" or "EVENT: event description" — same arrow syntax
+     * as WorldState.applyPlotDirectives.
      */
     public static void applyStateLines(WorldState ws, String stateLines) {
         if (stateLines == null || stateLines.isBlank()) return;
@@ -31,9 +32,9 @@ public final class StoryFormatters {
             String t = line.trim();
             if (t.startsWith("ETAT:")) {
                 String content = t.substring(5).trim();
-                int colon = content.indexOf(':');
-                if (colon > 0) {
-                    entities.put(content.substring(0, colon).trim(), content.substring(colon + 1).trim());
+                int arrow = content.indexOf('→');
+                if (arrow > 0) {
+                    entities.put(content.substring(0, arrow).trim(), content.substring(arrow + 1).trim());
                 }
             } else if (t.startsWith("EVENT:")) {
                 ws.addRecentEvent(t.substring(6).trim());

@@ -2,6 +2,7 @@ package storymagine.redacteur.coeur.service;
 
 import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.StoryOrchestrator;
+import storymagine.redacteur.coeur.domaine.scenario.Scenario;
 import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.coeur.ports.ScenarioError;
 import storymagine.redacteur.coeur.ports.ScenarioReaderPort;
@@ -30,6 +31,15 @@ public class RedacteurServiceImpl implements RedacteurService {
 
     @Override
     public Story generate(Path scenarioRoot, GenerationConfig config) {
+        return orchestrator.generate(loadValidScenario(scenarioRoot), config);
+    }
+
+    @Override
+    public Story resume(Path scenarioRoot, Path runDir) {
+        return orchestrator.resume(loadValidScenario(scenarioRoot), runDir);
+    }
+
+    private Scenario loadValidScenario(Path scenarioRoot) {
         var errors = reader.validate(scenarioRoot);
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(
@@ -37,8 +47,7 @@ public class RedacteurServiceImpl implements RedacteurService {
                     .map(e -> "  - " + e.message())
                     .collect(Collectors.joining("\n")));
         }
-        var scenario = reader.load(scenarioRoot);
-        return orchestrator.generate(scenario, config);
+        return reader.load(scenarioRoot);
     }
 
     @Override

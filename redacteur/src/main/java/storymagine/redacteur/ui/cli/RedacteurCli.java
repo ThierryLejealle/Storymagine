@@ -1,17 +1,14 @@
 package storymagine.redacteur.ui.cli;
 
 import storymagine.commun.coeur.ports.LogPort;
-import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.commun.infra.OllamaAdapter;
-import storymagine.commun.infra.OllamaConfig;
-import storymagine.commun.infra.OllamaLauncher;
 import storymagine.commun.infra.OllamaPsInfo;
-import storymagine.commun.infra.RetryPolicy;
 import storymagine.commun.infra.TeeLogAdapter;
+import storymagine.commun.ui.cli.OllamaSetupCli;
 import storymagine.redacteur.RedacteurModule;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
@@ -19,6 +16,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.GenerationConfig;
 import storymagine.redacteur.coeur.domaine.story.Story;
 import storymagine.redacteur.infra.HtmlFileExportAdapter;
 import storymagine.redacteur.infra.StoryExporter;
+import storymagine.redacteur.infra.checkpoint.JsonCheckpointAdapter;
 import storymagine.redacteur.infra.scenario.ScenarioFileAdapter;
 
 import java.io.IOException;
@@ -28,7 +26,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
@@ -44,110 +41,23 @@ public class RedacteurCli {
         Properties   props   = loadProperties();
         Scanner      scanner = new Scanner(System.in);
         Path         scenarioRoot = chooseScenarioRoot(props, scanner);
-        OllamaConfig ollama  = buildOllamaConfig(props);
-        List<String> favoris = loadFavoris(props);
 
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
 
-        // 1. Menu GPU
-        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
-        System.out.println("Configuration GPU Ollama :");
-        System.out.printf("  1. Utiliser Ollama deja demarre%n");
-        printGpuOption(2, gpus, 0);
-        printGpuOption(3, gpus, 1);
-        System.out.printf("  4. Utiliser GPU 0+1 - split auto%n");
-
-        int gpuChoice = 0;
-        while (gpuChoice < 1 || gpuChoice > 4) {
-            System.out.print("Choix GPU [1-4] : ");
-            String line = scanner.nextLine().trim();
-            try { gpuChoice = Integer.parseInt(line); } catch (NumberFormatException ignored) {}
-            if (gpuChoice < 1 || gpuChoice > 4) System.out.println("  Entree invalide, choisir 1-4.");
-        }
-        System.out.println();
-
-        switch (gpuChoice) {
-            case 1 -> {
-                if (!OllamaLauncher.isReachable(ollama.baseUrl())) {
-                    System.err.println("ERREUR : Ollama non joignable. Lancez Ollama d'abord ou choisissez 2-4.");
-                    System.exit(1);
-                }
-                System.out.printf("[redacteur] Ollama deja demarre.%n%n");
-            }
-            case 2 -> {
-                System.out.printf("[redacteur] Relancement Ollama sur GPU 0...%n");
-                try { OllamaLauncher.killAll(); OllamaLauncher.launch("0", ollama.baseUrl()); }
-                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
-                System.out.printf("[redacteur] Ollama pret - %s%n%n", gpuLabel(gpus, 0));
-            }
-            case 3 -> {
-                System.out.printf("[redacteur] Relancement Ollama sur GPU 1...%n");
-                try { OllamaLauncher.killAll(); OllamaLauncher.launch("1", ollama.baseUrl()); }
-                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
-                System.out.printf("[redacteur] Ollama pret - %s%n%n", gpuLabel(gpus, 1));
-            }
-            default -> {
-                System.out.printf("[redacteur] Relancement Ollama sur GPU 0+1...%n");
-                try { OllamaLauncher.killAll(); OllamaLauncher.launch("0,1", ollama.baseUrl()); }
-                catch (Exception e) { System.err.println("ERREUR : " + e.getMessage()); System.exit(1); }
-                System.out.printf("[redacteur] Ollama pret - GPU 0+1 split%n%n");
-            }
-        }
-
-        // 2. Lister les modeles — favoris en tete
-        System.out.println("Connexion a Ollama (" + ollama.baseUrl() + ")...");
-        OllamaAdapter probe = ollama.adapter("_probe");
-        List<ModelEntry> allModels;
-        try {
-            allModels = probe.listModels(Long.MAX_VALUE);
-        } catch (Exception e) {
-            System.err.println("ERREUR : impossible de contacter Ollama : " + e.getMessage());
-            System.exit(1);
-            return;
-        }
-        if (allModels.isEmpty()) {
-            System.err.println("ERREUR : aucun modele disponible dans Ollama.");
-            System.exit(1);
-            return;
-        }
-
-        // Trier : favoris en tete dans l'ordre des proprietes, reste apres
-        List<ModelEntry> sorted = new ArrayList<>();
-        for (String fav : favoris) {
-            allModels.stream().filter(m -> m.name().equals(fav)).findFirst().ifPresent(sorted::add);
-        }
-        for (ModelEntry m : allModels) {
-            if (sorted.stream().noneMatch(s -> s.name().equals(m.name()))) sorted.add(m);
-        }
-
-        System.out.println();
-        System.out.println("Modeles disponibles :");
-        for (int i = 0; i < sorted.size(); i++) {
-            ModelEntry m      = sorted.get(i);
-            boolean    isFav  = i < favoris.size() && favoris.contains(m.name());
-            String     marker = isFav ? " *" : "  ";
-            System.out.printf("%s %2d. %-60s %s%n", marker, i + 1, m.name(), formatSize(m.sizeBytes()));
-        }
-        System.out.println("  (* = favori)");
-        System.out.print("Choix du modele [1] : ");
-        String modelInput = scanner.nextLine().trim();
-        int modelIdx = modelInput.isBlank() ? 0 : (Integer.parseInt(modelInput) - 1);
-        if (modelIdx < 0 || modelIdx >= sorted.size()) {
-            System.err.println("ERREUR : choix invalide.");
-            System.exit(1);
-        }
-        String selectedModel = sorted.get(modelIdx).name();
-        System.out.println(">> Modele : " + selectedModel);
+        // 1-2. Menu GPU + choix du modele (flux partage, cf. commun/ui/cli/OllamaSetupCli)
+        OllamaSetupCli.Selection setup         = OllamaSetupCli.run(props, scanner, log, "redacteur");
+        OllamaAdapter            llm           = setup.llm();
+        String                   selectedModel = setup.modelName();
 
         // 3. Lister les scenarios
         System.out.println();
         var htmlExport      = new HtmlFileExportAdapter(fileLog::runDir);
+        var checkpointPort  = new JsonCheckpointAdapter(fileLog::runDir);
         var beatsConfig     = buildBeatsConfig(props);
         var correctorConfig = buildCorrectorConfig(props);
-        OllamaAdapter llm = ollama.adapter(selectedModel, log);
         var service = RedacteurModule.assemble(
-            llm, new ScenarioFileAdapter(), log, htmlExport, beatsConfig, correctorConfig);
+            llm, new ScenarioFileAdapter(), log, htmlExport, checkpointPort, beatsConfig, correctorConfig);
         var scenarios = service.listScenarios(scenarioRoot);
         if (scenarios.isEmpty()) {
             System.err.println("ERREUR : aucun scenario dans '" + scenarioRoot + "'.");
@@ -169,7 +79,33 @@ public class RedacteurCli {
         }
         Path selectedScenario = scenarios.get(scenIdx);
         System.out.println(">> Scenario : " + selectedScenario.getFileName());
-        fileLog.setOutputDir(selectedScenario.resolve("generated"));
+
+        // 3bis. Generation(s) interrompue(s) detectee(s) pour ce scenario -> nouvelle ou reprise ?
+        Path       generatedDir = selectedScenario.resolve("generated");
+        List<Path> resumable    = checkpointPort.findIncomplete(generatedDir);
+        Path       resumeRunDir = null;
+        if (!resumable.isEmpty()) {
+            System.out.println();
+            System.out.println("Generation(s) interrompue(s) detectee(s) :");
+            for (int i = 0; i < resumable.size(); i++) {
+                System.out.printf("  %2d. %s%n", i + 1, resumable.get(i).getFileName());
+            }
+            System.out.println("  ENTREE - Nouvelle generation");
+            System.out.print("Reprendre laquelle ? [ENTREE/1.." + resumable.size() + "] : ");
+            String resumeInput = scanner.nextLine().trim();
+            if (!resumeInput.isBlank()) {
+                int resumeIdx = Integer.parseInt(resumeInput) - 1;
+                if (resumeIdx >= 0 && resumeIdx < resumable.size()) {
+                    resumeRunDir = resumable.get(resumeIdx);
+                }
+            }
+        }
+        boolean isResume = resumeRunDir != null;
+        if (isResume) {
+            fileLog.resumeRunDir(resumeRunDir);
+        } else {
+            fileLog.setOutputDir(generatedDir);
+        }
 
         // 4. Validation
         var errors = service.validate(selectedScenario);
@@ -181,28 +117,35 @@ public class RedacteurCli {
             return;
         }
 
-        // 5. Profil de generation
-        System.out.println();
-        System.out.println("Profil de generation :");
-        System.out.println("  1. BROUILLON — plan + redaction, agents minimum          (rapide)");
-        System.out.println("  2. SIMPLE    — plan critique + redaction critique         (qualite)");
-        System.out.println("  3. FULL      — SIMPLE + evaluation globale, plus de retry (complet)");
-        System.out.print("Choix [1] : ");
-        String profInput = scanner.nextLine().trim();
-        GenerationConfig config = switch (profInput) {
-            case "2"  -> GenerationConfig.simple();
-            case "3"  -> GenerationConfig.full();
-            default   -> GenerationConfig.brouillon();
-        };
-        System.out.println(">> Profil : " + config.qualityLevel()
-            + " (jsonMode=" + config.jsonMode() + ")");
+        // 5. Profil de generation — repris automatiquement depuis le checkpoint en cas de reprise
+        GenerationConfig config = null;
+        if (!isResume) {
+            System.out.println();
+            System.out.println("Profil de generation :");
+            System.out.println("  1. BROUILLON — plan + redaction, agents minimum          (rapide)");
+            System.out.println("  2. SIMPLE    — plan critique + redaction critique         (qualite)");
+            System.out.println("  3. FULL      — SIMPLE + evaluation globale, plus de retry (complet)");
+            System.out.print("Choix [1] : ");
+            String profInput = scanner.nextLine().trim();
+            config = switch (profInput) {
+                case "2"  -> GenerationConfig.simple();
+                case "3"  -> GenerationConfig.full();
+                default   -> GenerationConfig.brouillon();
+            };
+            System.out.println(">> Profil : " + config.qualityLevel()
+                + " (jsonMode=" + config.jsonMode() + ")");
+        }
 
         // 6. Confirmation
         System.out.println();
         System.out.println("-----------------------------------");
         System.out.printf("  Modele   : %s%n", selectedModel);
         System.out.printf("  Scenario : %s%n", selectedScenario.getFileName());
-        System.out.printf("  Profil   : %s%n", config.qualityLevel());
+        if (isResume) {
+            System.out.printf("  Mode     : reprise (%s)%n", resumeRunDir.getFileName());
+        } else {
+            System.out.printf("  Profil   : %s%n", config.qualityLevel());
+        }
         System.out.println("-----------------------------------");
         System.out.print("Lancer la generation ? [O/n] : ");
         String confirm = scanner.nextLine().trim();
@@ -219,7 +162,7 @@ public class RedacteurCli {
         } catch (Exception e) {
             System.out.println("(echec probe : " + e.getMessage() + ")");
         }
-        OllamaPsInfo ps = OllamaPsInfo.query(ollama.baseUrl(), selectedModel).orElse(null);
+        OllamaPsInfo ps = OllamaPsInfo.query(setup.ollamaConfig().baseUrl(), selectedModel).orElse(null);
         // Recapture apres chargement — le snapshot "gpus" du menu GPU (etape 1) date d'avant
         // le probe et ne reflete plus la VRAM reellement occupee par le modele charge.
         List<NvidiaSmiSnapshot.GpuStat> gpusAfterLoad = NvidiaSmiSnapshot.capture();
@@ -230,7 +173,8 @@ public class RedacteurCli {
         Instant start = Instant.now();
         Story story;
         try {
-            story = service.generate(selectedScenario, config);
+            story = isResume ? service.resume(selectedScenario, resumeRunDir)
+                              : service.generate(selectedScenario, config);
         } catch (Exception e) {
             System.err.println();
             System.err.println("ERREUR durant la generation : " + e.getMessage());
@@ -240,7 +184,7 @@ public class RedacteurCli {
         }
 
         // 9. Export
-        Path     outputDir = selectedScenario.resolve("generated");
+        Path     outputDir = generatedDir;
         Path     fullFile  = new StoryExporter().export(story, outputDir);
         Duration elapsed   = Duration.between(start, Instant.now());
 
@@ -306,41 +250,6 @@ public class RedacteurCli {
         return props;
     }
 
-    private static List<String> loadFavoris(Properties props) {
-        List<String> result = new ArrayList<>();
-        for (int i = 1; ; i++) {
-            String val = props.getProperty("favoris." + i);
-            if (val == null || val.isBlank()) break;
-            result.add(val.trim());
-        }
-        return result;
-    }
-
-    private static OllamaConfig buildOllamaConfig(Properties props) {
-        String  baseUrl             = props.getProperty("ollama.base-url",                        "http://localhost:11434");
-        int     ctxWindow           = Integer.parseInt(props.getProperty("ollama.context-window",                  "32768"));
-        int     maxCtx              = Integer.parseInt(props.getProperty("ollama.max-context-window",             "131072"));
-        int     topK                = Integer.parseInt(props.getProperty("ollama.top-k",                              "40"));
-        double  topP                = Double.parseDouble(props.getProperty("ollama.top-p",                           "0.9"));
-        double  repeatPenalty       = Double.parseDouble(props.getProperty("ollama.repeat-penalty",                  "1.1"));
-        int     numPredict          = Integer.parseInt(props.getProperty("ollama.num-predict",                         "-1"));
-        boolean streamMode          = !"sync".equalsIgnoreCase(props.getProperty("ollama.mode",                   "stream"));
-        int     timeoutMs           = Integer.parseInt(props.getProperty("ollama.timeout-ms",                     "600000"));
-        int     firstTokenTimeoutMs = Integer.parseInt(props.getProperty("ollama.stream.first-token-timeout-ms", "300000"));
-        int     interTokenTimeoutMs = Integer.parseInt(props.getProperty("ollama.stream.inter-token-timeout-ms",   "30000"));
-        int     ramFraction         = Integer.parseInt(props.getProperty("ollama.large-model-ram-fraction-pct",       "60"));
-        int     timeoutMult         = Integer.parseInt(props.getProperty("ollama.large-model-timeout-multiplier",      "3"));
-        int     retryCount          = Integer.parseInt(props.getProperty("ollama.retry-count",                          "5"));
-        int     retryDelay1         = Integer.parseInt(props.getProperty("ollama.retry-delay1",                        "15"));
-        int     retryDelay2         = Integer.parseInt(props.getProperty("ollama.retry-delay2",                        "30"));
-        int     retryDelay3         = Integer.parseInt(props.getProperty("ollama.retry-delay3",                        "60"));
-
-        return new OllamaConfig(baseUrl, ctxWindow, maxCtx, topK, topP, repeatPenalty,
-            numPredict, streamMode, timeoutMs, firstTokenTimeoutMs, interTokenTimeoutMs,
-            new RetryPolicy(retryCount, retryDelay1, retryDelay2, retryDelay3),
-            ramFraction, timeoutMult);
-    }
-
     private static BeatsConfig buildBeatsConfig(Properties props) {
         int base      = Integer.parseInt(props.getProperty("beats.base",            "2"));
         int ratio     = Integer.parseInt(props.getProperty("beats.per.words.ratio", "75"));
@@ -353,31 +262,5 @@ public class RedacteurCli {
         int   minCorrections = Integer.parseInt( props.getProperty("corrector.repeat.min.corrections",   "7"));
         int   maxPasses      = Integer.parseInt( props.getProperty("corrector.repeat.max.passes",        "3"));
         return new CorrectorConfig(threshold, minCorrections, maxPasses);
-    }
-
-    private static void printGpuOption(int num, List<NvidiaSmiSnapshot.GpuStat> gpus, int gpuIndex) {
-        NvidiaSmiSnapshot.GpuStat g = gpus.stream()
-                .filter(x -> x.index() == gpuIndex).findFirst().orElse(null);
-        if (g != null) {
-            System.out.printf("  %d. Utiliser GPU %d - %-32s  %.0f Go%n",
-                    num, gpuIndex, g.name(), g.totalMb() / 1024.0);
-        } else {
-            System.out.printf("  %d. Utiliser GPU %d (CUDA_VISIBLE_DEVICES=%d)%n",
-                    num, gpuIndex, gpuIndex);
-        }
-    }
-
-    private static String gpuLabel(List<NvidiaSmiSnapshot.GpuStat> gpus, int index) {
-        return gpus.stream()
-                .filter(g -> g.index() == index)
-                .findFirst()
-                .map(g -> "GPU " + index + " - " + g.name())
-                .orElse("GPU " + index);
-    }
-
-    private static String formatSize(long bytes) {
-        if (bytes <= 0) return "";
-        if (bytes >= 1_000_000_000L) return String.format("(%.1f Go)", bytes / 1e9);
-        return String.format("(%.0f Mo)", bytes / 1e6);
     }
 }

@@ -9,11 +9,14 @@ package storymagine.redacteur.coeur.domaine.orchestrator.evaluate;
  * @param threshold       SummaryBudget.wordBudget() used for the compaction check
  * @param compressed      true if SummaryCompressor ran
  * @param wordsFinal      word count after compaction (== wordsAfterAppend if not compressed)
+ * @param stateReseeded   true if WorldState's entity state was cleared and reseeded from the
+ *                        fresh chapter summary (StateExtractor reported at least one change)
  */
 public record ChapterSummaryResult(
     int wordsBefore,
     int wordsAfterAppend,
     int threshold,
     boolean compressed,
-    int wordsFinal
+    int wordsFinal,
+    boolean stateReseeded
 ) {}

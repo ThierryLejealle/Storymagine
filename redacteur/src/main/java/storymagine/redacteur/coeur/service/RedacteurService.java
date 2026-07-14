@@ -14,5 +14,8 @@ public interface RedacteurService {
 
     Story generate(Path scenarioRoot, GenerationConfig config);
 
+    /** Resumes an interrupted generation from the checkpoint saved in runDir. */
+    Story resume(Path scenarioRoot, Path runDir);
+
     List<Path> listScenarios(Path root);
 }

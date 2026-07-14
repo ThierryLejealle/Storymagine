@@ -135,7 +135,7 @@ public class ChapterPlanWorkflow {
             boolean eliminated    = minScore < elimination;
             double  avg           = scores.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
             double  avgThreshold  = config.qualityLevel().planAverageThreshold();
-            boolean passed        = avg >= avgThreshold && !eliminated;
+            boolean scorePassed   = avg >= avgThreshold && !eliminated;
             boolean isLastAttempt = attempt == maxAttempts - 1;
 
             if (avg >= avgThreshold && eliminated)
@@ -148,13 +148,15 @@ public class ChapterPlanWorkflow {
                     || !coherence.problems().isEmpty()
                     || continuity.map(c -> !c.problems().isEmpty()).orElse(false)
                     || !drama.problems().isEmpty();
-            boolean strictFirstAttempt = config.qualityLevel().planStrictFirstAttempt()
-                    && attempt == 0 && hasAnyProblem;
+            // Only "forced" in the meaningful sense when the scores themselves passed — a score
+            // failure combined with remaining remarks is just a normal (red) score retry.
+            boolean forcedRetry = config.qualityLevel().planStrictFirstAttempt()
+                    && attempt == 0 && hasAnyProblem && scorePassed;
 
-            if (passed && strictFirstAttempt)
-                log.warn("ChapterPlanWorkflow : relance forcee apres le premier jet (mode qualite FULL) — au moins une amelioration ou un defaut releve, meme si la moyenne/seuil eliminatoire passent");
+            if (forcedRetry)
+                log.info("relance parce qu'il reste au moins une amelioration");
 
-            passed = passed && !strictFirstAttempt;
+            boolean willRetry = !scorePassed || forcedRetry;
 
             if (avg > bestScore) {
                 bestScore         = avg;
@@ -163,10 +165,10 @@ public class ChapterPlanWorkflow {
                 bestAttempt       = attempt + 1;
             }
 
-            String hint = (!passed && !isLastAttempt) ? "PLAN " + (attempt + 2) + "/" + maxAttempts : null;
-            log.scoresSummary(avg, avgThreshold, minScore, elimination, passed, hint);
+            String hint = (willRetry && !isLastAttempt) ? "PLAN " + (attempt + 2) + "/" + maxAttempts : null;
+            log.scoresSummary(avg, avgThreshold, minScore, elimination, scorePassed, forcedRetry, hint);
 
-            if (passed || isLastAttempt) break;
+            if (!willRetry || isLastAttempt) break;
 
             wc.setCoherence(mergeFeedback(goal.problems(), facts.problems(), coherence.problems(),
                     continuity.map(PlanContinuityCriticOutput::problems).orElse(List.of()), drama.problems()));

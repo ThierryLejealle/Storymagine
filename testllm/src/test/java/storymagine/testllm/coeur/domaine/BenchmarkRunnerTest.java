@@ -59,7 +59,7 @@ class BenchmarkRunnerTest {
         return new ModelCallPort() {
             @Override public LlmResult generate(String s, String u, double t, LlmCallContext ctx) {
                 int len = lengths[Math.min(idx.getAndIncrement(), lengths.length - 1)];
-                return new LlmResult("x".repeat(len), 0, 0, 0L);
+                return new LlmResult("x".repeat(len), 0, 0, 0L, "");
             }
             @Override public int contextWindow() { return 4096; }
         };
@@ -123,7 +123,7 @@ class BenchmarkRunnerTest {
         ModelCallPort port = new ModelCallPort() {
             @Override public LlmResult generate(String s, String u, double t, LlmCallContext ctx) {
                 if (call.getAndIncrement() == 1) throw new RuntimeException("timeout");
-                return new LlmResult("x".repeat(100), 0, 0, 0L);
+                return new LlmResult("x".repeat(100), 0, 0, 0L, "");
             }
             @Override public int contextWindow() { return 4096; }
         };

@@ -112,7 +112,7 @@ public class StoryPlanWorkflow {
             }
 
             String hint = (!passed && !isLastAttempt) ? "PLAN LIVRE " + (attempt + 2) + "/" + maxAttempts : null;
-            log.scoresSummary(avg, avgThreshold, minScore, elimination, passed, hint);
+            log.scoresSummary(avg, avgThreshold, minScore, elimination, passed, false, hint);
 
             if (passed || isLastAttempt) break;
 

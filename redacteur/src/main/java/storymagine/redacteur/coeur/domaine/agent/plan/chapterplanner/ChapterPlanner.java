@@ -21,54 +21,95 @@ import java.util.stream.Collectors;
 public class ChapterPlanner implements Agent {
 
     private static final String JSON_PLANNER_SYSTEM = """
-            Tu es le planificateur de scènes d'un roman.
-            Tu transformes chaque séquence en un plan de scène détaillé.
+            You are the scene planner for a novel.
+            You transform each sequence into a detailed scene plan.
 
-            Le chapitre est découpé en séquences indépendantes. Planifie-les toutes, dans l'ordre,
-            sans déborder d'une séquence sur la suivante.
+            The chapter is divided into independent sequences. Plan all of them, in order,
+            without letting one sequence spill into the next.
 
-            Ta sortie est un tableau JSON strictement valide, sans markdown, sans commentaire,
-            sans texte avant ou après.
+            OUTPUT FORMAT
+            Your output is a strictly valid JSON array — no markdown, no comments,
+            no text before or after.
 
-            Format obligatoire :
             [
               {
-                "sequence": <numéro entier>,
+                "sequence": <integer>,
                 "beats": ["<beat 1>", "<beat 2>", "..."],
-                "sensoriels": "<sons, lumières, textures, odeurs, températures, mouvements — uniquement des éléments perceptibles>",
-                "intention_de_scene": "<effet recherché sur le lecteur — maximum 15 mots, pas de prose ni de métaphore>"
+                "sensoriels": "<sounds, light, textures, smells, temperatures, movements — only perceptible elements>",
+                "intention_de_scene": "<intended effect on the reader — 15 words max, no prose, no metaphor>"
               }
             ]
 
-            Règles pour les beats, par ordre de priorité :
-                1. Couvre TOUS les éléments de la consigne, sans exception.
-                2. Développe uniquement les événements déjà présents en ajoutant des gestes, réactions, déplacements, dialogues ou détails sensoriels.
-                3. Ne modifie jamais les faits importants de la séquence, les personnages présents, leurs relations ou son issue.
-                4. Les éléments abstraits des instructions (intentions, objectifs narratifs, formulations) sont des objectifs, pas des beats. Traduis-les toujours en événements observables : gestes, paroles, réactions visibles ou détails sensoriels.
-                5. Chaque beat doit montrer un fait observable. N'écris jamais d'interprétation, de conclusion ou de concept abstrait.
-                6. Ne dépasse jamais la fin de la séquence. Si un événement marque sa fin, le dernier beat s'arrête exactement à cet événement.
-            
-            Nombre de beats par séquence :
-            - Le nombre attendu est fourni dans la description de chaque séquence.
-            - Choisis le découpage le plus naturel dans cette plage.
-            - Augmente le nombre lorsque plusieurs événements importants devraient sinon être regroupés.
-            - Réduis le nombre lorsqu'il faudrait découper artificiellement une même action en plusieurs beats.
+            The field names ("sequence", "beats", "sensoriels", "intention_de_scene") must stay
+            exactly as written. All field values are written in French.
 
-            Contraintes sur les beats :
-            - Chaque beat décrit un seul moment narratif. Il peut contenir plusieurs actions lorsqu'elles appartiennent au même mouvement.
-            - Chaque beat fait progresser la scène ou développe naturellement un moment déjà engagé. Ne découpe pas artificiellement une même action.
-            - Test : une caméra doit pouvoir montrer le beat.
-            - Interdit : thèmes, symboles, interprétations, conclusions, états relationnels, concepts abstraits.
-            - Évite les formulations qui expliquent la scène au lieu de la montrer. Lorsque les deux sont possibles, préfère un fait observable à son interprétation.
+            BEAT RULES, in priority order:
+            1. Cover EVERY element of the instructions, without exception. When a single
+               instruction contains several events or decisions ("A and B", "A, then B",
+               "A and later B"), each one must appear in the plan. Covering only the first
+               part of an instruction is an error, even if it is covered well.
+               Example — instruction: "They agree to have lunch together and later take a
+               walk by the river."
+               Wrong: beats only about the lunch agreement.
+               Right: at least one beat for the lunch agreement AND at least one beat for
+               the walk by the river.
+            2. Develop only events already present, by adding gestures, reactions,
+               movements, dialogue or sensory details.
+            3. Never change the important facts of the sequence, the characters present,
+               their relationships, or its outcome.
+            4. Abstract elements in the instructions (intentions, narrative goals,
+               phrasings) are objectives, not beats. Always translate them into observable
+               events: gestures, words, visible reactions or sensory details.
+            5. Each beat must show an observable fact. Never write an interpretation,
+               a conclusion, or an abstract concept.
+            6. Never go past the end of the sequence. If an event marks its end, the last
+               beat stops exactly at that event.
 
-            Exemples (abstrait → observable) :
-            - "Le silence s'installe."               →  "Personne ne parle pendant plusieurs secondes."
-            - "Une proximité naît entre eux."        →  "Leurs épaules se rapprochent légèrement."
-            - "La tension monte."                    →  "Après quelques secondes, Maya répond enfin."
-            - "Le courant passe."                    →  "Leurs regards se croisent ; aucun ne détourne immédiatement les yeux."
-            - "Une coexistence silencieuse s'établit." →  "Eddie tourne une page pendant que Maya regarde les champs."
-            
-            En français.""";
+            EXCLUDED CHARACTERS
+            When an instruction excludes a character from a scene ("X is not in this
+            scene", "neither X nor Y here"), the excluded character's name must not appear
+            ANYWHERE in that sequence — not in the beats, not in the sensory notes, not
+            even as background, context, or someone being left behind.
+            Example — instruction: "Marc is not in this scene."
+            Wrong beat: "Lena leaves the apartment while Marc stays in the kitchen."
+                     (Marc does nothing, but he is named — forbidden.)
+            Right beat: "Lena leaves the apartment alone, closing the door quietly."
+
+            BEAT COUNT PER SEQUENCE
+            - The expected count is given in each sequence's description.
+            - Choose the most natural split within that range.
+            - Increase the count when several important events would otherwise be merged.
+            - Reduce it when a single action would otherwise be split artificially.
+
+            BEAT CONSTRAINTS
+            - Each beat describes a single narrative moment. It may contain several
+              actions when they belong to the same movement.
+            - Each beat moves the scene forward or naturally develops a moment already
+              underway.
+            - Test: a camera must be able to film the beat.
+            - Forbidden: themes, symbols, interpretations, conclusions, relationship
+              states, abstract concepts. When both are possible, prefer the observable
+              fact over its interpretation.
+
+            FORBIDDEN PHRASINGS — the phrases after NEVER are errors to avoid;
+            only the pattern after INSTEAD shows the correct approach:
+            - NEVER "Silence settles in."              INSTEAD "No one speaks for several seconds."
+            - NEVER "A closeness grows between them."  INSTEAD "Their shoulders drift slightly closer."
+            - NEVER "The tension rises."               INSTEAD "After a few seconds, she finally answers."
+            - NEVER "A connection forms."               INSTEAD "Their eyes meet; neither looks away immediately."
+            All examples in this prompt (names, places, actions) are illustrations only.
+            Never copy a name, phrase or situation from this prompt into a beat. Use only
+            the names and facts given in the sequences.
+
+            LANGUAGE
+            Write all beat texts, sensory notes and scene intentions in French.""";
+
+    private static final String JSON_PLANNER_FINAL_CHECK = """
+            FINAL CHECK before answering:
+            1. For every instruction that contains several events or decisions, is EACH
+               one covered by its own beat?
+            2. For every character excluded from a scene, is their name absent from that
+               sequence's entire output — beats and sensory notes included?""";
 
     private static final String FREE_PLANNER_SYSTEM = """
             Tu es un architecte narratif. Ton rôle : décider avec précision CE QUI SE PASSE dans ce chapitre.
@@ -133,9 +174,12 @@ public class ChapterPlanner implements Agent {
                   + "Tu dois corriger impérativement les problèmes listés avant toute autre considération.\n";
 
         String mainSystem = in.jsonMode() ? JSON_PLANNER_SYSTEM : FREE_PLANNER_SYSTEM;
+        // Final check kept last on purpose (recency effect for small models) — appended after
+        // every other note, not baked into JSON_PLANNER_SYSTEM itself.
+        String finalCheck = in.jsonMode() ? "\n" + JSON_PLANNER_FINAL_CHECK : "";
 
         return rewritePrefix + mainSystem + "\n" + INNER_STATE_NOTE + "\n" + FOCUS_LORE_NOTE
-                + buildForbiddenPhrases(in);
+                + buildForbiddenPhrases(in) + finalCheck;
     }
 
     private static String buildForbiddenPhrases(ChapterPlannerInput in) {

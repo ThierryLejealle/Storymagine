@@ -28,6 +28,9 @@ public class EvaluateWorkflow {
         log.step("ChapterSummarizer", ms(t0),
                 result.wordsBefore() + " -> " + result.wordsAfterAppend() + " mots (+" + appendDelta + ")");
 
+        log.step("SequenceStateExtractor (reseed chapitre)", ms(t0),
+                result.stateReseeded() ? "-> etat reinitialise et reensemence" : "-> etat reinitialise, aucun changement");
+
         if (result.compressed()) {
             log.warn("Résumé : seuil dépassé (" + result.wordsAfterAppend() + " > " + result.threshold()
                     + " mots) — compaction déclenchée");

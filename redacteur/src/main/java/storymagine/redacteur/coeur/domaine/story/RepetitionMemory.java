@@ -32,4 +32,24 @@ public class RepetitionMemory {
 
     public List<String> forbiddenPhrases() { return List.copyOf(forbiddenPhrases); }
     public List<String> forbiddenThemes()  { return List.copyOf(forbiddenThemes); }
+
+    // ── Snapshot / restore — for checkpointing across a generation resume ─────
+
+    public record Snapshot(
+        List<String> forbiddenPhrases,
+        List<String> forbiddenThemes,
+        int          maxPhrases,
+        int          maxThemes
+    ) {}
+
+    public Snapshot snapshot() {
+        return new Snapshot(List.copyOf(forbiddenPhrases), List.copyOf(forbiddenThemes), maxPhrases, maxThemes);
+    }
+
+    public void restore(Snapshot snap) {
+        forbiddenPhrases.clear(); forbiddenPhrases.addAll(snap.forbiddenPhrases());
+        forbiddenThemes.clear();  forbiddenThemes.addAll(snap.forbiddenThemes());
+        maxPhrases = snap.maxPhrases();
+        maxThemes  = snap.maxThemes();
+    }
 }

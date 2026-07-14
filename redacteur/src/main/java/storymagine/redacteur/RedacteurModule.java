@@ -27,6 +27,7 @@ import storymagine.redacteur.coeur.domaine.agent.sequence.checkcritic.CheckCriti
 import storymagine.redacteur.coeur.domaine.agent.sequence.planfidelitycritic.PlanFidelityCritic;
 import storymagine.redacteur.coeur.domaine.agent.sequence.naturalitycorrector.NaturalityCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.grammarcorrector.GrammarCorrector;
+import storymagine.redacteur.coeur.domaine.agent.sequence.phraseextractor.PhraseExtractor;
 import storymagine.redacteur.coeur.domaine.agent.sequence.phrasingcorrector.PhrasingCorrector;
 import storymagine.redacteur.coeur.domaine.agent.sequence.repetitionfilter.RepetitionFilter;
 import storymagine.redacteur.coeur.domaine.agent.sequence.repetitiontracker.RepetitionTracker;
@@ -60,6 +61,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterNarrative
 import storymagine.redacteur.coeur.domaine.orchestrator.chapter.ChapterWhatIfCriticStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.NaturalityCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.GrammarCorrectorStep;
+import storymagine.redacteur.coeur.domaine.orchestrator.write.PhraseExtractorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.PhrasingCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionFilterStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.RepetitionTrackerStep;
@@ -67,6 +69,7 @@ import storymagine.redacteur.coeur.domaine.orchestrator.write.StateExtractorStep
 import storymagine.redacteur.coeur.domaine.orchestrator.write.StyleCorrectorStep;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriteWorkflow;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.WriterStep;
+import storymagine.redacteur.coeur.ports.CheckpointPort;
 import storymagine.redacteur.coeur.ports.HtmlExportPort;
 import storymagine.redacteur.coeur.ports.ScenarioReaderPort;
 import storymagine.redacteur.coeur.service.RedacteurService;
@@ -127,6 +130,13 @@ public class RedacteurModule {
     public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
                                             LogPort log, HtmlExportPort htmlExport,
                                             BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
+        return assemble(llm, scenarioReader, log, htmlExport, CheckpointPort.NOOP, beatsConfig, correctorConfig);
+    }
+
+    /** Full assembly with custom beats, corrector and checkpoint configuration. */
+    public static RedacteurService assemble(ModelCallPort llm, ScenarioReaderPort scenarioReader,
+                                            LogPort log, HtmlExportPort htmlExport, CheckpointPort checkpoint,
+                                            BeatsConfig beatsConfig, CorrectorConfig correctorConfig) {
         // --- Plan agents ---
         var chapterPlanner       = new ChapterPlanner(llm, log);
         var planGoalCritic       = new PlanGoalCritic(llm, log);
@@ -147,6 +157,7 @@ public class RedacteurModule {
         var planFidelityCritic      = new PlanFidelityCritic(llm, log);
         var checkCritic             = new CheckCritic(llm, log);
         var styleCorrector          = new StyleCorrector(llm, log);
+        var phraseExtractor         = new PhraseExtractor(llm, log);
         var stateExtractor          = new StateExtractor(llm, log);
         var naturalityCorrector     = new NaturalityCorrector(llm, log);
         var textCoherenceCritic  = new ChapterCoherenceCritic(llm, log);
@@ -184,6 +195,7 @@ public class RedacteurModule {
         var phrasingCorrectorStep       = new PhrasingCorrectorStep(phrasingCorrector);
         var deusInMachinaCriticStep     = new DeusInMachinaCriticStep(deusInMachinaCritic);
         var styleCorrectorStep          = new StyleCorrectorStep(styleCorrector);
+        var phraseExtractorStep         = new PhraseExtractorStep(phraseExtractor);
         var planFidelityCriticStep      = new PlanFidelityCriticStep(planFidelityCritic);
         var checkCriticStep             = new CheckCriticStep(checkCritic);
         var stateExtractorStep          = new StateExtractorStep(stateExtractor);
@@ -196,7 +208,7 @@ public class RedacteurModule {
         var goalTextCriticStep          = new ChapterGoalCriticStep(goalTextCritic);
 
         // --- Evaluate steps ---
-        var chapterSummaryStep = new ChapterSummaryStep(chapterSummarizer, summaryCompressor);
+        var chapterSummaryStep = new ChapterSummaryStep(chapterSummarizer, summaryCompressor, stateExtractorStep);
 
         // --- Workflows ---
         var chapterPlanWorkflow = new ChapterPlanWorkflow(
@@ -210,7 +222,7 @@ public class RedacteurModule {
             writerStep,
             phrasingCorrectorStep,
             deusInMachinaCorrectorStep, naturalityCorrectorStep, grammarCorrectorStep,
-            styleCorrectorStep, deusInMachinaCriticStep, planFidelityCriticStep, checkCriticStep,
+            styleCorrectorStep, phraseExtractorStep, deusInMachinaCriticStep, planFidelityCriticStep, checkCriticStep,
             stateExtractorStep, repetitionTrackerStep, repetitionFilterStep,
             textNarrativeCriticStep, textCoherenceCriticStep,
             textDreamCriticStep, textWhatIfCriticStep,
@@ -219,7 +231,8 @@ public class RedacteurModule {
 
         var evaluateWorkflow = new EvaluateWorkflow(chapterSummaryStep, log);
 
-        var orchestrator = new StoryOrchestrator(storyPlanWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, log);
+        var orchestrator = new StoryOrchestrator(
+            storyPlanWorkflow, writeWorkflow, evaluateWorkflow, htmlExport, checkpoint, log);
         return new RedacteurServiceImpl(scenarioReader, orchestrator);
     }
 }

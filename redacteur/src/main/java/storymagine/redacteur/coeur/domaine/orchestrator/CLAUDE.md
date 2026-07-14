@@ -171,16 +171,19 @@ chacun leur propre paire de seuils dans `QualityLevel`, pour ne pas confondre le
 
 La note éliminatoire (`eliminationThreshold`, `planEliminationThreshold` ou
 `bookEliminationThreshold` selon la phase) force une relance si au moins un critique individuel
-tombe sous ce seuil, même si la moyenne globale passe le seuil de moyenne habituel. Loggé
-séparément (`log.warn`) quand c'est la seule cause du rejet.
+tombe sous ce seuil, même si la moyenne globale passe le seuil de moyenne habituel. C'est un vrai
+échec de score : loggé avec `log.warn` (rouge) quand c'est la seule cause du rejet, et
+`scoresSummary` affiche `RETRY` en rouge (`passed=false`).
 
 Règle stricte premier jet (Plan chapitre, FULL uniquement — `QualityLevel.planStrictFirstAttempt()`) :
 sur la toute première tentative de plan d'un chapitre, la moindre remarque d'un critic (même une
 seule AMELIORATION) force une relance, même si moyenne ET seuil éliminatoire passent tous les
 deux. Ne s'applique jamais au-delà de la première tentative — la règle habituelle (moyenne +
 éliminatoire) reprend la main dès la 2e tentative, donc cette règle n'ajoute jamais plus d'une
-relance. Loggée séparément (`log.warn`) quand c'est la seule cause du rejet, comme pour la note
-éliminatoire.
+relance. Contrairement à la note éliminatoire, ce n'est PAS un échec de score (moyenne et
+éliminatoire passent tous les deux) : loggé avec `log.info` (orange), et `scoresSummary` affiche
+`REFINE` en orange (`passed=true`, `forcedRetry=true`) — jamais `RETRY`, réservé aux vrais échecs
+de score.
 
 Valeurs actuelles par niveau (moyenne / éliminatoire) :
 

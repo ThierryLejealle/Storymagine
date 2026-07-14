@@ -44,4 +44,29 @@ public class WrittenChapter {
         }
         return sb.toString();
     }
+
+    // ── Snapshot / restore — for checkpointing across a generation resume ─────
+
+    public record Snapshot(
+        ChapterId             id,
+        String                plan,
+        List<String>          sequencePlans,
+        String                coherence,
+        List<WrittenSequence> sequences
+    ) {}
+
+    public Snapshot snapshot() {
+        return new Snapshot(id, plan, sequencePlans, coherence, sequences());
+    }
+
+    public static WrittenChapter restore(Snapshot snap) {
+        WrittenChapter chapter = new WrittenChapter(snap.id());
+        chapter.setPlan(snap.plan());
+        chapter.setSequencePlans(snap.sequencePlans());
+        chapter.setCoherence(snap.coherence());
+        for (WrittenSequence seq : snap.sequences()) {
+            chapter.addSequence(seq);
+        }
+        return chapter;
+    }
 }
