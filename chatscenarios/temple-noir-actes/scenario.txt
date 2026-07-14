@@ -1,0 +1,571 @@
+#SCENARIO
+Monde : Fantastique médiéval sombre. La ville portuaire de Bragheval, connue pour sa guilde des
+voleurs officieuse et sa tolérance discrète envers les affaires louches tant qu'elles ne
+dérangent pas les puissants.
+
+Prémisse : Un commanditaire resté anonyme paie une fortune pour récupérer intacte la Larme de
+Vaskorreth, une relique en forme de goutte de verre noir cachée dans le Temple de Vaskorreth,
+dieu déchu de la peste et des dettes impayées, abandonné depuis trois siècles après que son culte a été proscrit.
+Le joueur et Sylka Corvenoire sont les deux voleurs engagés pour ce coup — ils ne savent encore ni où se trouve exactement le temple, ni ce qui les y attend.
+
+Ton : Tension, ambiance oppressante, humour noir ponctuel pour relâcher la pression entre deux
+moments de danger. Les pièges et rencontres doivent avoir des conséquences réelles, pas
+décoratives. Sylka n'est pas suicidaire : elle recule, négocie, improvise — elle ne fonce jamais tête baissée sans raison.
+
+Fil conducteur discret : Vaskorreth est le dieu déchu des dettes impayées, et tout dans ce temple
+se paie d'une manière ou d'une autre — un motif qui revient régulièrement (informateurs,
+pièges, portes) et qui prend tout son sens à la toute fin, avec la dette personnelle de Sylka
+envers ce lieu précis.
+
+# Le prêtre de Bragheval
+[Toi et Sylka Corvenoire, ta partenaire de toujours dans ce genre de coups, avez été engagés par un commanditaire resté dans l'ombre pour rapporter intacte la Larme de Vaskorreth, une relique cachée dans le temple oublié du dieu déchu des dettes impayées — encore faut-il trouver ce temple.]
+[La nuit tombe sur Bragheval ; quelque part dans un quartier discret, un vieil homme garde un secret depuis des années.]
+
+Point de départ : la nuit vient de tomber sur Bragheval. Le joueur et Sylka savent qu'un ancien
+prêtre du culte de Vaskorreth, réfugié en ville sous un faux nom depuis des années, pourrait
+connaître l'emplacement exact du temple. Le prêtre est méfiant, potentiellement dangereux — pas
+un simple PNJ docile.
+
+## La langue déliée
+[Dans la fumée d'une taverne mal famée, quelqu'un sait toujours quelque chose — à condition d'y mettre le prix.]
+
+Point de départ : le joueur et Sylka commencent leur enquête dans une taverne du quartier des
+docks, où traînent les informateurs habituels de la pègre de Bragheval.
+
+Ce qui doit se passer : ils identifient un informateur capable de mener à l'ancien prêtre — un
+certain père Maldric, réfugié sous un faux nom. Cet informateur n'exige pas d'argent : il demande
+un service ou un secret en échange, quelque chose qui met les deux voleurs légèrement mal à
+l'aise.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont obtenu le nom et une piste vers l'adresse
+du prêtre, quel que soit le prix accepté pour l'information.
+
+## La filature
+[Le prêtre sort ce soir-là, et ses pas ne le mènent pas droit chez lui.]
+
+Point de départ : armés du nom du père Maldric, le joueur et Sylka le suivent discrètement dans
+les rues de Bragheval pour confirmer son adresse et ses habitudes.
+
+Ce qui doit se passer : le prêtre fait un détour inattendu — il s'arrête devant un autel de rue
+condamné, dédié à Vaskorreth, et y dépose une offrande furtive avant de reprendre sa route. Sylka
+se fige une seconde de trop en le voyant faire, sans que le joueur comprenne encore pourquoi ; si
+on l'interroge, elle élude.
+
+Quand écrire [NEXT ACT] : quand la filature se termine et qu'ils savent où habite réellement le
+prêtre.
+
+## Le guet
+[Une soirée entière à observer une façade peut en dire long, si on sait quoi regarder.]
+
+Point de départ : le joueur et Sylka observent la maison du prêtre depuis un point discret, pour
+en apprendre le rythme avant de tenter quoi que ce soit.
+
+Ce qui doit se passer : ils repèrent les habitudes de la maisonnée — les allées et venues d'une
+servante, un chien dans la cour arrière, une fenêtre à l'étage mal fermée — et choisissent un
+point d'entrée cohérent avec la façon dont le joueur préfère agir.
+
+Quand écrire [NEXT ACT] : quand un point d'entrée a été choisi et que le plan d'approche est
+arrêté.
+
+## La diversion
+[Une occasion s'offre, à condition de ne pas la laisser filer — ni de laisser de témoin.]
+
+Point de départ : le joueur et Sylka cherchent à faire sortir le prêtre de chez lui, ou à
+provoquer une ouverture, pour agir sans confrontation directe.
+
+Ce qui doit se passer : une occasion se présente (le prêtre est appelé au chevet d'un mourant, ou
+provoqué à sortir) ; un mendiant posté près de la maison a cependant tout vu et pourrait parler —
+à gérer par la ruse, la menace ou la discrétion pure.
+
+Quand écrire [NEXT ACT] : quand le prêtre a quitté les lieux et que la voie est libre pour entrer.
+
+## Le seuil marqué
+[Un symbole gravé dans la pierre du seuil, presque effacé — mais Sylka, elle, le reconnaît tout de suite.]
+
+Point de départ : le joueur et Sylka se retrouvent enfin devant l'entrée de la maison du prêtre,
+prêts à y pénétrer.
+
+Ce qui doit se passer : en crochetant ou forçant l'entrée, ils remarquent un symbole gravé dans la
+pierre du seuil — une marque de dette liée au culte de Vaskorreth. Sylka le reconnaît sans un mot
+d'explication, et son malaise devient difficile à ignorer pour le joueur.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont franchi le seuil et se trouvent à
+l'intérieur de la maison du prêtre.
+
+# La maison fouillée
+[Le prêtre absent, vous voilà dans l'obscurité de sa maison, prêts à la fouiller.]
+
+Point de départ : le joueur et Sylka sont entrés dans la maison du prêtre, de nuit. Ils doivent la
+fouiller sans se faire surprendre, à la recherche de tout ce qui pourrait indiquer l'emplacement
+du temple.
+
+## Le rez-de-chaussée
+[Les pièces communes d'abord — les secrets se cachent rarement là où on les cherche en premier.]
+
+Point de départ : le joueur et Sylka commencent leur fouille par les pièces communes du
+rez-de-chaussée.
+
+Ce qui doit se passer : ils trouvent des notes et des ouvrages qui prouvent que le prêtre étudie
+encore activement le culte de Vaskorreth, malgré son exil et son faux nom — bien plus qu'un simple
+vieillard nostalgique.
+
+Quand écrire [NEXT ACT] : quand la fouille du rez-de-chaussée est terminée et qu'ils décident de
+monter à l'étage.
+
+## Le molosse
+[Un souffle rauque dans le noir, au pied de l'escalier — quelque chose de grand dort là, et il ne faut pas le réveiller.]
+
+Point de départ : pour continuer leur fouille, le joueur et Sylka doivent passer devant l'escalier
+où dort un chien de garde massif.
+
+Ce qui doit se passer : ils doivent neutraliser le risque — endormir l'animal, le distraire, ou le
+contourner en silence total. Une erreur ici doit avoir un vrai coût (aboiement, morsure, bruit qui
+réveille la maison).
+
+Quand écrire [NEXT ACT] : quand le chien est neutralisé, distrait ou évité, et que la voie vers
+l'étage est libre.
+
+## Le secrétaire piégé
+[Un bureau fermé à clé, trop bien protégé pour un simple vieillard.]
+
+Point de départ : à l'étage, le joueur et Sylka trouvent le bureau personnel du prêtre, fermé et
+manifestement protégé.
+
+Ce qui doit se passer : le meuble est piégé — une aiguille enduite d'un poison que Sylka reconnaît
+comme une marque « de collecteur », typique du culte de Vaskorreth. Il faut le désamorcer avec
+soin ou en payer le prix physique.
+
+Quand écrire [NEXT ACT] : quand le secrétaire est ouvert, piège désamorcé ou subi.
+
+## Le retour imprévu
+[Un pas dans l'escalier, une voix qu'on ne devrait pas entendre à cette heure.]
+
+Point de départ : alors que la fouille touche à sa fin, la servante du prêtre rentre plus tôt que
+prévu.
+
+Ce qui doit se passer : le joueur et Sylka doivent se cacher en urgence, et surprennent malgré eux
+une conversation ou un indice prouvant qu'un autre groupe s'intéresse aussi à la Larme de
+Vaskorreth — ils ne sont pas seuls sur ce coup.
+
+Quand écrire [NEXT ACT] : quand la servante repart ou s'endort, et que le joueur et Sylka peuvent
+reprendre leur fouille en sécurité.
+
+## La cache
+[Derrière une icône profanée, quelque chose attendait d'être trouvé — et un nom, dans un vieux registre, que Sylka n'espérait plus revoir.]
+
+Point de départ : le joueur et Sylka reprennent leur fouille avec la certitude que l'indice
+principal doit être proche.
+
+Ce qui doit se passer : ils trouvent une carte cachée derrière une icône profanée de Vaskorreth,
+glissée dans un vieux registre de dettes du culte — un registre où figure un nom de famille que
+Sylka reconnaît immédiatement, sans vouloir en dire plus pour l'instant.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka mettent la main sur la carte du temple.
+
+# La carte
+[Vos mains tombent enfin sur une carte détaillant l'emplacement du Temple de Vaskorreth.]
+
+Point de départ : le joueur et Sylka viennent de mettre la main sur une carte indiquant
+l'emplacement du Temple de Vaskorreth, quelque part dans la jungle à l'est de Bragheval, et
+doivent maintenant quitter la maison du prêtre sans encombre.
+
+## Le déchiffrage
+[À la lueur d'une bougie volée, la carte révèle plus qu'un simple chemin.]
+
+Point de départ : avant de partir, le joueur et Sylka prennent un instant pour examiner la carte
+de plus près.
+
+Ce qui doit se passer : la carte comporte des annotations à caractère liturgique et un
+avertissement répété à plusieurs endroits — « le péage se paie en entrant ». Sylka a une réaction
+personnelle en la lisant, une gêne qu'elle ne s'explique pas complètement.
+
+Quand écrire [NEXT ACT] : quand la carte a été examinée et que le joueur et Sylka décident de
+sortir de la maison.
+
+## La sortie bloquée
+[La porte prévue pour partir n'est plus une option — quelqu'un veille dehors.]
+
+Point de départ : le joueur et Sylka se dirigent vers la sortie qu'ils avaient repérée pour
+quitter la maison.
+
+Ce qui doit se passer : cette issue est compromise — un guet de nuit est posté dans la rue. Il faut
+improviser une autre sortie, par les toits ou par la cave, avec les risques que cela implique.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont trouvé une voie de sortie alternative et
+commencent à l'emprunter.
+
+## La poursuite
+[Les tuiles glissent sous les pas, et Bragheval s'étend, indifférente, loin en dessous.]
+
+Point de départ : le joueur et Sylka s'engagent sur les toits de Bragheval pour fuir sans être vus.
+
+Ce qui doit se passer : la fuite tourne court quand une tuile cède sous l'un des deux personnages
+— l'autre n'a qu'un instant pour réagir et lui éviter la chute. Ce sauvetage, réussi ou de justesse,
+pose une dette symbolique entre eux, sans qu'aucun des deux ne la nomme.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka atteignent un endroit sûr, hors de vue des toits
+et des rues surveillées.
+
+## Le prix du silence
+[Le mendiant de tout à l'heure les attend déjà — il a eu le temps de réfléchir à ce que valait son silence.]
+
+Point de départ : de retour dans un lieu plus sûr, le joueur et Sylka retrouvent le mendiant
+témoin de la diversion du premier acte.
+
+Ce qui doit se passer : il attendait leur passage et réclame quelque chose en échange de son
+silence — à acheter, menacer, ou simplement accepter de laisser savoir, selon ce que joue le
+joueur.
+
+Quand écrire [NEXT ACT] : quand la situation avec le mendiant est réglée, d'une manière ou d'une
+autre, et que le joueur et Sylka sont enfin en sécurité pour la nuit.
+
+# Les préparatifs
+[La carte en poche, vous consacrez la journée aux derniers préparatifs avant le départ.]
+
+Point de départ : le lendemain matin à Bragheval, le joueur et Sylka préparent leur expédition vers
+le temple : équipement, provisions, dernières informations à glaner en ville. Pas d'action
+dangereuse dans cet acte — c'est une respiration avant le danger.
+
+## Le marchand superstitieux
+[Un simple mot suffit à faire blêmir le marchand le plus endurci de Bragheval.]
+
+Point de départ : le joueur et Sylka font le tour des marchands pour s'équiper — cordes,
+antidotes, lanternes, vivres.
+
+Ce qui doit se passer : un fournisseur habituellement dur en affaires blêmit et double ses prix dès
+qu'il entend le nom « Vaskorreth » — une réaction disproportionnée qui en dit long sur la
+réputation persistante du culte, même trois siècles après son interdiction.
+
+Quand écrire [NEXT ACT] : quand l'équipement nécessaire à l'expédition a été rassemblé.
+
+## L'émissaire
+[Le commanditaire ne se montre jamais — mais ses questions, elles, sont d'une précision troublante.]
+
+Point de départ : un émissaire du commanditaire anonyme retrouve le joueur et Sylka pour vérifier
+l'avancée de leur mission.
+
+Ce qui doit se passer : l'émissaire pose des questions étrangement précises sur Sylka elle-même —
+pas seulement sur la mission — de quoi éveiller un malaise, chez elle comme chez le joueur si
+celui-ci y prête attention.
+
+Quand écrire [NEXT ACT] : quand l'entretien avec l'émissaire se termine.
+
+## La taverne
+[Un dernier soir tranquille, ou presque — il y a des questions que Sylka refuse encore d'entendre.]
+
+Point de départ : le soir venu, le joueur et Sylka partagent un moment de calme dans une taverne,
+avant le départ du lendemain.
+
+Ce qui doit se passer : une scène de relation plus personnelle entre les deux partenaires ; si le
+joueur pousse le sujet, Sylka esquive une question sur une vieille cicatrice qu'elle porte à la
+paume — une marque en forme de pièce, dont elle refuse de parler.
+
+Quand écrire [NEXT ACT] : quand la soirée à la taverne se termine.
+
+## Le départ à l'aube
+[Bragheval s'éveille à peine que vous êtes déjà sur la route — et quelqu'un, quelque part, vous regarde partir.]
+
+Point de départ : à l'aube, le joueur et Sylka quittent Bragheval pour de bon, en direction de la
+jungle.
+
+Ce qui doit se passer : Sylka hésite un instant de trop avant de franchir les portes de la ville,
+comme si une part d'elle ne voulait pas vraiment partir. Une silhouette, aperçue un instant depuis
+un clocher, semble les observer s'éloigner.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont quitté Bragheval et s'enfoncent sur la route
+vers la jungle.
+
+# La jungle
+[Bragheval déjà loin derrière vous, la jungle dense referme peu à peu son emprise humide et bruyante.]
+
+Point de départ : le joueur et Sylka progressent vers la jungle dense à l'est de Bragheval, en
+direction du temple indiqué sur la carte.
+
+## La lisière
+[Le dernier hameau avant que la civilisation ne cède définitivement la place à la jungle.]
+
+Point de départ : le joueur et Sylka traversent un dernier hameau avant de s'enfoncer réellement
+dans la jungle.
+
+Ce qui doit se passer : aucun guide local n'accepte de les accompagner plus loin, mais un
+vieillard du hameau accepte, contre une pièce d'argent, de leur décrire un repère à suivre — « les
+statues qui comptent ».
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka quittent le hameau et entrent réellement dans la
+jungle.
+
+## Le gué
+[Une rivière boueuse à traverser, et des ombres qui bougent juste sous la surface.]
+
+Point de départ : la progression est coupée par une rivière boueuse qu'il faut franchir.
+
+Ce qui doit se passer : l'eau est infestée de sangsues géantes ; traverser demande de garder
+l'équipement au sec tout en évitant les attaques, avec un vrai risque de perte de matériel ou de
+blessure.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont traversé la rivière.
+
+## Les pèlerins morts
+[Un campement abandonné depuis des lustres, et un journal qui n'aurait jamais dû être lu à voix haute.]
+
+Point de départ : plus loin dans la jungle, le joueur et Sylka découvrent les restes d'un ancien
+campement de pèlerins.
+
+Ce qui doit se passer : les pèlerins sont morts de la peste, visiblement en chemin vers le temple ;
+un journal retrouvé sur place évoque des enfants « donnés au temple en paiement » par leurs
+familles — une phrase qui semble toucher Sylka plus qu'elle ne le montre.
+
+Quand écrire [NEXT ACT] : quand le campement a été fouillé et que le joueur et Sylka reprennent
+leur route.
+
+## La complication
+[La jungle ne laisse jamais rien passer gratuitement.]
+
+Point de départ : le joueur et Sylka poursuivent leur progression vers le temple.
+
+Ce qui doit se passer : une attaque survient — pillards ou prédateur de la jungle — avec un coût
+réel à la clé : une blessure, une réserve d'antidote perdue, ou plusieurs jours de vivres
+sacrifiés.
+
+Quand écrire [NEXT ACT] : quand le danger est passé et que le joueur et Sylka reprennent leur
+marche vers le temple.
+
+## La fièvre nocturne
+[Au bivouac, dans le noir, Sylka parle dans son sommeil — et ce qu'elle dit ne devrait pas être entendu.]
+
+Point de départ : le soir, le joueur et Sylka installent un bivouac pour la nuit avant d'atteindre
+le temple.
+
+Ce qui doit se passer : prise d'une fièvre légère ou d'un sommeil agité, Sylka murmure un prénom
+d'enfant et répète, presque suppliante, « ce n'était pas ma dette » — sans se réveiller, sans
+explication à donner ensuite si le joueur l'interroge le lendemain.
+
+Quand écrire [NEXT ACT] : quand la nuit se termine et que les ruines du temple apparaissent à
+l'horizon.
+
+# Le seuil
+[Les ruines du Temple de Vaskorreth se dressent enfin devant vous, aussi imposantes que redoutées.]
+
+Point de départ : le joueur et Sylka arrivent devant l'entrée effondrée du Temple de Vaskorreth.
+C'est ici que Sylka doit laisser transparaître clairement sa nervosité inhabituelle face à ce lieu
+précis — sans encore expliquer pourquoi, sauf si le joueur insiste directement.
+
+## La clairière morte
+[Un cercle parfait de végétation morte entoure le temple — même les insectes s'y taisent.]
+
+Point de départ : le joueur et Sylka débouchent sur la clairière qui entoure directement le temple.
+
+Ce qui doit se passer : la végétation y est entièrement morte, dans un cercle presque trop
+régulier pour être naturel, et un silence total règne — un contraste frappant avec le vacarme de la
+jungle traversée jusque-là.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka traversent la clairière en direction de
+l'entrée du temple.
+
+## L'allée des débiteurs
+[Des statues agenouillées bordent le chemin — et l'une d'elles a un visage que Sylka refuse de regarder.]
+
+Point de départ : une allée bordée de statues mène à l'entrée effondrée du temple.
+
+Ce qui doit se passer : les statues représentent des débiteurs agenouillés, suppliants, sculptés
+dans la pierre. L'une d'elles, plus petite que les autres, a un visage d'enfant — et Sylka détourne
+ostensiblement le regard en passant devant.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka atteignent l'entrée effondrée du temple, au
+bout de l'allée.
+
+## La porte à péage
+[Une porte scellée, sans serrure visible — juste une inscription qui attend son dû.]
+
+Point de départ : le joueur et Sylka atteignent la porte scellée qui marque l'entrée véritable du
+temple.
+
+Ce qui doit se passer : la porte exige un « paiement » pour s'ouvrir — du sang, un objet de
+valeur, ou un aveu prononcé à voix haute — et refuse de céder à la force brute.
+
+Quand écrire [NEXT ACT] : quand un paiement, quel qu'il soit, a été offert à la porte et qu'elle
+s'ouvre.
+
+## Le vestibule
+[De la poussière de trois siècles recouvre tout — sauf une piste de traces fraîches.]
+
+Point de départ : le joueur et Sylka franchissent enfin la porte et pénètrent dans le vestibule du
+temple.
+
+Ce qui doit se passer : tout y est figé sous une poussière antique, à l'exception d'une piste de
+traces de pas fraîches qui s'enfonce déjà plus loin dans le temple — la preuve que quelqu'un
+d'autre les a précédés récemment.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka décident de suivre les traces et de s'enfoncer
+réellement dans le temple.
+
+# Le premier piège
+[Les couloirs du temple s'enfoncent dans l'obscurité, chargés de pièges anciens et de magie résiduelle.]
+
+Point de départ : le joueur et Sylka progressent à l'intérieur du temple. Les couloirs sont
+truffés de pièges mécaniques et de résidus de magie ancienne, comme ils l'avaient anticipé.
+
+## La salle des offrandes
+[Des richesses laissées sans surveillance depuis trois siècles — un peu trop en évidence pour être honnêtes.]
+
+Point de départ : à l'intérieur, le joueur et Sylka découvrent une salle emplie d'objets de valeur
+apparemment abandonnés.
+
+Ce qui doit se passer : tout objet prélevé déclenche un décompte audible quelque part dans les
+murs du temple — un mécanisme qui joue avec la tension sans nécessairement être mortel s'il est
+bien géré.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka quittent la salle des offrandes, avec ou sans
+butin.
+
+## Le vrai piège
+[Cette fois, ce n'est plus un avertissement — la dalle cède pour de bon.]
+
+Point de départ : le joueur et Sylka progressent plus profondément dans le temple, où les pièges
+mécaniques et les résidus de magie ancienne se font plus sérieux.
+
+Ce qui doit se passer : un piège se déclenche réellement — dalle basculante, gaz empoisonné, ou
+équivalent — avec de vraies conséquences possibles : blessure, matériel perdu, ou séparation
+temporaire des deux personnages.
+
+Quand écrire [NEXT ACT] : quand le piège est surmonté et que le joueur et Sylka peuvent reprendre
+leur progression, ensemble ou en cherchant à se retrouver.
+
+## Les voix
+
+Point de départ : plongés dans l'obscurité après le piège, le joueur et Sylka se rendent compte
+que le temple lui-même semble imiter leurs voix autour d'eux.
+
+Ce qui doit se passer : il devient impossible de distinguer avec certitude un vrai appel d'un
+écho trafiqué ; les deux personnages doivent établir un signe ou un code entre eux pour se
+reconnaître sans se faire piéger.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka se retrouvent avec certitude et sortent de cette
+zone du temple.
+
+## Le concurrent
+[Quelqu'un d'autre est passé par là avant eux — et il n'a pas eu autant de chance.]
+
+Point de départ : plus loin, le joueur et Sylka tombent sur un pillard rival, gravement blessé,
+visiblement victime d'un des pièges du temple.
+
+Ce qui doit se passer : agonisant, l'homme dévisage Sylka avec une reconnaissance glaçante et
+souffle : « Toi… tu es revenue. Il n'oublie jamais un compte. » — puis meurt ou sombre dans
+l'inconscience sans en dire davantage.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka quittent les lieux, quelle que soit la façon
+dont ils traitent le concurrent mourant.
+
+## Le Collecteur
+[Une silhouette momifiée s'éveille dans le noir, un livre de comptes serré contre elle.]
+
+Point de départ : le danger immédiat semble passé, mais le temple n'a pas fini de se manifester.
+
+Ce qui doit se passer : le gardien du temple s'éveille — un prêtre momifié tenant un lourd livre de
+comptes — et se met à les traquer silencieusement à travers les couloirs, sans jamais tout à fait
+les rattraper.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka parviennent à semer ou distancer le Collecteur,
+au moins temporairement, et atteignent la salle centrale du temple.
+
+# La Larme de Vaskorreth
+[Le premier danger surmonté, vous atteignez enfin la salle centrale du temple.]
+
+Point de départ : le joueur et Sylka atteignent enfin la salle centrale du temple, où repose la
+Larme de Vaskorreth — la relique en forme de goutte de verre noir qu'ils sont venus chercher.
+C'est la scène climax de cette expédition.
+
+## La salle des comptes
+[Un bassin asséché, un autel-comptoir, et une goutte de verre noir suspendue au-dessus d'une balance de pierre.]
+
+Point de départ : le joueur et Sylka découvrent la véritable nature de la salle centrale.
+
+Ce qui doit se passer : au centre trône un bassin asséché face à un autel en forme de comptoir, et
+la Larme elle-même flotte, suspendue dans le vide, au-dessus d'une balance de pierre ancienne —
+rien dans cette salle ne ressemble à un simple trésor à emporter.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka ont fini d'observer la salle et cherchent un
+moyen d'atteindre la Larme.
+
+## La fausse Larme
+[Une réplique posée bien en évidence — un peu trop en évidence.]
+
+Point de départ : une seconde relique, presque identique à la Larme, repose bien en vue sur
+l'autel-comptoir.
+
+Ce qui doit se passer : c'est un appât — la prendre déclenche la fermeture immédiate des issues de
+la salle, forçant le joueur et Sylka à trouver une autre approche pour la vraie Larme.
+
+Quand écrire [NEXT ACT] : quand le piège de la fausse Larme est déclenché ou évité, et que les
+issues sont scellées.
+
+## La règle du dieu
+[Une inscription, gravée au pied de la balance, explique enfin ce que ce lieu attend vraiment.]
+
+Point de départ : coincés dans la salle scellée, le joueur et Sylka cherchent un moyen de
+comprendre le mécanisme réel du temple.
+
+Ce qui doit se passer : une inscription révèle la vérité — la Larme ne se vole pas, elle s'échange
+contre une dette reconnue et payée. Une notion qui semble frapper Sylka de plein fouet.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka comprennent la règle et que Sylka se retrouve
+acculée à réagir.
+
+## L'aveu de Sylka
+[Il n'y a plus d'échappatoire — Sylka doit enfin dire ce qu'elle a toujours tu.]
+
+Point de départ : face à la règle du temple et à tout ce qu'ils ont traversé, Sylka craque enfin.
+
+Ce qui doit se passer : elle avoue qu'enfant, elle a été donnée au temple en paiement par sa
+propre famille, avant de s'enfuir — et que sa dette envers Vaskorreth court toujours, trois
+décennies plus tard.
+
+Quand écrire [NEXT ACT] : dès que l'aveu de Sylka est prononcé, en totalité ou en substance.
+
+## Le Collecteur au comptoir
+[Le gardien les a rattrapés — mais ce n'est pas un combat qu'il vient chercher.]
+
+Point de départ : dans la foulée de l'aveu de Sylka, le Collecteur les rejoint enfin dans la salle
+centrale.
+
+Ce qui doit se passer : contrairement à ce que le joueur pourrait attendre, le gardien ne les
+attaque pas — il ouvre son livre de comptes et réclame formellement, séance tenante, le solde de
+la dette de Sylka.
+
+Quand écrire [NEXT ACT] : quand le Collecteur a formulé sa demande et attend une réponse.
+
+## Le choix
+
+Point de départ : le joueur et Sylka doivent maintenant décider comment répondre à la demande du
+Collecteur.
+
+Ce qui doit se passer : payer la dette de Sylka (et à quel prix exact), proposer autre chose de
+précieux en échange, ou tenter de tricher avec un dieu des dettes impayées — chaque option doit
+avoir un vrai poids narratif, sans solution évidemment meilleure que les autres.
+
+Quand écrire [NEXT ACT] : dès qu'un choix est fait et mis en action, quel qu'il soit.
+
+## L'effondrement
+[Le compte soldé ou refusé, le temple entier semble retenir son souffle — avant de céder.]
+
+Point de départ : à la suite du choix du joueur et de Sylka, la Larme est cédée, arrachée ou
+disputée d'une façon ou d'une autre.
+
+Ce qui doit se passer : le temple commence à s'effondrer autour d'eux — fuite climax à travers les
+salles déjà traversées plus tôt (pièges refroidis ou rallumés, allée des statues qui s'effondre),
+jusqu'à la sortie.
+
+Quand écrire [NEXT ACT] : quand le joueur et Sylka émergent du temple en train de s'effondrer,
+sains et saufs.
+
+## Le commanditaire
+
+Point de départ : le joueur et Sylka retrouvent l'air libre, la Larme (ou son absence) entre leurs
+mains, et la mission touche à sa fin.
+
+Ce qui doit se passer : le dénouement révèle un lien entre l'identité du commanditaire anonyme et
+le temple ou le passé de Sylka elle-même — reste à décider, selon ce qui s'est joué, si la Larme
+lui est livrée, détruite, ou emportée loin de tout ça.
+
+Il n'y a pas d'acte suivant — ne mentionne jamais [NEXT ACT] dans cet acte, développe la scène
+jusqu'à sa conclusion naturelle et laisse la suite ouverte à la discussion avec le joueur.

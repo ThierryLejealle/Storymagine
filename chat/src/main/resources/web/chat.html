@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storymagine Chat</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8E%AD</text></svg>">
+<style>
+:root{--gauge-w:22px;--saves-w:150px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#fff;color:#111827;
+     display:flex;flex-direction:column}
+header{padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem 1.5rem;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:1.1rem;font-weight:700}
+header .status{font-size:.8rem;color:#9ca3af}
+main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1.5rem 1.5rem;width:80%;margin:0 auto}
+.turn{margin-bottom:1.1rem;max-width:80%;line-height:1.6}
+.turn.player{margin-left:auto;text-align:right}
+.turn .bubble{display:inline-block;padding:.6rem .9rem;border-radius:10px;text-align:left}
+.turn.player .bubble{background:#2563eb;color:#fff}
+.turn.llm .bubble{background:#f3f4f6;color:#111827}
+.turn .bubble em{font-style:italic;opacity:.85}
+.turn .bubble .tag{font-weight:700;font-size:.78rem;letter-spacing:.02em;opacity:.75}
+.thinking{margin-top:.4rem;font-size:.78rem;color:#9ca3af}
+.thinking summary{cursor:pointer;user-select:none;font-weight:600;color:#6b7280}
+.thinking summary:hover{color:#2563eb}
+.thinking-text{margin-top:.4rem;white-space:pre-wrap;font-style:italic}
+.compacted-note{text-align:center;color:#9ca3af;font-size:.78rem;margin:1rem 0}
+.narrator-note{text-align:center;color:#6b7280;font-style:italic;font-size:.85rem;margin:.75rem auto;max-width:600px}
+.typing .bubble{display:inline-flex;align-items:center;gap:.25rem;padding:.7rem .9rem}
+.typing .dot{width:.4rem;height:.4rem;border-radius:50%;background:#9ca3af;animation:typing-bounce 1.2s infinite ease-in-out}
+.typing .dot:nth-child(2){animation-delay:.15s}
+.typing .dot:nth-child(3){animation-delay:.3s}
+@keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem 1.5rem}
+form{width:80%;margin:0 auto;display:flex;gap:.6rem}
+textarea{flex:1;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
+         font-size:.95rem;line-height:1.4;height:2.8rem}
+textarea:focus{outline:none;border-color:#2563eb}
+button{border:none;background:#2563eb;color:#fff;padding:0 1.3rem;border-radius:8px;font-size:.92rem;
+       font-weight:600;cursor:pointer}
+button:disabled{background:#9ca3af;cursor:default}
+#doBtn{background:#fff;color:#2563eb;border:1px solid #2563eb;padding:0 1rem}
+#doBtn:disabled{background:#fff;color:#9ca3af;border-color:#e5e7eb}
+#undoBtn,#retryBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:0 .8rem;font-size:.85rem}
+#undoBtn:disabled,#retryBtn:disabled{background:#fff;color:#d1d5db;border-color:#f3f4f6}
+.undo-group{display:flex;flex:none}
+.undo-group #undoBtn{border-radius:8px 0 0 8px}
+#undoStepsInput{width:2.8rem;flex:none;border:1px solid #e5e7eb;border-left:none;border-radius:0 8px 8px 0;
+                 padding:0 .3rem;font:inherit;font-size:.85rem;text-align:center;color:#6b7280;background:#fff}
+.hint{width:80%;margin:.5rem auto 0;font-size:.75rem;color:#9ca3af}
+#settingsBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:0 .8rem;font-size:.95rem}
+#stopBtn{background:#fff;color:#dc2626;border:1px solid #fecaca;padding:0 .8rem;font-size:.85rem;display:none}
+#stopBtn.visible{display:inline-block}
+.settings-panel{width:80%;margin:.6rem auto 0;padding:.7rem 1rem;border-top:1px solid #e5e7eb;display:flex;
+                 gap:1.6rem;align-items:flex-end;flex-wrap:wrap;font-size:.8rem;color:#374151}
+.settings-panel.hidden{display:none}
+.presets-row{width:100%;display:flex;gap:.5rem;margin-bottom:.2rem}
+.preset-btn{font-size:.75rem;padding:.3rem .7rem;border-radius:6px;background:#fff;color:#374151;border:1px solid #e5e7eb}
+.preset-btn:hover{border-color:#2563eb;color:#2563eb}
+.settings-panel label{display:flex;flex-direction:column;gap:.25rem;font-size:.72rem;color:#6b7280}
+.settings-panel label.checkbox-label{flex-direction:row;align-items:center;gap:.4rem;font-size:.8rem}
+.settings-panel input[type=number]{width:5rem;border:1px solid #e5e7eb;border-radius:6px;padding:.3rem .4rem;font:inherit}
+.settings-panel input[type=range]{width:9rem}
+.settings-actions{display:flex;gap:.5rem;margin-left:auto}
+.settings-actions button{font-size:.78rem;padding:.35rem .8rem;border-radius:6px}
+#settingsResetBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb}
+#actBar{width:80%;margin:.3rem auto 0;display:flex;align-items:center;justify-content:center;gap:.7rem}
+#actTitle{text-align:center;font-size:.78rem;color:#6b7280}
+#nextActBtn,#prevActBtn{flex:none;padding:.25rem .8rem;border-radius:.9rem;border:1px solid #e5e7eb;
+            background:#fff;color:#2563eb;font-size:.78rem;font-weight:600}
+#nextActBtn:disabled,#prevActBtn:disabled{display:none}
+#analyzeNextActBtn,#analyzeMindStateBtn{flex:none;padding:.2rem .5rem;border-radius:.9rem;border:1px solid #e5e7eb;
+            background:#fff;font-size:.85rem;line-height:1}
+#analyzeNextActBtn:disabled{display:none}
+.analysis-overlay{position:fixed;inset:0;background:rgba(17,24,39,.5);display:flex;
+            align-items:center;justify-content:center;z-index:2000}
+.analysis-overlay.hidden{display:none}
+.analysis-box{background:#fff;border-radius:12px;padding:1.5rem;max-width:32rem;width:90%;
+            max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.analysis-box h2{font-size:1.05rem;margin-bottom:1rem;color:#111827}
+.analysis-section{margin-bottom:1rem}
+.analysis-section h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;
+            margin-bottom:.3rem}
+.analysis-section p{font-size:.92rem;line-height:1.5;color:#111827;white-space:pre-wrap}
+.analysis-loading{color:#6b7280;font-style:italic}
+#analysisCloseBtn{margin-top:.5rem}
+#gauge{position:fixed;top:0;right:0;bottom:0;width:22px;background:#e5e7eb;border-left:2px solid #9ca3af;
+       display:flex;flex-direction:column;justify-content:flex-end;z-index:1000}
+#gaugeFill{width:100%;height:2px;min-height:2px;background:#22c55e;transition:height .3s ease,background-color .3s ease}
+#gaugeLabel{position:fixed;top:.6rem;right:26px;font-size:.75rem;font-weight:600;color:#4b5563;z-index:1000}
+#styleModeSelect{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:.3rem .6rem;border-radius:8px;font-size:.8rem;font:inherit}
+#saveBtn{display:block;width:100%;background:#2563eb;color:#fff;border:none;padding:.5rem .6rem;
+            border-radius:6px;font-size:.78rem;font-weight:600;margin-bottom:.8rem}
+#savesPanel{position:fixed;top:0;right:var(--gauge-w);bottom:0;width:var(--saves-w);overflow-y:auto;
+            background:#fafafa;border-left:1px solid #e5e7eb;padding:2.4rem .6rem .6rem;z-index:900}
+#savesPanel h2{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:.5rem}
+.save-row{display:flex;gap:.3rem;margin-bottom:.4rem}
+.save-btn{display:block;flex:1;min-width:0;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:6px;
+            padding:.4rem .5rem;font-size:.72rem;text-align:left;line-height:1.3}
+.save-btn:hover{border-color:#2563eb;color:#2563eb}
+.save-delete-btn{flex:none;width:1.5rem;background:#fff;color:#dc2626;border:1px solid #fecaca;border-radius:6px;
+            font-size:.85rem;line-height:1;cursor:pointer}
+.save-delete-btn:hover{background:#fee2e2}
+.saves-empty{font-size:.72rem;color:#9ca3af;font-style:italic}
+
+/* ===== Mode Immersif — large et aere, labels de locuteur au lieu de bulles colorees ===== */
+body.style-immersif{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  background:#f5f6f8;
+  color:#1f2430;
+}
+body.style-immersif main{width:100%;max-width:56rem;padding:3rem 2rem 3.5rem}
+body.style-immersif form,body.style-immersif .hint,body.style-immersif #actBar,body.style-immersif .settings-panel{
+  width:100%;max-width:56rem;margin-left:auto;margin-right:auto}
+body.style-immersif .turn{max-width:none;margin-bottom:2.2rem;font-size:1.15rem;line-height:1.75}
+body.style-immersif .turn.player{margin-left:0;text-align:left}
+body.style-immersif .turn .bubble{display:block;padding:0;border-radius:0;background:transparent;text-align:left}
+body.style-immersif .turn .bubble::before{display:block;font-size:.72rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:.5rem}
+body.style-immersif .turn.player .bubble::before{content:"Toi";color:#5b6b8c}
+body.style-immersif .turn.llm .bubble::before{content:"Personnage";color:#8b93a7}
+body.style-immersif .turn .bubble em{opacity:1;color:#55607a}
+
+/* ===== Mode Script — transcript pleine largeur, gouttiere de locuteur, sans bulles ===== */
+body.style-script{background:#fff;color:#111827}
+body.style-script main{width:100%;max-width:70rem;margin-left:auto;margin-right:auto}
+body.style-script form,body.style-script .hint,body.style-script #actBar,body.style-script .settings-panel{
+  width:100%;max-width:70rem;margin-left:auto;margin-right:auto}
+body.style-script .turn{position:relative;max-width:none;margin-bottom:0;padding:.85rem 0 .85rem 8rem;
+  border-bottom:1px solid #f1f2f4;font-size:1rem;line-height:1.65}
+body.style-script .turn.player{margin-left:0;text-align:left}
+body.style-script .turn .bubble{display:block;padding:0;border-radius:0;background:transparent;text-align:left}
+body.style-script .turn::before{content:"PERSONNAGE";position:absolute;left:0;top:.85rem;width:7rem;
+  text-align:right;padding-right:1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;color:#9ca3af;
+  border-right:2px solid #e5e7eb}
+body.style-script .turn.player::before{content:"TOI";color:#2563eb}
+body.style-script .turn .bubble em{opacity:1;color:#4b5563}
+</style>
+</head>
+<body>
+<div id="gaugeLabel"></div>
+<div id="gauge" title="Utilisation du contexte"><div id="gaugeFill"></div></div>
+<div id="savesPanel">
+  <h2>Sauvegardes</h2>
+  <button id="saveBtn" type="button" title="Créer un point de sauvegarde">💾 Sauvegarder</button>
+  <div id="savesList"><p class="saves-empty">Aucune sauvegarde.</p></div>
+</div>
+<header>
+  <h1 id="scenario-name">Storymagine Chat</h1>
+  <span class="status" id="status"></span>
+  <select id="styleModeSelect" title="Style d'affichage">
+    <option value="bulles">💬 Bulles</option>
+    <option value="immersif">🌤 Immersif</option>
+    <option value="script">🎬 Script</option>
+  </select>
+</header>
+<div id="actBar">
+  <button id="prevActBtn" type="button" title="Revenir à l'acte précédent (si l'histoire est allée trop vite)">&#8592; Précédent</button>
+  <span id="actTitle"></span>
+  <button id="nextActBtn" type="button" title="Passer à l'acte suivant (titre masqué : pas de spoil)">Suivant &#8594;</button>
+  <button id="analyzeNextActBtn" type="button" title="Analyser où en est la condition de passage à l'acte suivant (ne modifie pas l'historique)">🔍</button>
+  <button id="analyzeMindStateBtn" type="button" title="Voir l'état d'esprit du personnage : situation, pensées, plans (ne modifie pas l'historique)">🧠</button>
+</div>
+<main id="turns"></main>
+<footer>
+  <form id="form">
+    <textarea id="input" placeholder="*fait quelque chose* / dit quelque chose / OOC: ... / DO: ..." autofocus></textarea>
+    <div class="undo-group">
+      <button id="undoBtn" type="button" title="Annuler les N derniers échanges">↩ Annuler</button>
+      <input type="number" id="undoStepsInput" min="1" max="50" value="1" title="Nombre d'échanges à annuler">
+    </div>
+    <button id="retryBtn" type="button" title="Régénérer la dernière réponse">↻ Régénérer</button>
+    <button id="doBtn" type="button" title="Envoyer en confiant la narration au personnage pour ce tour">DO</button>
+    <button id="send" type="submit">Répondre</button>
+    <button id="stopBtn" type="button" title="Arrêter la génération en cours">⏹ Stop</button>
+    <button id="settingsBtn" type="button" title="Réglages de génération">⚙</button>
+  </form>
+  <p class="hint">*fait* — dit (sans astérisques) — OOC: consigne hors-jeu — DO: tu prends la main sur la scène</p>
+  <div id="settingsPanel" class="settings-panel hidden">
+    <div class="presets-row">
+      <button type="button" class="preset-btn" data-preset="serieux">Sérieux</button>
+      <button type="button" class="preset-btn" data-preset="fun">Fun</button>
+      <button type="button" class="preset-btn" data-preset="barre">Complètement barré</button>
+    </div>
+    <label>Température <span id="tempVal">1.0</span>
+      <input type="range" id="tempInput" min="0.1" max="1.5" step="0.05" value="1.0">
+    </label>
+    <label>Top-K
+      <input type="number" id="topKInput" min="1" max="200" placeholder="100">
+    </label>
+    <label>Max tokens
+      <input type="number" id="maxTokensInput" min="50" max="8000" step="50" placeholder="1200">
+    </label>
+    <label>Min-P
+      <input type="number" id="minPInput" min="0" max="1" step="0.01" placeholder="0.05">
+    </label>
+    <label>Repeat penalty
+      <input type="number" id="repeatPenaltyInput" min="1" max="1.3" step="0.01" placeholder="1.08">
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="showThinkingInput"> 🧠 Afficher la réflexion
+    </label>
+    <div class="settings-actions">
+      <button type="button" id="settingsApplyBtn">Appliquer</button>
+      <button type="button" id="settingsResetBtn">Défauts</button>
+    </div>
+  </div>
+</footer>
+<div id="analysisOverlay" class="analysis-overlay hidden">
+  <div class="analysis-box">
+    <h2 id="analysisTitle">Où en est la condition de l'acte suivant ?</h2>
+    <div id="analysisContent"><p class="analysis-loading">Analyse en cours…</p></div>
+    <button type="button" id="analysisCloseBtn">Fermer</button>
+  </div>
+</div>
+<script>
+const turnsEl = document.getElementById('turns');
+const formEl  = document.getElementById('form');
+const inputEl = document.getElementById('input');
+const sendEl  = document.getElementById('send');
+const doBtnEl = document.getElementById('doBtn');
+const undoBtnEl  = document.getElementById('undoBtn');
+const undoStepsInputEl = document.getElementById('undoStepsInput');
+const retryBtnEl = document.getElementById('retryBtn');
+const stopBtnEl = document.getElementById('stopBtn');
+const statusEl = document.getElementById('status');
+const nameEl  = document.getElementById('scenario-name');
+const gaugeEl = document.getElementById('gauge');
+const gaugeFillEl  = document.getElementById('gaugeFill');
+const gaugeLabelEl = document.getElementById('gaugeLabel');
+const actTitleEl = document.getElementById('actTitle');
+const nextActBtnEl = document.getElementById('nextActBtn');
+const prevActBtnEl = document.getElementById('prevActBtn');
+const analyzeNextActBtnEl = document.getElementById('analyzeNextActBtn');
+const analyzeMindStateBtnEl = document.getElementById('analyzeMindStateBtn');
+const analysisOverlayEl = document.getElementById('analysisOverlay');
+const analysisTitleEl = document.getElementById('analysisTitle');
+const analysisContentEl = document.getElementById('analysisContent');
+const analysisCloseBtnEl = document.getElementById('analysisCloseBtn');
+const saveBtnEl = document.getElementById('saveBtn');
+const savesListEl = document.getElementById('savesList');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const tempInput = document.getElementById('tempInput');
+const tempVal = document.getElementById('tempVal');
+const topKInput = document.getElementById('topKInput');
+const maxTokensInput = document.getElementById('maxTokensInput');
+const minPInput = document.getElementById('minPInput');
+const repeatPenaltyInput = document.getElementById('repeatPenaltyInput');
+const showThinkingInput = document.getElementById('showThinkingInput');
+const settingsApplyBtn = document.getElementById('settingsApplyBtn');
+const settingsResetBtn = document.getElementById('settingsResetBtn');
+const styleModeSelect = document.getElementById('styleModeSelect');
+
+const STYLE_MODE_KEY = 'storymagine-style-mode';
+const STYLE_MODE_CLASSES = ['style-immersif', 'style-script'];
+
+function applyStyleMode(mode) {
+  document.body.classList.remove(...STYLE_MODE_CLASSES);
+  if (mode !== 'bulles') document.body.classList.add('style-' + mode);
+  styleModeSelect.value = mode;
+  localStorage.setItem(STYLE_MODE_KEY, mode);
+}
+
+styleModeSelect.addEventListener('change', () => applyStyleMode(styleModeSelect.value));
+
+applyStyleMode(localStorage.getItem(STYLE_MODE_KEY) || 'bulles');
+
+// Valeurs par defaut de RoleplayNarrator, affichees ici seulement pour le curseur (qui a toujours
+// besoin d'une valeur) et les placeholders — la source de verite reste le serveur : top-K/max
+// tokens/min-P/repeat-penalty vides = null cote GenerationSettings = "utilise le defaut serveur".
+const DEFAULT_TEMPERATURE = 1.0;
+
+// Trois combinaisons proposees par Fable (2026-07-14) : top_p n'est jamais un reglage manuel
+// direct (redondant avec min_p, cf. GenerationSettings) — seul un preset le fait varier.
+const PRESETS = {
+  serieux: { temperature: 0.7, topK: 64,  topP: 0.95, minP: 0.10, repeatPenalty: 1.05 },
+  fun:     { temperature: 1.0, topK: 100, topP: 0.98, minP: 0.05, repeatPenalty: 1.08 },
+  barre:   { temperature: 1.3, topK: 100, topP: 0.99, minP: 0.04, repeatPenalty: 1.10 },
+};
+
+function fillSettingsPanel(settings) {
+  const s = settings || {};
+  tempInput.value = s.temperature != null ? s.temperature : DEFAULT_TEMPERATURE;
+  tempVal.textContent = tempInput.value;
+  topKInput.value = s.topK != null ? s.topK : '';
+  maxTokensInput.value = s.maxTokens != null ? s.maxTokens : '';
+  minPInput.value = s.minP != null ? s.minP : '';
+  repeatPenaltyInput.value = s.repeatPenalty != null ? s.repeatPenalty : '';
+  showThinkingInput.checked = s.showThinking === true;
+}
+
+tempInput.addEventListener('input', () => { tempVal.textContent = tempInput.value; });
+
+settingsBtn.addEventListener('click', () => {
+  settingsPanel.classList.toggle('hidden');
+});
+
+async function postSettings(body) {
+  const res = await fetch('/settings', { method: 'POST', body,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  fillSettingsPanel(await res.json());
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  const params = new URLSearchParams();
+  params.set('temperature', p.temperature);
+  params.set('topK', p.topK);
+  params.set('topP', p.topP);
+  params.set('minP', p.minP);
+  params.set('repeatPenalty', p.repeatPenalty);
+  if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
+  params.set('showThinking', showThinkingInput.checked);
+  postSettings(params.toString());
+  statusEl.textContent = 'Préréglage appliqué.';
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+function applySettings() {
+  const params = new URLSearchParams();
+  params.set('temperature', tempInput.value);
+  if (topKInput.value) params.set('topK', topKInput.value);
+  if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
+  if (minPInput.value) params.set('minP', minPInput.value);
+  if (repeatPenaltyInput.value) params.set('repeatPenalty', repeatPenaltyInput.value);
+  params.set('showThinking', showThinkingInput.checked);
+  postSettings(params.toString());
+  statusEl.textContent = 'Réglages appliqués.';
+}
+
+function resetSettings() {
+  postSettings('');
+  statusEl.textContent = 'Réglages remis aux défauts.';
+}
+
+settingsApplyBtn.addEventListener('click', applySettings);
+settingsResetBtn.addEventListener('click', resetSettings);
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatText(raw) {
+  let s = escapeHtml(raw);
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  s = s.replace(/^(OOC:|DO:)/, '<span class="tag">$1</span>');
+  return s.replace(/\n/g, '<br>');
+}
+
+// Chaque tour reellement affiche (hors notes de compactage/transition) est empile ici dans l'ordre
+// d'apparition, pour que undo/retry puissent retirer precisement les N derniers sans tout
+// repeindre (voir applyExchange). Le tour optimiste du joueur y est aussi empile puis depile via
+// removeTrackedEl des qu'il est remplace par la version autoritaire du serveur.
+const renderedTurnEls = [];
+
+function removeTrackedEl(el) {
+  const i = renderedTurnEls.indexOf(el);
+  if (i !== -1) renderedTurnEls.splice(i, 1);
+  el.remove();
+}
+
+function removeLastTrackedEls(count) {
+  for (let i = 0; i < count; i++) {
+    const el = renderedTurnEls.pop();
+    if (el) el.remove();
+  }
+}
+
+function appendTurn(speaker, text, thinking) {
+  if (speaker === 'NARRATOR') {
+    const div = document.createElement('div');
+    div.className = 'narrator-note';
+    div.textContent = text;
+    turnsEl.appendChild(div);
+    renderedTurnEls.push(div);
+    turnsEl.scrollTop = turnsEl.scrollHeight;
+    return div;
+  }
+  const div = document.createElement('div');
+  div.className = 'turn ' + (speaker === 'PLAYER' ? 'player' : 'llm');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = formatText(text);
+  div.appendChild(bubble);
+  if (thinking) {
+    const details = document.createElement('details');
+    details.className = 'thinking';
+    const summary = document.createElement('summary');
+    summary.textContent = '🧠 Réflexion';
+    const thinkingText = document.createElement('div');
+    thinkingText.className = 'thinking-text';
+    thinkingText.textContent = thinking;
+    details.appendChild(summary);
+    details.appendChild(thinkingText);
+    div.appendChild(details);
+  }
+  turnsEl.appendChild(div);
+  renderedTurnEls.push(div);
+  turnsEl.scrollTop = turnsEl.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'turn llm typing';
+  div.innerHTML = '<div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  turnsEl.appendChild(div);
+  turnsEl.scrollTop = turnsEl.scrollHeight;
+  return div;
+}
+
+function formatTok(n) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+}
+
+// Jauge approximative : taille reelle du DERNIER prompt envoye (mesuree par Ollama) sur la
+// capacite totale du modele — pas le meme repere que le seuil de compaction (qui ne compte que
+// les tours non compactes, en mots estimes), juste "a quel point on approche du mur".
+function updateGauge(promptTokens, contextWindow) {
+  if (!contextWindow) { gaugeFillEl.style.height = '0'; gaugeLabelEl.textContent = ''; return; }
+  const pct = Math.min(100, Math.round((promptTokens / contextWindow) * 100));
+  gaugeFillEl.style.height = pct + '%';
+  gaugeFillEl.style.background = pct >= 90 ? '#dc2626' : pct >= 70 ? '#f59e0b' : '#22c55e';
+  gaugeLabelEl.textContent = pct + '%';
+  gaugeEl.title = 'Contexte (approx.) : ~' + formatTok(promptTokens) + ' / ' + formatTok(contextWindow) + ' tokens';
+}
+
+async function nextAct() {
+  const res = await fetch('/next-act', { method: 'POST' });
+  applyExchange(await res.json());
+}
+
+async function previousAct() {
+  const res = await fetch('/previous-act', { method: 'POST' });
+  applyExchange(await res.json());
+}
+
+function analysisSection(title, text) {
+  return '<div class="analysis-section"><h3>' + title + '</h3><p>' + escapeHtml(text) + '</p></div>';
+}
+
+// Pop-up generique partagee par les deux analyses en lecture seule (voir NextActReadinessAnalyst.md
+// et NpcMindStateAnalyst.md) : rien n'est ajoute a l'historique, donc pas d'appel a applyExchange
+// ici, juste le contenu de la pop-up. title fixe la modale, endpoint/sections varient par analyse.
+async function runAnalysis(title, endpoint, sections) {
+  analysisTitleEl.textContent = title;
+  analysisContentEl.innerHTML = '<p class="analysis-loading">Analyse en cours…</p>';
+  analysisOverlayEl.classList.remove('hidden');
+  try {
+    const res = await fetch(endpoint, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      analysisContentEl.innerHTML = '<p class="analysis-loading">Erreur : ' + escapeHtml(data.error) + '</p>';
+      return;
+    }
+    analysisContentEl.innerHTML = sections.map(([label, field, fallback]) =>
+      analysisSection(label, data[field] || fallback)).join('');
+  } catch (err) {
+    analysisContentEl.innerHTML = '<p class="analysis-loading">Erreur réseau : ' + escapeHtml(String(err)) + '</p>';
+  }
+}
+
+function analyzeNextAct() {
+  return runAnalysis("Où en est la condition de l'acte suivant ?", '/analyze-next-act', [
+    ['Condition comprise', 'conditionUnderstood', '—'],
+    ['État actuel', 'currentState', '—'],
+    ['Ce qui manque', 'missing', 'Rien — prêt à avancer.'],
+  ]);
+}
+
+function analyzeMindState() {
+  return runAnalysis("État d'esprit du personnage", '/analyze-mind-state', [
+    ['Situation', 'situation', '—'],
+    ['Pensées', 'thoughts', '—'],
+    ['Plans', 'plans', 'Rien de particulier pour l\'instant.'],
+  ]);
+}
+
+// Chrome commun (nom, boutons d'actes, titre, jauge) — partage entre le rendu complet initial et
+// les mises a jour incrementales d'un echange.
+function updateChrome(history) {
+  nameEl.textContent = history.scenarioName;
+  actTitleEl.textContent = history.currentAct
+    ? 'Acte ' + history.currentAct + actSuffix(history.actTitle)
+    : '';
+  // Titre du prochain acte volontairement jamais affiche sur le bouton (anti-spoil) ; masque
+  // aussi bien en fin de scenario (plus de suite) que pour un scenario sans actes.
+  nextActBtnEl.disabled = !history.totalActs || history.currentAct >= history.totalActs;
+  prevActBtnEl.disabled = !history.totalActs || history.currentAct <= 1;
+  analyzeNextActBtnEl.disabled = nextActBtnEl.disabled;
+  updateGauge(history.promptTokens, history.contextWindow);
+}
+
+// Rendu complet depuis zero : uniquement au chargement/rechargement de la page, a partir de
+// history.turns (la fenetre courante de tours, pas l'historique complet de la session).
+function render(history) {
+  turnsEl.innerHTML = '';
+  renderedTurnEls.length = 0;
+  for (const turn of history.turns) {
+    appendTurn(turn.speaker, turn.text, turn.thinking);
+  }
+  fillSettingsPanel(history.generationSettings);
+  updateChrome(history);
+}
+
+// Mise a jour incrementale apres un echange : retire d'abord history.removedTurnCount tours deja
+// affiches (undo, ou l'ancienne reponse remplacee par retry), puis n'ajoute QUE ce que cet echange
+// a produit (history.newTurns) — sans jamais tout effacer, pour qu'un compactage cote serveur
+// (qui raccourcit history.turns) ne fasse pas disparaitre a l'ecran des tours deja vus.
+function applyExchange(history) {
+  removeLastTrackedEls(history.removedTurnCount);
+  if (history.compacted) {
+    const note = document.createElement('div');
+    note.className = 'compacted-note';
+    note.textContent = '— historique compacté dans le résumé —';
+    turnsEl.appendChild(note);
+  }
+  for (const turn of history.newTurns) {
+    appendTurn(turn.speaker, turn.text, turn.thinking);
+  }
+  if (history.actAdvanced) {
+    const note = document.createElement('div');
+    note.className = 'compacted-note';
+    note.textContent = '— Acte ' + history.currentAct + actSuffix(history.actTitle) + ' commence —';
+    turnsEl.appendChild(note);
+  }
+  updateChrome(history);
+}
+
+function actSuffix(actTitle) {
+  return actTitle ? ' : ' + actTitle : '';
+}
+
+async function loadHistory() {
+  const res = await fetch('/history');
+  render(await res.json());
+}
+
+// L'id est l'horodatage brut du serveur (yyyy-MM-dd-HHmmss-SSS) : reformate juste pour l'affichage.
+function formatSaveLabel(id) {
+  const m = id.match(/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})/);
+  if (!m) return id;
+  const [, , month, day, hour, minute, second] = m;
+  return day + '/' + month + ' ' + hour + ':' + minute + ':' + second;
+}
+
+async function loadSaves() {
+  const res = await fetch('/saves');
+  const saves = await res.json();
+  if (!saves.length) {
+    savesListEl.innerHTML = '<p class="saves-empty">Aucune sauvegarde.</p>';
+    return;
+  }
+  savesListEl.innerHTML = '';
+  for (const save of saves) {
+    const row = document.createElement('div');
+    row.className = 'save-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'save-btn';
+    btn.textContent = formatSaveLabel(save.id);
+    btn.title = 'Charger cette sauvegarde';
+    btn.addEventListener('click', () => loadSave(save.id));
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'save-delete-btn';
+    delBtn.textContent = '×';
+    delBtn.title = 'Supprimer cette sauvegarde';
+    delBtn.addEventListener('click', () => deleteSave(save.id));
+    row.appendChild(btn);
+    row.appendChild(delBtn);
+    savesListEl.appendChild(row);
+  }
+}
+
+async function saveNow() {
+  statusEl.textContent = 'Sauvegarde en cours…';
+  await fetch('/save', { method: 'POST' });
+  await loadSaves();
+  statusEl.textContent = 'Sauvegardé.';
+}
+
+async function deleteSave(id) {
+  if (!confirm('Supprimer cette sauvegarde ? Cette action est définitive.')) return;
+  await fetch('/delete-save?id=' + encodeURIComponent(id), { method: 'POST' });
+  await loadSaves();
+}
+
+// Remplacement complet de l'etat (pas un echange incremental) : on repeint tout via render(), comme
+// au chargement initial de la page. Aucune sauvegarde de securite cote serveur (voir
+// ChatServiceImpl.loadSavePoint) : la confirmation ci-dessous est le seul garde-fou contre une
+// perte de progression accidentelle.
+async function loadSave(id) {
+  if (!confirm('Charger cette sauvegarde ? La progression actuelle sera définitivement perdue si tu ne l\'as pas sauvegardée.')) {
+    return;
+  }
+  setControlsDisabled(true);
+  statusEl.textContent = 'Chargement de la sauvegarde…';
+  try {
+    const res = await fetch('/load-save?id=' + encodeURIComponent(id), { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+      return;
+    }
+    render(data);
+    await loadSaves();
+    statusEl.textContent = 'Sauvegarde chargée.';
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+  }
+}
+
+function setControlsDisabled(disabled) {
+  sendEl.disabled = disabled;
+  doBtnEl.disabled = disabled;
+  undoBtnEl.disabled = disabled;
+  retryBtnEl.disabled = disabled;
+  stopBtnEl.classList.toggle('visible', disabled);
+}
+
+function stopGeneration() {
+  statusEl.textContent = 'Arrêt demandé…';
+  fetch('/stop', { method: 'POST' }).catch(() => {});
+}
+
+async function sendMessage(text) {
+  setControlsDisabled(true);
+  statusEl.textContent = 'Le personnage réfléchit…';
+  const optimisticTurn = appendTurn('PLAYER', text);
+  const typingTurn = showTyping();
+  try {
+    const res = await fetch('/message', { method: 'POST', body: text });
+    const data = await res.json();
+    typingTurn.remove();
+    if (data.stopped) {
+      removeTrackedEl(optimisticTurn);
+      inputEl.value = text;
+      statusEl.textContent = 'Génération arrêtée — corrige et renvoie.';
+    } else if (data.error) {
+      // Meme motif que data.stopped : quelle que soit la raison de l'echec (timeout, erreur
+      // Ollama...), le brouillon du joueur ne doit jamais disparaitre, seulement le cas explicitement
+      // annule (data.stopped) restaurait le texte avant ce fix.
+      removeTrackedEl(optimisticTurn);
+      inputEl.value = text;
+      statusEl.textContent = 'Erreur : ' + data.error + ' — corrige et renvoie.';
+    } else {
+      removeTrackedEl(optimisticTurn);
+      applyExchange(data);
+      statusEl.textContent = '';
+    }
+  } catch (err) {
+    typingTurn.remove();
+    removeTrackedEl(optimisticTurn);
+    inputEl.value = text;
+    statusEl.textContent = 'Erreur réseau : ' + err + ' — corrige et renvoie.';
+  } finally {
+    setControlsDisabled(false);
+    inputEl.focus();
+  }
+}
+
+async function retryLast() {
+  setControlsDisabled(true);
+  statusEl.textContent = 'Nouvelle réponse…';
+  const typingTurn = showTyping();
+  try {
+    const res = await fetch('/retry', { method: 'POST' });
+    const data = await res.json();
+    typingTurn.remove();
+    if (data.stopped) {
+      removeLastTrackedEls(data.removedTurnCount);
+      statusEl.textContent = 'Régénération arrêtée.';
+    } else if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+    } else {
+      applyExchange(data);
+      statusEl.textContent = '';
+    }
+  } catch (err) {
+    typingTurn.remove();
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+    inputEl.focus();
+  }
+}
+
+async function undoLast() {
+  setControlsDisabled(true);
+  try {
+    const steps = Math.max(1, parseInt(undoStepsInputEl.value, 10) || 1);
+    const res = await fetch('/undo?steps=' + steps, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+    } else {
+      applyExchange(data);
+      statusEl.textContent = data.removedTurnCount ? '' : 'Rien à annuler.';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+    inputEl.focus();
+  }
+}
+
+formEl.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = '';
+  sendMessage(text);
+});
+
+doBtnEl.addEventListener('click', () => {
+  const typed = inputEl.value.trim();
+  const text = /^DO:/i.test(typed) ? typed : ('DO: ' + typed).trim();
+  inputEl.value = '';
+  sendMessage(text);
+});
+
+retryBtnEl.addEventListener('click', retryLast);
+undoBtnEl.addEventListener('click', undoLast);
+nextActBtnEl.addEventListener('click', nextAct);
+prevActBtnEl.addEventListener('click', previousAct);
+analyzeNextActBtnEl.addEventListener('click', analyzeNextAct);
+analyzeMindStateBtnEl.addEventListener('click', analyzeMindState);
+analysisCloseBtnEl.addEventListener('click', () => analysisOverlayEl.classList.add('hidden'));
+saveBtnEl.addEventListener('click', saveNow);
+stopBtnEl.addEventListener('click', stopGeneration);
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    formEl.requestSubmit();
+  }
+});
+
+loadHistory();
+loadSaves();
+</script>
+</body>
+</html>

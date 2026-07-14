@@ -1,0 +1,375 @@
+#SCENARIO
+Monde : Une université ordinaire, au fil d'une année scolaire — du début du printemps aux
+premiers jours de l'été suivant. Pas de fantastique, pas de danger : le terrain de jeu est
+purement humain, fait de gestes timides, de silences et de non-dits. Tous les personnages sont
+des étudiants d'université, autour de la vingtaine — rien dans cette histoire ne concerne des
+mineurs.
+
+Prémisse : Dans un coin tranquille de la bibliothèque du bâtiment des lettres, un vieux carnet à
+couverture bleue traîne depuis des années, oublié de tous. Depuis l'automne dernier, quelqu'un —
+une étudiante qui préfère dessiner que parler — y laisse des croquis, sans jamais signer. Toi, tu
+es un étudiant de la même université, tombé dessus par hasard, qui décide un jour d'y répondre par
+écrit à côté d'un dessin. Ni l'un ni l'autre ne sait qui se trouve de l'autre côté du carnet.
+
+Ton : Doux, pudique, tension émotionnelle plutôt que dramatique — les enjeux sont des sentiments,
+pas des dangers. Les malentendus naissent de la timidité et de la peur d'être rejeté, jamais de
+méchanceté gratuite. Les silences et les gestes comptent autant que les mots.
+
+Fil conducteur discret : le carnet bleu lui-même — un espace où chacun ose être plus vrai que
+dans la vraie vie — et la question, une fois la rencontre faite en personne sans que ni l'un ni
+l'autre ne fasse le lien, de si et quand la vérité doit éclater sur qui se cache de l'autre côté
+des pages. Les cerisiers du campus, du bourgeon à la pleine fleur puis à la chute des pétales,
+marquent discrètement le temps qui passe.
+
+# Le carnet bleu
+[Tu es étudiant dans cette université comme tant d'autres — jusqu'au jour où, cherchant un livre
+dans un coin peu fréquenté de la bibliothèque du bâtiment des lettres, tu tombes sur un vieux
+carnet à couverture bleue, oublié entre deux étagères. À l'intérieur : des croquis, doux et
+précis, jamais signés.]
+
+Point de départ : le joueur découvre le carnet bleu pour la première fois, seul, dans la
+bibliothèque presque vide en fin d'après-midi.
+
+## La découverte
+[Un croquis à l'encre : un chat errant du campus, endormi sur un rebord de fenêtre, dessiné avec
+une tendresse qu'aucune légende n'explique.]
+
+Point de départ : le joueur feuillette le carnet bleu pour la première fois et tombe sur ce
+croquis précis.
+
+Ce qui doit se passer : le joueur découvre plusieurs pages de croquis anonymes datés sur
+plusieurs mois — des scènes du campus, jamais de visages nets, jamais de signature. Rien
+n'indique qui dessine.
+
+Quand écrire [NEXT ACT] : quand le joueur a fini d'examiner le carnet et prend une décision à son
+sujet (le remettre à sa place, l'emporter, ou déjà vouloir y écrire quelque chose).
+
+## Le premier mot
+[La page blanche à côté du dernier croquis attend, presque comme une invitation.]
+
+Point de départ : le joueur est revenu au même endroit, carnet en main, et hésite à y laisser une
+trace.
+
+Ce qui doit se passer : le joueur écrit un mot simple et honnête à côté d'un des croquis — pas
+une déclaration, juste une réaction sincère à ce qu'il voit. Le carnet est refermé, remis à sa
+place.
+
+Quand écrire [NEXT ACT] : dès que le joueur a écrit son mot et refermé le carnet.
+
+## L'inconnue répond
+[Plusieurs jours passent avant que le joueur ne retourne voir. Le carnet n'a pas bougé — sauf une
+page.]
+
+Point de départ : quelques jours plus tard, le joueur revient à la bibliothèque, presque sans y
+croire, et rouvre le carnet.
+
+Ce qui doit se passer : une réponse existe, courte, prudente, mais réelle — quelqu'un a lu le mot
+du joueur et a choisi d'y répondre plutôt que de l'ignorer. Le joueur ressent la surprise et
+l'envie d'écrire à nouveau.
+
+Quand écrire [NEXT ACT] : quand le joueur répond à son tour, confirmant que l'échange devient une
+habitude.
+
+## L'habitude
+[Semaine après semaine, le carnet change de page à chaque visite — jamais vite, jamais prévisible,
+mais jamais silencieux non plus.]
+
+Point de départ : plusieurs semaines ont passé depuis la première réponse ; le joueur retourne
+régulièrement au carnet.
+
+Ce qui doit se passer : le ton des échanges devient plus personnel, plus confiant, sans jamais
+révéler de noms. Un détail échappe à l'inconnue — une mention indirecte d'un cours, d'une odeur
+de peinture sur ses doigts — sans qu'elle s'en rende compte : un indice, pas une révélation.
+
+Quand écrire [NEXT ACT] : quand le joueur remarque cet indice et se surprend à vouloir croiser
+cette personne dans la vraie vie, sans savoir qu'il l'a peut-être déjà croisée.
+
+# La rencontre
+[Le hasard, ou quelque chose qui y ressemble, met enfin un visage sur une inconnue de la vie
+réelle du joueur — sans le moindre lien avec le carnet bleu, en apparence.]
+
+Point de départ : dans un lieu de passage du campus (café étudiant, couloir, sortie de cours), le
+joueur croise une étudiante réservée qui ne lui est pas familière.
+
+## Le croisement
+[Un livre qui tombe, une excuse murmurée, un regard qui se détourne trop vite pour être
+indifférent.]
+
+Point de départ : le joueur et Hina se croisent physiquement pour la première fois, dans un
+moment banal du quotidien étudiant.
+
+Ce qui doit se passer : un premier échange maladroit mais réel a lieu. Hina est réservée, répond
+brièvement, mais quelque chose dans son attention retient le joueur — sans qu'aucun des deux ne
+fasse le lien avec le carnet.
+
+Quand écrire [NEXT ACT] : quand cet échange se termine sur une note qui donne envie de se
+recroiser (un détail partagé, un sourire, une question restée sans réponse).
+
+## Le prétexte commun
+[Une liste d'affectations de projet affichée sur un tableau, et deux noms côte à côte.]
+
+Point de départ : une circonstance du quotidien universitaire (projet de cours à deux, besoin
+d'un modèle pour un exercice de dessin, service rendu) rapproche régulièrement le joueur et Hina.
+
+Ce qui doit se passer : les rencontres se répètent, plus naturellement. Hina reste réservée mais
+se détend un peu plus à chaque fois, en particulier quand la conversation porte sur ce que fait
+ou aime le joueur plutôt que sur elle-même.
+
+Quand écrire [NEXT ACT] : quand une scène montre clairement qu'un rendez-vous régulier s'est
+installé entre eux, même informel.
+
+## Le rire partagé
+[Un fou rire imprévu, pour une raison presque idiote, qui change la texture de leurs échanges.]
+
+Point de départ : au cours d'un de leurs moments ensemble, une situation légère fait rire les
+deux, sincèrement.
+
+Ce qui doit se passer : la glace se brise vraiment pour la première fois — Hina se montre plus
+spontanée, plus proche, quitte à s'en étonner elle-même ensuite.
+
+Quand écrire [NEXT ACT] : quand ce moment de complicité se termine et que les deux se séparent
+pour la journée, chacun visiblement marqué par ce rapprochement.
+
+## L'ironie silencieuse
+[Ce soir-là, seul, le joueur repense à sa journée — et, sans trop savoir pourquoi, ressort le
+carnet bleu de son sac.]
+
+Point de départ : le soir suivant leur rapprochement, le joueur se retrouve à nouveau face au
+carnet bleu, dans un moment de calme.
+
+Ce qui doit se passer : le joueur écrit dans le carnet, sans faire le lien avec Hina — le
+parallèle entre les deux relations doit être ressenti par le joueur (le vrai) sans jamais être
+nommé par le texte.
+
+Quand écrire [NEXT ACT] : quand le joueur referme le carnet, prêt à continuer les deux relations
+en parallèle sans soupçonner qu'elles n'en sont qu'une.
+
+# Rapprochement
+[Le printemps avance ; les cerisiers du campus commencent à fleurir, et avec eux, quelque chose
+entre le joueur et Hina qui ressemble de plus en plus à une évidence.]
+
+Point de départ : plusieurs semaines ont passé ; la relation entre le joueur et Hina s'est
+approfondie naturellement, en parallèle du carnet qui continue de leur côté à tous les deux.
+
+## Le festival de printemps
+[Les allées du campus, décorées pour l'occasion, sont bordées de cerisiers en fleurs.]
+
+Point de départ : le campus organise un petit festival de printemps ; le joueur et Hina s'y
+retrouvent, d'abord par hasard puis volontairement.
+
+Ce qui doit se passer : un moment de proximité physique et émotionnelle a lieu (marcher côte à
+côte, s'asseoir ensemble sous les arbres), sans grande déclaration — juste une évidence
+tranquille qui s'installe.
+
+Quand écrire [NEXT ACT] : quand la soirée se termine sur ce moment de proximité, sans qu'aucun
+des deux n'ose franchir une étape de plus.
+
+## Le carnet presque montré
+[Hina serre son sac contre elle, comme toujours — sauf que, cette fois, sa main hésite sur la
+fermeture.]
+
+Point de départ : dans un moment de calme entre eux, la conversation dérive vers le dessin, une
+passion du joueur (le carnet bleu) ou une simple question sur les goûts d'Hina.
+
+Ce qui doit se passer : Hina est à deux doigts de montrer son carnet de croquis personnel au
+joueur — un geste de confiance immense pour elle — avant de se raviser au dernier moment, gênée
+par sa propre audace.
+
+Quand écrire [NEXT ACT] : dès qu'Hina referme son sac sans avoir montré le carnet, visiblement
+troublée par sa propre hésitation.
+
+## L'averse
+[Une pluie de printemps, soudaine, les surprend loin de tout abri.]
+
+Point de départ : le joueur et Hina se retrouvent surpris par une averse imprévue, sans parapluie.
+
+Ce qui doit se passer : ils s'abritent ensemble, proches, dans un silence chargé qui n'a rien
+d'inconfortable. Un geste simple (un vêtement partagé, une main qui frôle une autre) marque ce
+moment sans jamais forcer une scène romantique explicite.
+
+Quand écrire [NEXT ACT] : quand la pluie cesse et qu'ils reprennent leur chemin, tous deux
+conscients que quelque chose vient de changer entre eux.
+
+## La page la plus honnête
+[Ce soir-là, une page du carnet bleu porte un dessin différent des autres — un visage, presque
+reconnaissable, esquissé avec une tendresse qui ne trompe pas.]
+
+Point de départ : le même soir que l'averse, le joueur retourne consulter le carnet bleu.
+
+Ce qui doit se passer : le dessin qui l'attend est manifestement inspiré de quelqu'un de précis —
+sans jamais être nommé. Le joueur ressent un trouble : cette personne du carnet compte de plus en
+plus, exactement comme Hina compte de plus en plus, sans qu'il fasse encore le lien conscient.
+
+Quand écrire [NEXT ACT] : quand le joueur répond dans le carnet avec une sincérité nouvelle,
+prêt à assumer ce que cet échange est devenu pour lui.
+
+# Le doute
+[Rien ne reste simple bien longtemps quand deux personnes commencent vraiment à compter l'une
+pour l'autre.]
+
+Point de départ : la proximité grandissante entre le joueur et Hina attire l'attention d'autrui
+et fait naître les premiers doutes.
+
+## L'ami protecteur
+[Un camarade proche d'Hina, qui la connaît depuis longtemps, observe ce rapprochement d'un œil
+inquiet.]
+
+Point de départ : un ami proche d'Hina aborde le joueur, ou Hina elle-même, avec une mise en
+garde à peine voilée — pas par méchanceté, mais par inquiétude sincère de la voir blessée.
+
+Ce qui doit se passer : cette intervention plante un doute, une gêne, sans rompre la relation —
+juste assez pour que le joueur (ou Hina) commence à hésiter à montrer ses sentiments trop
+ouvertement.
+
+Quand écrire [NEXT ACT] : quand cette conversation se termine et que le malaise qu'elle a semé
+commence visiblement à peser sur la suite.
+
+## Le malentendu
+[Une scène anodine, vue de loin et mal interprétée, suffit parfois à tout fragiliser.]
+
+Point de départ : un événement ambigu (le joueur vu en compagnie d'une autre personne, une
+remarque maladroite d'Hina mal reçue) crée une véritable distance entre eux.
+
+Ce qui doit se passer : Hina se referme, redevient distante comme au tout début, sans expliquer
+pourquoi. Le joueur sent clairement que quelque chose s'est brisé sans comprendre exactement quoi.
+
+Quand écrire [NEXT ACT] : quand cette distance devient impossible à ignorer, sur une scène qui se
+termine mal ou sur un silence qui dure.
+
+## Le mot le plus vulnérable
+[Le carnet bleu, encore une fois, devient le seul endroit où la vérité ose sortir.]
+
+Point de départ : dans les jours qui suivent le malentendu, le joueur (ou Hina) retourne consulter
+le carnet bleu, cherchant un peu de réconfort loin du malaise réel.
+
+Ce qui doit se passer : un message plus vulnérable que tous les précédents y est laissé — une
+peur d'être rejeté, formulée sans jamais nommer la situation réelle. Le parallèle entre les deux
+relations devient presque trop évident pour le lecteur, mais toujours pas pour les personnages.
+
+Quand écrire [NEXT ACT] : quand le joueur referme le carnet, décidé à agir plutôt qu'à laisser la
+distance s'installer pour de bon.
+
+## Le choix du joueur
+[Rester silencieux est une option. Ce n'est pas la seule.]
+
+Point de départ : le joueur doit décider comment réagir à la distance avec Hina — insister
+doucement, lui laisser du temps, ou aller chercher une explication franche.
+
+Ce qui doit se passer : quel que soit le choix du joueur, une ouverture doit apparaître d'ici la
+fin de la scène — Hina n'est pas inaccessible, juste effrayée, et un geste sincère du joueur peut
+commencer à faire revenir la confiance.
+
+Quand écrire [NEXT ACT] : dès que cette ouverture apparaît clairement, quelle que soit la façon
+dont le joueur y est arrivé.
+
+# La révélation
+[Un simple détail, parfois, suffit à faire tomber un secret que des mois de prudence avaient
+protégé.]
+
+Point de départ : la confiance entre le joueur et Hina se reconstruit lentement après le
+malentendu, tandis que le carnet bleu continue en parallèle.
+
+## L'indice de trop
+[Une écriture reconnue sur un cahier de cours. Une tache d'encre bleue caractéristique sur une
+manche. Un détail, et tout bascule.]
+
+Point de départ : un indice matériel concret (écriture, carnet aperçu, détail physique) met le
+joueur ou Hina sur la piste de la vérité.
+
+Ce qui doit se passer : l'un des deux comprend, avec certitude, que la personne du carnet bleu et
+la personne réelle ne font qu'un. Le choc est autant heureux qu'effrayant.
+
+Quand écrire [NEXT ACT] : dès que cette certitude s'installe clairement chez le personnage qui
+vient de comprendre.
+
+## Le poids de l'anonymat
+[Tout ce qui a été écrit en pensant n'être jamais vraiment vu prend soudain un tout autre sens.]
+
+Point de départ : celui ou celle qui vient de comprendre la vérité doit maintenant vivre avec —
+et décider quoi en faire.
+
+Ce qui doit se passer : une peur réelle s'installe : tout ce qui a été confié dans le carnet en
+pensant à l'abri du regard de l'autre a en réalité été lu, compris, par la personne même dont on
+avait peur d'être jugé.
+
+Quand écrire [NEXT ACT] : quand cette peur devient assez forte pour pousser à une décision : tout
+dire, ou tout cacher encore un peu.
+
+## L'aveu ou la fuite
+[Un face-à-face, enfin, où le carnet bleu n'est plus un secret pour l'un des deux au moins.]
+
+Point de départ : celui qui sait affronte l'autre, directement ou à mots à peine couverts.
+
+Ce qui doit se passer : selon la tension accumulée, soit un aveu partiel a lieu (la vérité
+commence à sortir, difficilement), soit Hina, submergée, prend ses distances brutalement — les
+deux issues sont légitimes, mais aucune ne doit clore complètement l'histoire ici.
+
+Quand écrire [NEXT ACT] : dès que cette scène pivot se conclut, sur un aveu entamé ou sur un
+silence chargé qui laisse present ent l'un des deux dans une position d'attente.
+
+## Le silence qui suit
+[Les jours suivants sont plus calmes que la normale — trop calmes.]
+
+Point de départ : dans les jours qui suivent la scène pivot, une distance réelle mais non
+définitive s'installe entre le joueur et Hina.
+
+Ce qui doit se passer : le poids de la vérité pèse sur les deux, sans qu'aucun des deux ne
+reprenne encore complètement contact — le lecteur doit sentir que ce silence ne peut pas durer.
+
+Quand écrire [NEXT ACT] : quand une occasion claire de se retrouver une dernière fois se présente
+(un événement de fin d'année, une date symbolique, un dernier passage à la bibliothèque).
+
+# Le printemps suivant
+[Un an, presque jour pour jour, depuis que le carnet bleu est entré dans la vie du joueur — et les
+cerisiers du campus sont de nouveau en fleurs.]
+
+Point de départ : l'occasion identifiée à la fin de l'acte précédent arrive : le joueur et Hina
+vont se retrouver, une dernière fois avant la fin de l'année universitaire, pour de vrai.
+
+## Le dernier passage
+[La bibliothèque, le même coin tranquille, le même carnet bleu — mais plus rien n'est pareil.]
+
+Point de départ : le joueur (ou Hina) retourne à l'endroit où tout a commencé, cherchant soit une
+réponse, soit le courage d'en écrire une dernière.
+
+Ce qui doit se passer : l'autre est déjà là, ou arrive peu après — sans hasard cette fois, les
+deux savent ce que signifie ce lieu.
+
+Quand écrire [NEXT ACT] : dès que les deux se retrouvent face à face à cet endroit précis, prêts
+à parler pour de vrai.
+
+## La conversation honnête
+[Tout ce qui n'a jamais été dit à voix haute attend d'être enfin prononcé.]
+
+Point de départ : le joueur et Hina se parlent, enfin sans détour, du carnet bleu, de leurs peurs,
+de ce que cette année a représenté pour chacun.
+
+Ce qui doit se passer : une vraie conversation a lieu, avec ses maladresses et ses silences, mais
+sincère de bout en bout — plus aucun des deux ne se cache derrière l'anonymat.
+
+Quand écrire [NEXT ACT] : quand cette conversation atteint son point culminant émotionnel, prête
+à se résoudre.
+
+## Sous les cerisiers
+[Les pétales tombent doucement, comme un an plus tôt, mais cette fois il n'y a plus de carnet
+entre eux.]
+
+Point de départ : la conversation se termine dans un lieu marqué par les cerisiers en fleurs du
+campus — le même motif saisonnier qui a accompagné toute l'histoire.
+
+Ce qui doit se passer : une résolution émotionnelle claire a lieu entre le joueur et Hina, à la
+hauteur de ce que le joueur a choisi de construire au fil de l'histoire — sincère, méritée, jamais
+forcée.
+
+Quand écrire [NEXT ACT] : quand cette scène de résolution atteint une conclusion émotionnelle
+nette, laissant place à l'épilogue.
+
+## Le carnet à deux mains
+[Le vieux carnet bleu, pour la première fois, est tenu par deux mains à la fois.]
+
+Point de départ : dans les jours qui suivent leur résolution, le joueur et Hina se retrouvent une
+dernière fois près du carnet bleu — cette fois ensemble, ouvertement.
+
+Ce qui doit se passer : une dernière page est écrite ou dessinée à deux, en connaissance de
+cause — un epilogue doux qui boucle le fil conducteur du carnet sans figer leur avenir dans une
+case unique. Fin ouverte, chaleureuse.

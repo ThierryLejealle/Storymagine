@@ -13,6 +13,7 @@
         <module>commun</module>
         <module>testllm</module>
         <module>redacteur</module>
+        <module>chat</module>
     </modules>
 
     <properties>
