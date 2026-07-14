@@ -3,12 +3,15 @@ package storymagine.commun.infra;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import storymagine.commun.coeur.ports.ContextOverflowException;
+import storymagine.commun.coeur.ports.GenerationCancelledException;
+import storymagine.commun.coeur.ports.GenerationOptions;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.coeur.ports.ModelLifecyclePort;
+import storymagine.commun.coeur.ports.RawCompletionPort;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -38,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Mode sync : timeout global sur la requête HTTP.
  * Mode stream : timeout premier token (chargement + prefill) + timeout inter-token.
  */
-public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
+public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawCompletionPort {
 
     private static final ObjectMapper    JSON                = new ObjectMapper();
     private static final double          CONTEXT_GROW_FACTOR = 1.3;
@@ -100,6 +103,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     @Override
     public LlmResult generate(String systemPrompt, String userPrompt, double temperature,
                                LlmCallContext ctx) {
+        return generate(systemPrompt, userPrompt, temperature, ctx, GenerationOptions.NONE);
+    }
+
+    @Override
+    public LlmResult generate(String systemPrompt, String userPrompt, double temperature,
+                               LlmCallContext ctx, GenerationOptions options) {
         int    local  = agentCallCounts
                             .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
                             .incrementAndGet();
@@ -107,7 +116,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         Boolean resolvedThink = resolveThink(ctx.think() != null ? ctx.think() : (think ? Boolean.TRUE : Boolean.FALSE));
         String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt, resolvedThink);
         try {
-            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel(), ctx.think());
+            LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel(),
+                    ctx.think(), options);
             log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
@@ -119,12 +129,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     }
 
     private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature,
-                                        String agentLabel, Boolean thinkOverride) {
+                                        String agentLabel, Boolean thinkOverride, GenerationOptions options) {
         while (true) {
             try {
                 return streamMode
-                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride)
-                    : sendSync(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride);
+                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride, options)
+                    : sendSync(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride, options);
             } catch (ContextOverflowException e) {
                 int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
                 if (newSize <= contextWindowSize) {
@@ -136,6 +146,116 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                 contextWindowSize = newSize;
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // RawCompletionPort — /api/generate, un seul bloc de texte, sans rôles ni template
+    // -------------------------------------------------------------------------
+
+    @Override
+    public LlmResult complete(String prompt, double temperature, LlmCallContext ctx) {
+        int    local  = agentCallCounts
+                            .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
+                            .incrementAndGet();
+        long   t0     = System.currentTimeMillis();
+        Boolean resolvedThink = resolveThink(ctx.think() != null ? ctx.think() : (think ? Boolean.TRUE : Boolean.FALSE));
+        String handle = log.llmCallOpen(ctx.agentName(), local, "", prompt, resolvedThink);
+        try {
+            LlmResult result = completeInternal(prompt, temperature, ctx.think());
+            log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
+                    result.promptTokens(), result.responseTokens());
+            return result;
+        } catch (RuntimeException e) {
+            log.llmCallClose(handle, "ERREUR : " + e.getMessage(),
+                    System.currentTimeMillis() - t0, 0, 0);
+            throw e;
+        }
+    }
+
+    private LlmResult completeInternal(String prompt, double temperature, Boolean thinkOverride) {
+        while (true) {
+            try {
+                return sendRawSync(prompt, temperature, thinkOverride);
+            } catch (ContextOverflowException e) {
+                int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
+                if (newSize <= contextWindowSize) {
+                    throw new RuntimeException(
+                        "Contexte Ollama saturé au maximum (" + maxContextWindowSize + " tokens) : " + e.getMessage(), e);
+                }
+                System.out.printf("[Ollama] Dépassement contexte — extension %d → %d tokens, reprise…%n",
+                    contextWindowSize, newSize);
+                contextWindowSize = newSize;
+            }
+        }
+    }
+
+    private LlmResult sendRawSync(String prompt, double temperature, Boolean thinkOverride) {
+        OllamaGenerateRequest req = new OllamaGenerateRequest();
+        req.model = model;
+        req.prompt = prompt;
+        req.options.put("num_ctx",        contextWindowSize);
+        req.options.put("temperature",    temperature);
+        req.options.put("top_k",          topK);
+        req.options.put("top_p",          topP);
+        req.options.put("repeat_penalty", repeatPenalty);
+        if (numPredict >= 0) req.options.put("num_predict", numPredict);
+        req.think = resolveThink(thinkOverride != null ? thinkOverride : (think ? Boolean.TRUE : Boolean.FALSE));
+
+        HttpRequest request;
+        try {
+            String body = JSON.writeValueAsString(req);
+            request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/generate"))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofMillis(timeoutMs))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Construction requête Ollama (generate) échouée : " + e.getMessage(), e);
+        }
+
+        int       totalAttempts = retryPolicy.retryCount() + 1;
+        Exception lastCause     = null;
+        for (int attempt = 1; attempt <= totalAttempts; attempt++) {
+            try {
+                HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) {
+                    String errorBody = response.body();
+                    if (isContextOverflow(errorBody))
+                        throw new ContextOverflowException(errorBody, contextWindowSize);
+                    throw new RuntimeException("Ollama HTTP " + response.statusCode() + " : " + errorBody);
+                }
+                OllamaGenerateResponse resp = JSON.readValue(response.body(), OllamaGenerateResponse.class);
+                if (resp.error != null && !resp.error.isBlank()) {
+                    if (isContextOverflow(resp.error))
+                        throw new ContextOverflowException(resp.error, contextWindowSize);
+                    throw new RuntimeException("Ollama error : " + resp.error);
+                }
+                String text = resp.response != null ? resp.response : "";
+                logLlmCall("chat/raw", resp.promptEvalCount, resp.evalCount, resp.evalDuration, req.think);
+                return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration, "");
+
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrompu pendant un appel Ollama", e);
+            } catch (Exception e) {
+                lastCause = e;
+                if (attempt < totalAttempts) {
+                    int waitSec = retryPolicy.delaySeconds(attempt);
+                    System.err.printf("[Ollama] tentative %d/%d échouée (%s), reprise dans %ds…%n",
+                        attempt, totalAttempts, e.getMessage(), waitSec);
+                    try { Thread.sleep(waitSec * 1000L); }
+                    catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrompu pendant l'attente de reprise", ie);
+                    }
+                }
+            }
+        }
+        throw new RuntimeException(
+            "Ollama : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
     }
 
     // -------------------------------------------------------------------------
@@ -256,8 +376,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // -------------------------------------------------------------------------
 
     private LlmResult sendSync(String systemPrompt, String userPrompt, double temperature,
-                                String agentLabel, Boolean thinkOverride) {
-        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride);
+                                String agentLabel, Boolean thinkOverride, GenerationOptions options) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride, options);
 
         HttpRequest request;
         try {
@@ -289,9 +409,10 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                         throw new ContextOverflowException(resp.error, contextWindowSize);
                     throw new RuntimeException("Ollama error : " + resp.error);
                 }
-                String text = resp.message != null ? resp.message.content : "";
+                String text     = resp.message != null ? resp.message.content : "";
+                String thinking = resp.message != null && resp.message.thinking != null ? resp.message.thinking : "";
                 logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration, req.think);
-                return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration);
+                return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration, thinking);
 
             } catch (RuntimeException e) {
                 throw e;
@@ -321,8 +442,8 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // -------------------------------------------------------------------------
 
     private LlmResult sendStreaming(String systemPrompt, String userPrompt, double temperature,
-                                     String agentLabel, Boolean thinkOverride) {
-        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride);
+                                     String agentLabel, Boolean thinkOverride, GenerationOptions options) {
+        OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride, options);
         req.stream = true;
 
         HttpRequest request;
@@ -344,7 +465,16 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                 return executeStreaming(request, agentLabel, req.think);
             } catch (ContextOverflowException e) {
                 throw e;
+            } catch (GenerationCancelledException e) {
+                throw e;
             } catch (Exception e) {
+                // Une interruption volontaire (bouton Stop, voir ChatWebServer) ressort ici sous
+                // forme de RuntimeException générique (convertie par readLineWithTimeout) — le
+                // flag d'interruption du thread, lui, a été explicitement re-positionné à cet
+                // endroit-là. On ne retente jamais après un arrêt demandé par l'utilisateur.
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new GenerationCancelledException("Génération interrompue par l'utilisateur");
+                }
                 lastCause = e;
                 if (attempt < totalAttempts) {
                     int waitSec = retryPolicy.delaySeconds(attempt);
@@ -363,16 +493,19 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     }
 
     private LlmResult executeStreaming(HttpRequest request, String agentLabel, Boolean think) {
-        // Obtenir les headers HTTP — quasi-instantané sur Ollama local
+        // Obtenir les headers HTTP — Ollama ne les envoie qu'une fois la requête acceptée, donc ce
+        // délai peut être aussi long qu'un chargement de modèle ou une file d'attente derrière un
+        // autre appel Ollama en cours : on réutilise firstTokenTimeoutMs (même budget que l'attente
+        // du premier token plus bas), pas une constante séparée plus courte.
         CompletableFuture<HttpResponse<InputStream>> cf =
             http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
 
         HttpResponse<InputStream> response;
         try {
-            response = cf.get(30_000, TimeUnit.MILLISECONDS);
+            response = cf.get(firstTokenTimeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             cf.cancel(true);
-            throw new RuntimeException("Timeout connexion Ollama (30s)");
+            throw new RuntimeException("Timeout connexion Ollama (" + (firstTokenTimeoutMs / 1000) + "s)");
         } catch (ExecutionException e) {
             throw new RuntimeException("Erreur connexion Ollama : " + e.getCause().getMessage(), e.getCause());
         } catch (InterruptedException e) {
@@ -394,6 +527,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         }
 
         StringBuilder content      = new StringBuilder();
+        StringBuilder thinking     = new StringBuilder();
         int           promptTokens = 0;
         int           evalTokens   = 0;
         long          evalDuration = 0;
@@ -415,9 +549,11 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
                         throw new ContextOverflowException(chunk.error, contextWindowSize);
                     throw new RuntimeException("Ollama streaming error : " + chunk.error);
                 }
-                // Accumule content uniquement — le champ thinking est intentionnellement ignoré
                 if (chunk.message != null && chunk.message.content != null) {
                     content.append(chunk.message.content);
+                }
+                if (chunk.message != null && chunk.message.thinking != null) {
+                    thinking.append(chunk.message.thinking);
                 }
                 if (chunk.done) {
                     promptTokens = chunk.promptEvalCount;
@@ -433,7 +569,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
         }
 
         logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration, think);
-        return new LlmResult(content.toString(), promptTokens, evalTokens, evalDuration);
+        return new LlmResult(content.toString(), promptTokens, evalTokens, evalDuration, thinking.toString());
     }
 
     /**
@@ -461,15 +597,19 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort {
     // -------------------------------------------------------------------------
 
     private OllamaRequest buildOllamaRequest(String systemPrompt, String userPrompt, double temperature,
-                                              Boolean thinkOverride) {
+                                              Boolean thinkOverride, GenerationOptions options) {
         OllamaRequest req = new OllamaRequest();
         req.model = model;
         req.options.put("num_ctx",        contextWindowSize);
         req.options.put("temperature",    temperature);
-        req.options.put("top_k",          topK);
-        req.options.put("top_p",          topP);
-        req.options.put("repeat_penalty", repeatPenalty);
-        if (numPredict >= 0) req.options.put("num_predict", numPredict);
+        req.options.put("top_k",          options.topK() != null ? options.topK() : topK);
+        req.options.put("top_p",          options.topP() != null ? options.topP() : topP);
+        req.options.put("repeat_penalty", options.repeatPenalty() != null ? options.repeatPenalty() : repeatPenalty);
+        if (options.minP() != null) req.options.put("min_p", options.minP());
+        int effectiveNumPredict = options.maxTokens() != null ? options.maxTokens() : numPredict;
+        if (effectiveNumPredict >= 0) req.options.put("num_predict", effectiveNumPredict);
+        if (options.stopSequences() != null && !options.stopSequences().isEmpty())
+            req.options.put("stop", options.stopSequences());
         // thinkOverride (LlmCallContext) prime sur le réglage par défaut de l'adaptateur.
         // false est envoyé explicitement (jamais omis) : un champ absent laisse Ollama appliquer
         // son comportement par défaut, qui est "réflexion activée" pour les modèles qui la supportent.

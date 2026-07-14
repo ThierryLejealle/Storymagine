@@ -21,9 +21,16 @@ public interface LogPort {
      * avgThreshold is the average score required to pass, shown alongside avg for readability.
      * minScore is the lowest individual critic score, shown alongside eliminationThreshold so
      * the elimination check (any critic below eliminationThreshold forces a retry) is visible.
+     * passed reflects the score gate alone (average/elimination), never overridden by forcedRetry.
+     * forcedRetry is true when a retry happens despite passed being true, for a reason other than
+     * the score gate (e.g. ChapterPlanWorkflow's strict-first-attempt rule : any remark at all
+     * forces one retry even though scores passed) — always false for workflows with no such rule.
+     * Adapters render three distinct outcomes : passed=true/forcedRetry=false → PASS (green) ;
+     * passed=true/forcedRetry=true → REFINE (orange, retrying only because remarks remain) ;
+     * passed=false → RETRY (red, a real score failure, forcedRetry irrelevant in that case).
      */
     void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
-                        boolean passed, String retryHint);
+                        boolean passed, boolean forcedRetry, String retryHint);
 
     /**
      * Called after each LLM generate() call with agent label, timing, token counts, and whether
@@ -61,6 +68,9 @@ public interface LogPort {
     /** Logs a warning (inconsistency, unexpected state). Default is a no-op. */
     default void warn(String message) {}
 
+    /** Logs an informational note (expected behaviour worth surfacing, not a problem). Default is a no-op. */
+    default void info(String message) {}
+
     /**
      * Opens an LLM call trace (before generate()). Returns an opaque handle for llmCallClose.
      * think = whether reasoning was requested for this call (null = model has no such capability).
@@ -82,7 +92,7 @@ public interface LogPort {
         @Override public void phaseHeader(String l, String d) {}
         @Override public void step(String n, long ms, String note) {}
         @Override public void critic(String n, double s, long ms, List<String> p) {}
-        @Override public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold, boolean passed, String hint) {}
+        @Override public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold, boolean passed, boolean forcedRetry, String hint) {}
         @Override public void llmCall(String lbl, long ms, int tokIn, int tokOut, double tps, Boolean think) {}
         @Override public void chapterPlan(String t, String plan) {}
         @Override public void sequenceText(String t, int i, String txt) {}

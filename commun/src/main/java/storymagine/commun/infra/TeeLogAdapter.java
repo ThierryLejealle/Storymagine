@@ -32,8 +32,8 @@ public class TeeLogAdapter implements LogPort {
 
     @Override
     public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
-                               boolean passed, String retryHint) {
-        delegates.forEach(d -> d.scoresSummary(avg, avgThreshold, minScore, eliminationThreshold, passed, retryHint));
+                               boolean passed, boolean forcedRetry, String retryHint) {
+        delegates.forEach(d -> d.scoresSummary(avg, avgThreshold, minScore, eliminationThreshold, passed, forcedRetry, retryHint));
     }
 
     @Override
@@ -74,6 +74,11 @@ public class TeeLogAdapter implements LogPort {
     @Override
     public void warn(String message) {
         delegates.forEach(d -> d.warn(message));
+    }
+
+    @Override
+    public void info(String message) {
+        delegates.forEach(d -> d.info(message));
     }
 
     @Override

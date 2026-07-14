@@ -29,7 +29,7 @@ public class FileLogAdapter implements LogPort {
     private static final DateTimeFormatter TIME     = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter RUN_TS   = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH'h'mm");
     private static final DateTimeFormatter TRACE_TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final int               NAME_W   = 30;
+    private static final int               NAME_W   = 40;
     private static final int               MS_W     = 8;
     private static final String            SEP      = "  ";
 
@@ -67,6 +67,12 @@ public class FileLogAdapter implements LogPort {
     public void setOutputDir(Path dir) {
         this.outputDir = dir;
         this.startMs   = System.currentTimeMillis();
+    }
+
+    /** Points logging directly at an existing run directory, to resume an interrupted generation. */
+    public void resumeRunDir(Path existingRunDir) {
+        this.runDir  = existingRunDir;
+        this.startMs = System.currentTimeMillis();
     }
 
     /** Returns the run directory path (null if setOutputDir was never called or first write hasn't happened yet). */
@@ -107,20 +113,33 @@ public class FileLogAdapter implements LogPort {
 
     @Override
     public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
-                               boolean passed, String retryHint) {
-        String hint = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
+                               boolean passed, boolean forcedRetry, String retryHint) {
+        String hint   = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
+        String status = statusLabel(passed, forcedRetry);
         if (avg <= 0 || Double.isNaN(avg)) {
-            appendMaster(String.format("[%s]   -> %s%s%n", ts(), passed ? "PASS" : "RETRY", hint));
+            appendMaster(String.format("[%s]   -> %s%s%n", ts(), status, hint));
         } else {
             appendMaster(String.format(Locale.ROOT,
                     "[%s]   -> moy %.2f (seuil %.1f)  min %.2f (elim %.1f)  %s%s%n",
-                    ts(), avg, avgThreshold, minScore, eliminationThreshold, passed ? "PASS" : "RETRY", hint));
+                    ts(), avg, avgThreshold, minScore, eliminationThreshold, status, hint));
         }
+    }
+
+    /** PASS (real pass) / REFINE (retrying despite passed scores) / RETRY (real score failure). */
+    private static String statusLabel(boolean passed, boolean forcedRetry) {
+        if (passed && !forcedRetry) return "PASS";
+        if (passed) return "REFINE";
+        return "RETRY";
     }
 
     @Override
     public void warn(String message) {
         appendMaster(String.format("[%s]   [WARN] %s%n", ts(), message));
+    }
+
+    @Override
+    public void info(String message) {
+        appendMaster(String.format("[%s]   [INFO] %s%n", ts(), message));
     }
 
     @Override
@@ -131,9 +150,12 @@ public class FileLogAdapter implements LogPort {
         String tpsStr   = tokPerSec > 0
                 ? String.format(Locale.ROOT, "  %.1f tok/s", tokPerSec) : "";
         String thinkStr = Boolean.TRUE.equals(think) ? "  [think]" : "";
+        // tokOut (eval_count) est deja le total genere par Ollama, reflexion "thinking" comprise —
+        // l'API ne distingue pas les tokens de reflexion des tokens de reponse finale.
         appendMaster(String.format(Locale.ROOT,
-                "[%s]   [LLM #%3d]  %-28s  %,8dms  %6d -> %5d tok%s%s  [sum in:%s out:%s]%n",
-                ts(), n, agentLabel, ms, tokIn, tokOut, tpsStr, thinkStr, fmtTok(sumI), fmtTok(sumO)));
+                "[%s]   [LLM #%3d]  %-" + NAME_W + "s  %,8dms  %6d -> %5d tok (total %s)%s%s  [sum in:%s out:%s total:%s]%n",
+                ts(), n, agentLabel, ms, tokIn, tokOut, fmtTok((long) tokIn + tokOut), tpsStr, thinkStr,
+                fmtTok(sumI), fmtTok(sumO), fmtTok(sumI + sumO)));
     }
 
     @Override
@@ -181,7 +203,8 @@ public class FileLogAdapter implements LogPort {
         sb.append(row(W, "Appels LLM",   String.valueOf(calls)));
         if (totIn > 0) {
             sb.append(row(W, "Tokens in",  fmtTokLong(totIn)));
-            sb.append(row(W, "Tokens out", fmtTokLong(totOut)));
+            sb.append(row(W, "Tokens out", fmtTokLong(totOut) + " (dont reflexion)"));
+            sb.append(row(W, "Tokens total", fmtTokLong(totIn + totOut)));
         }
         sb.append(row(W, "Duree totale", fmtDuration(elapsed)));
         sb.append("╚").append("═".repeat(W)).append("╝\n\n");

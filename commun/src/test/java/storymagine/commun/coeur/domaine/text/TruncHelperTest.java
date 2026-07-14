@@ -92,8 +92,8 @@ class TruncHelperTest {
             @Override public void phaseHeader(String label, String detail) {}
             @Override public void step(String name, long ms, String note) {}
             @Override public void critic(String name, double score, long ms, List<String> problems) {}
-            @Override public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold, boolean passed, String retryHint) {}
-            @Override public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec) {}
+            @Override public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold, boolean passed, boolean forcedRetry, String retryHint) {}
+            @Override public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think) {}
             @Override public void chapterPlan(String chapterTitle, String planText) {}
             @Override public void sequenceText(String chapterTitle, int seqIdx, String text) {}
             @Override public void sessionEnd() {}

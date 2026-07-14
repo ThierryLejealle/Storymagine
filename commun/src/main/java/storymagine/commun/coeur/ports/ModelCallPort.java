@@ -1,5 +1,7 @@
 package storymagine.commun.coeur.ports;
 
+import java.util.List;
+
 /**
  * Port d'appel à un LLM — contrat utilisé par les agents.
  */
@@ -19,6 +21,26 @@ public interface ModelCallPort {
      */
     default LlmResult generate(String systemPrompt, String userPrompt, double temperature) {
         return generate(systemPrompt, userPrompt, temperature, LlmCallContext.of("Unknown"));
+    }
+
+    /**
+     * Comme generate(), avec des séquences qui interrompent la génération dès qu'elles apparaissent
+     * — ex. empêcher un petit modèle de continuer et d'écrire le tour suivant à la place de
+     * l'interlocuteur. Raccourci pour generate(..., GenerationOptions.stopSequences(...)).
+     */
+    default LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
+                                List<String> stopSequences) {
+        return generate(systemPrompt, userPrompt, temperature, ctx, GenerationOptions.stopSequences(stopSequences));
+    }
+
+    /**
+     * Comme generate(), avec des réglages ponctuels pour cet appel (voir GenerationOptions).
+     * Défaut : délègue à generate() sans y toucher — les adaptateurs qui ne surchargent pas cette
+     * méthode gardent leur comportement actuel.
+     */
+    default LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
+                                GenerationOptions options) {
+        return generate(systemPrompt, userPrompt, temperature, ctx);
     }
 
     /**

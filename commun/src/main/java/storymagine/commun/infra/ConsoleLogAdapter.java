@@ -66,9 +66,9 @@ public class ConsoleLogAdapter implements LogPort {
 
     @Override
     public void scoresSummary(double avg, double avgThreshold, double minScore, double eliminationThreshold,
-                               boolean passed, String retryHint) {
+                               boolean passed, boolean forcedRetry, String retryHint) {
         String hint   = (retryHint != null && !retryHint.isBlank()) ? " " + retryHint : "";
-        String status = (passed ? ANSI_GREEN : ANSI_RED) + (passed ? "PASS" : "RETRY") + ANSI_RESET;
+        String status = statusLabel(passed, forcedRetry);
         if (avg <= 0 || Double.isNaN(avg)) {
             printf("[%s]   -> %s%s%n", ts(), status, hint);
         } else {
@@ -77,21 +77,37 @@ public class ConsoleLogAdapter implements LogPort {
         }
     }
 
+    /** PASS (green, real pass) / REFINE (orange, retrying despite passed scores) / RETRY (red, real score failure). */
+    private static String statusLabel(boolean passed, boolean forcedRetry) {
+        if (passed && !forcedRetry) return ANSI_GREEN + "PASS" + ANSI_RESET;
+        if (passed) return ANSI_ORANGE + "REFINE" + ANSI_RESET;
+        return ANSI_RED + "RETRY" + ANSI_RESET;
+    }
+
     @Override
     public void warn(String message) {
         printf("[%s]   " + ANSI_RED + "[WARN]" + ANSI_RESET + " %s%n", ts(), message);
     }
 
     @Override
+    public void info(String message) {
+        printf("[%s]   " + ANSI_ORANGE + "[INFO]" + ANSI_RESET + " %s%n", ts(), message);
+    }
+
+    @Override
     public void llmCall(String agentLabel, long ms, int tokIn, int tokOut, double tokPerSec, Boolean think) {
-        int    n    = llmCalls.incrementAndGet();
-        long   sumI = sumTokIn.addAndGet(tokIn);
-        long   sumO = sumTokOut.addAndGet(tokOut);
+        int    n     = llmCalls.incrementAndGet();
+        long   sumI  = sumTokIn.addAndGet(tokIn);
+        long   sumO  = sumTokOut.addAndGet(tokOut);
+        long   total = (long) tokIn + tokOut;
         sumMs.addAndGet(ms);
         String tpsStr   = tokPerSec > 0 ? String.format("  %.1f tok/s", tokPerSec) : "";
         String thinkStr = Boolean.TRUE.equals(think) ? "  [think]" : "";
-        printf("[%s]   " + ANSI_MAGENTA + "[LLM #%3d]" + ANSI_RESET + "  %-28s  %5ds  %6d -> %5d tok%s%s  [sum in:%s out:%s]%n",
-               ts(), n, agentLabel, ms / 1000, tokIn, tokOut, tpsStr, thinkStr, fmtTok(sumI), fmtTok(sumO));
+        // tokOut (eval_count) est deja le total genere par Ollama, reflexion "thinking" comprise —
+        // l'API ne distingue pas les tokens de reflexion des tokens de reponse finale.
+        printf("[%s]   " + ANSI_MAGENTA + "[LLM #%3d]" + ANSI_RESET + "  %-28s  %5ds  %6d -> %5d tok (total %s)%s%s  [sum in:%s out:%s total:%s]%n",
+               ts(), n, agentLabel, ms / 1000, tokIn, tokOut, fmtTok(total), tpsStr, thinkStr,
+               fmtTok(sumI), fmtTok(sumO), fmtTok(sumI + sumO));
     }
 
     @Override
@@ -142,7 +158,8 @@ public class ConsoleLogAdapter implements LogPort {
         printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Appels LLM", calls);
         if (totIn > 0) {
             printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens in",  fmtTokLong(totIn));
-            printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens out", fmtTokLong(totOut));
+            printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens out", fmtTokLong(totOut) + " (dont reflexion)");
+            printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Tokens total", fmtTokLong(totIn + totOut));
         }
         printf(ANSI_BOLD + ANSI_BLUE + fmt + ANSI_RESET, "Duree totale", fmtDuration(elapsed));
         System.out.println(ANSI_BOLD + ANSI_BLUE + bot + ANSI_RESET);
