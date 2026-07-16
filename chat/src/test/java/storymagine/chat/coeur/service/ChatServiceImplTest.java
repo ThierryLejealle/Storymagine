@@ -641,7 +641,22 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void withNoMentionUpToTwoPresentNpcsReplyInTheSameRound(@TempDir Path root) throws IOException {
+    void withNoMentionOnlyOneNpcAnswersByDefault(@TempDir Path root) throws IOException {
+        // personne nomme, premier echange (pas de continuation possible) : un seul PNJ est tire au
+        // hasard comme principal — le second ne repond que s'il interjecte (teste separement).
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 0.0));
+
+        ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
+
+        assertEquals(1, result.replyTurns().size());
+    }
+
+    @Test
+    void withNoMentionBothPresentNpcsCanReplyViaInterjectionAtCertainChance(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         StubModelCallPort roleplayLlm = new StubModelCallPort(32_768, "grunts and nods slowly", 0);
         ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
@@ -649,12 +664,29 @@ class ChatServiceImplTest {
             new NpcMindStateAnalyst(roleplayLlm), LogPort.NOOP, new Random(1));
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0));
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
-        assertEquals(2, result.replyTurns().size(), "2 PNJ presents, personne nomme : les deux repondent");
+        assertEquals(2, result.replyTurns().size(),
+            "un seul PNJ principal (tire au hasard), l'autre interjecte a chance certaine");
         assertEquals(Set.of("elena", "marcus"),
             result.replyTurns().stream().map(ChatTurn::npcId).collect(Collectors.toSet()));
+    }
+
+    @Test
+    void withNoMentionTheNpcWhoAloneSpokeLastRoundContinuesFirst(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        session.setInterjecting("marcus", false); // isole select() : pas d'interjection ici
+        service.sendMessage(root, session, "Elena, what do you make of this?"); // elena seule a parle
+
+        ChatTurnResult result = service.sendMessage(root, session, "Et après ?"); // personne vise
+
+        assertEquals(1, result.replyTurns().size());
+        assertEquals("elena", result.replyTurns().get(0).npcId(), "elena reprend par continuite, seule a avoir parle avant");
     }
 
     @Test

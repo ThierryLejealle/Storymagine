@@ -28,8 +28,10 @@ import storymagine.commun.coeur.ports.LogPort;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Orchestrates one exchange : runs SpeakerSelector to pick which Cast member(s) answer the
@@ -255,21 +257,41 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * Combines SpeakerSelector's mention/fallback pick with the independent interjection rolls
-     * (see SpeakerSelector.rollInterjectors) into one ordered round : primary speaker(s) first,
-     * interjectors after — an interjector's prompt sees the primary's reply already in the
-     * transcript, matching the "react to what was just said" framing in INTERJECTION_RULE.
+     * Combines SpeakerSelector's mention/continuation/fallback pick with the independent
+     * interjection rolls (see SpeakerSelector.rollInterjectors) into one ordered round : primary
+     * speaker(s) first, interjectors after — an interjector's prompt sees the primary's reply
+     * already in the transcript, matching the "react to what was just said" framing in
+     * INTERJECTION_RULE.
      */
     private List<RoundSpeaker> resolveSpeakers(ChatSession session, String playerMessage) {
         List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), session.presentNpcIds(),
-            session.interjectingNpcIds(), playerMessage, random);
+            session.interjectingNpcIds(), playerMessage, previousRoundSpeakerIds(session), random);
         List<Npc> interjectors = SpeakerSelector.rollInterjectors(session.scenario().cast(), session.presentNpcIds(),
-            session.interjectingNpcIds(), primary, playerMessage, interjectionChance(session), random);
+            session.interjectingNpcIds(), primary, interjectionChance(session), random);
 
         List<RoundSpeaker> round = new ArrayList<>();
         for (Npc npc : primary) round.add(new RoundSpeaker(npc, false));
         for (Npc npc : interjectors) round.add(new RoundSpeaker(npc, true));
         return round;
+    }
+
+    /**
+     * Npc id(s) who spoke in the round just before the player's line that was just appended (empty
+     * on the very first exchange) — used by SpeakerSelector.select's continuation step. Scans
+     * backward from just before the last (current) player turn, stopping at the previous player
+     * turn (a round's boundary) ; NARRATOR turns (act-advance beats) are skipped without stopping
+     * the scan, since they can sit between an Npc's reply and the next player turn within the same
+     * round.
+     */
+    private static Set<String> previousRoundSpeakerIds(ChatSession session) {
+        List<ChatTurn> turns = session.turns();
+        Set<String> ids = new LinkedHashSet<>();
+        for (int i = turns.size() - 2; i >= 0; i--) {
+            ChatTurn t = turns.get(i);
+            if (t.speaker() == ChatTurn.Speaker.PLAYER) break;
+            if (t.speaker() == ChatTurn.Speaker.LLM && t.npcId() != null) ids.add(t.npcId());
+        }
+        return ids;
     }
 
     private static double interjectionChance(ChatSession session) {

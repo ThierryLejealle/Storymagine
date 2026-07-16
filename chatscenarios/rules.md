@@ -172,17 +172,24 @@ Chaque PNJ présent ou absent de la scène. Tous présents par défaut. Impossib
 dernier PNJ présent (garde-fou : quelqu'un doit toujours pouvoir répondre). Persisté dans
 `present.txt`.
 
-### 4.2 Qui répond (`SpeakerSelector`)
+### 4.2 Qui répond (`SpeakerSelector`) — trois étapes, revu le 2026-07-16
 
-1. Le message du joueur nomme un ou plusieurs PNJ présents (mot entier, insensible à la casse) →
-   tous ceux nommés répondent, dans le même tour, ordre alphabétique par id, chacun voyant la
-   réplique du précédent.
-2. Personne n'est nommé → repli sur 2 PNJ présents pris au hasard (1 seul si un seul présent),
-   uniquement parmi ceux éligibles à l'interjection (icône 💬 activée, voir §4.3) — un PNJ dont le
-   💬 est désactivé ne doit jamais être pioché ici, sinon le bouton ne tient pas sa promesse
-   ("ne réagit que si visé par son nom"). Si personne n'est éligible (tout le monde a désactivé son
-   💬), repli sur tous les PNJ présents quand même — quelqu'un doit répondre au joueur. Bug réel
-   corrigé le 2026-07-16 (voir `evols/2026-07-16-...`) : le repli aléatoire ignorait ce réglage.
+1. **Mention** : le message du joueur nomme un ou plusieurs PNJ présents → TOUS ceux nommés
+   répondent, dans le même tour, dans l'ORDRE D'APPARITION de leur nom dans le message (pas
+   alphabétique — un PNJ juste cité en passant après le PNJ réellement visé ne doit jamais répondre
+   avant lui). Détection insensible aux accents/majuscules, et seuls les 5 premiers caractères
+   normalisés du nom doivent matcher (mot entier au sens large : "Cel" ou une coquille légère
+   suffisent à viser "Céleste", même principe que SillyTavern).
+2. **Continuité** : personne n'est nommé, mais UN SEUL PNJ a parlé au tour précédent → il reprend
+   la parole en premier. Un simple "et après ?" continue donc la conversation avec la bonne
+   personne au lieu de retomber sur un tirage au hasard. Si ce PNJ n'est plus présent (mute entre
+   temps), on retombe sur l'étape 3.
+3. **Repli** : personne n'est nommé, et l'étape 2 ne s'applique pas (premier échange, ou plusieurs
+   PNJ avaient parlé au tour précédent) → UN SEUL PNJ est tiré au hasard, uniquement parmi ceux
+   éligibles à l'interjection (icône 💬 activée, voir §4.3) — un PNJ dont le 💬 est désactivé ne
+   doit jamais être pioché ici, sinon le bouton ne tient pas sa promesse ("ne réagit que si visé
+   par son nom"). Si personne n'est éligible (tout le monde a désactivé son 💬), repli sur tous les
+   PNJ présents quand même — quelqu'un doit répondre au joueur.
 
 **Reprise sur réponse vide** (voir `evols/2026-07-15-2318-...`) : un petit modèle peut parfois
 épuiser tout son budget de génération en réflexion et ne rien répondre du tout (`RoleplayNarrator`
@@ -190,13 +197,16 @@ détecte une réponse vide et retente une fois, même prompt — abandonne aprè
 que de boucler). Si ça arrive régulièrement sur un scénario donné, c'est souvent le signe d'une
 ambiguïté de mise en scène à corriger (voir le piège du §2.4) plutôt qu'un simple aléa du modèle.
 
-### 4.3 Interjection (icône 💬, réglage "Chance d'interjection")
+### 4.3 Interjection (icône 💬, réglage "Chance d'interjection") — revu le 2026-07-16
 
-Uniquement quand un SEUL PNJ est nommé explicitement (jamais sur mention multiple, jamais sur repli
-aléatoire) : chaque autre PNJ présent, éligible (icône 💬 activée — actif par défaut, à désactiver
-PNJ par PNJ si besoin), tire indépendamment sa chance de réagir quand même, en plus du PNJ visé.
-Répond après le PNJ visé, voit déjà sa réponse. Réglage global "Chance d'interjection" dans le
-panneau (0 à 1, défaut 0.5) — pas de réglage par PNJ. Voir `evols/2026-07-15-2231-...`.
+Après l'étape ci-dessus, quelle qu'elle soit (mention, continuité ou tirage), chaque PNJ présent,
+éligible (icône 💬 activée — actif par défaut, à désactiver PNJ par PNJ si besoin) et qui n'a pas
+déjà été choisi comme principal tire indépendamment sa chance de réagir quand même. Pas de
+restriction sur le nombre de PNJ principaux : même si deux ont été nommés, un troisième présent
+peut encore interjecter. Répond après le ou les PNJ principaux, voit déjà leur réponse ; si
+plusieurs interjectent, leur ordre entre eux est aléatoire (pas d'ordre stable). Réglage global
+"Chance d'interjection" dans le panneau (0 à 1, défaut 0.5) — pas de réglage par PNJ. Voir
+`evols/2026-07-15-2231-...` et `evols/2026-07-16-...` (refonte).
 
 ### 4.4 Réflexion / thinking (case "Afficher la réflexion", icône 🧠)
 
