@@ -45,17 +45,14 @@ public interface ModelCallPort {
     }
 
     /**
-     * Comme generate(..., options), avec un callback recevant le texte VISIBLE généré jusqu'ici
-     * (pas la réflexion) à chaque fragment reçu du modèle, avant même la fin de l'appel — pour un
-     * affichage progressif côté appelant. onPartialText reçoit toujours le texte COMPLET généré
-     * jusqu'ici, jamais juste le dernier fragment : un appelant peut donc simplement remplacer ce
-     * qu'il affiche à chaque appel plutôt que d'accumuler lui-même (une reprise interne après une
-     * erreur réseau redémarre alors proprement, sans texte dupliqué). Défaut : ignore le callback et
-     * délègue à generate(..., options) — les adaptateurs qui ne surchargent pas cette méthode
-     * gardent leur comportement actuel (callback jamais appelé, résultat identique).
+     * Comme generate(..., options), avec un callback recevant réflexion + texte visible générés
+     * jusqu'ici (voir PartialGeneration) à chaque fragment reçu du modèle, avant même la fin de
+     * l'appel — pour un affichage progressif côté appelant, réflexion comprise. Défaut : ignore le
+     * callback et délègue à generate(..., options) — les adaptateurs qui ne surchargent pas cette
+     * méthode gardent leur comportement actuel (callback jamais appelé, résultat identique).
      */
     default LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
-                                GenerationOptions options, Consumer<String> onPartialText) {
+                                GenerationOptions options, Consumer<PartialGeneration> onPartial) {
         return generate(systemPrompt, userPrompt, temperature, ctx, options);
     }
 

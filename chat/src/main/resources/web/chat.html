@@ -554,12 +554,13 @@ function appendTurn(speaker, text, thinking, npcId) {
   return div;
 }
 
-// Apercu progressif d'une replique PNJ en cours de generation (voir sendMessage() / le champ
-// textSoFar du flux NDJSON) — PAS pousse dans renderedTurnEls : c'est un aperçu transitoire,
-// toujours remplace par la vraie bulle (appendTurn) des que le tour est fini, jamais compte dans
-// les retraits de removeLastTrackedEls (undo/retry/stop portent sur des tours reels, pas des
-// apercus). Texte remplace en entier a chaque appel (pas d'ajout), voir ModelCallPort.generate(...,
-// Consumer) : le fragment recu est toujours le texte complet genere jusqu'ici, jamais un delta.
+// Apercu progressif d'une replique PNJ en cours de generation (voir sendMessage() / les champs
+// thinkingSoFar+textSoFar du flux NDJSON) — PAS pousse dans renderedTurnEls : c'est un aperçu
+// transitoire, toujours remplace par la vraie bulle (appendTurn) des que le tour est fini, jamais
+// compte dans les retraits de removeLastTrackedEls (undo/retry/stop portent sur des tours reels,
+// pas des apercus). Contenu remplace en entier a chaque appel (pas d'ajout), voir
+// ModelCallPort.generate(..., Consumer) : le fragment recu est toujours le contenu complet genere
+// jusqu'ici, jamais un delta.
 function appendStreamingBubble(npcId) {
   const stick = isNearBottom();
   const div = document.createElement('div');
@@ -576,8 +577,27 @@ function appendStreamingBubble(npcId) {
   return div;
 }
 
-function updateStreamingBubble(el, textSoFar) {
+// La reflexion arrive et grandit avant le texte visible (le modele reflechit avant de repondre) —
+// le bloc <details> "Réflexion" apparait des le premier fragment recu, deja cliquable/ouvrable,
+// et son contenu continue de grandir en direct meme ouvert (voir demande utilisateur : pouvoir
+// cliquer et regarder la reflexion s'ecrire, pas juste attendre le texte final).
+function updateStreamingBubble(el, thinkingSoFar, textSoFar) {
   const stick = isNearBottom();
+  if (thinkingSoFar) {
+    let details = el.querySelector('.thinking');
+    if (!details) {
+      details = document.createElement('details');
+      details.className = 'thinking';
+      const summary = document.createElement('summary');
+      summary.textContent = '🧠 Réflexion';
+      const thinkingText = document.createElement('div');
+      thinkingText.className = 'thinking-text';
+      details.appendChild(summary);
+      details.appendChild(thinkingText);
+      el.insertBefore(details, el.querySelector('.bubble'));
+    }
+    details.querySelector('.thinking-text').textContent = thinkingSoFar;
+  }
   el.querySelector('.bubble').innerHTML = formatText(textSoFar);
   if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
 }
@@ -908,7 +928,7 @@ async function sendMessage(text) {
           streamingEl = appendStreamingBubble(data.npcId);
           streamingNpcId = data.npcId;
         }
-        updateStreamingBubble(streamingEl, data.textSoFar);
+        updateStreamingBubble(streamingEl, data.thinkingSoFar, data.textSoFar);
       } else if (data.speaker) {
         if (typingTurn) { typingTurn.remove(); typingTurn = null; }
         if (streamingEl && streamingNpcId === data.npcId) {

@@ -9,6 +9,7 @@ import storymagine.commun.coeur.ports.GenerationOptions;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
 import storymagine.commun.coeur.ports.ModelCallPort;
+import storymagine.commun.coeur.ports.PartialGeneration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,16 +71,19 @@ public class RoleplayNarrator {
     public int contextWindow() { return llm.contextWindow(); }
 
     public RoleplayNarratorOutput call(RoleplayNarratorInput input) {
-        return call(input, text -> {});
+        return call(input, partial -> {});
     }
 
     /**
-     * Comme call(), avec onPartialReply notifié à chaque fragment du texte VISIBLE (pas la
-     * réflexion) généré par le modèle — le texte complet généré jusqu'ici à chaque appel, pas
-     * juste le dernier fragment (voir ModelCallPort.generate(..., Consumer)). Sert à afficher la
-     * réplique au fil de l'eau côté UI plutôt que d'attendre la fin du tour (voir ChatServiceImpl).
+     * Comme call(), avec onPartial notifié à chaque fragment de réflexion et/ou de texte VISIBLE
+     * généré par le modèle — toujours le contenu complet généré jusqu'ici à chaque appel, pas
+     * juste le dernier fragment (voir ModelCallPort.generate(..., Consumer) / PartialGeneration).
+     * Sert à afficher la réplique (et sa réflexion) au fil de l'eau côté UI plutôt que d'attendre
+     * la fin du tour (voir ChatServiceImpl). Le fragment de réflexion transmis respecte
+     * showThinking : si l'affichage de la réflexion est désactivé pour cette session, onPartial ne
+     * reçoit jamais qu'une réflexion vide — même règle que le résultat final ci-dessous.
      */
-    public RoleplayNarratorOutput call(RoleplayNarratorInput input, Consumer<String> onPartialReply) {
+    public RoleplayNarratorOutput call(RoleplayNarratorInput input, Consumer<PartialGeneration> onPartial) {
         ChatPrompt prompt = ChatPromptBuilder.build(input.scenario(), input.scene(), input.currentAct(),
             input.summary(), input.recentTurns());
 
@@ -99,14 +103,16 @@ public class RoleplayNarrator {
         // on la montre au joueur (ci-dessous), pas si on la demande au LLM (a charge de l'adaptateur
         // de s'en debrouiller, voir ModelCallPort).
         LlmCallContext     ctx = LlmCallContext.of(AGENT_NAME, input.scenario().name()).withThink(true);
+        Consumer<PartialGeneration> filteredOnPartial = showThinking ? onPartial
+            : partial -> onPartial.accept(new PartialGeneration("", partial.textSoFar()));
 
-        LlmResult result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, onPartialReply);
+        LlmResult result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, filteredOnPartial);
         if (result.text().isBlank()) {
             // Observed in practice (evols/2026-07-15-2318) : a small model can burn its whole
             // token budget reasoning in circles and return nothing at all. One retry, same prompt
             // — sampling is stochastic (no seed pinned), so a second attempt usually just works.
             // Give up after that : a loop here would risk masking a real, persistent problem.
-            result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, onPartialReply);
+            result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, filteredOnPartial);
         }
 
         String rawReply = result.text().strip();

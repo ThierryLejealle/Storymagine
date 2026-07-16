@@ -11,6 +11,7 @@ import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.coeur.ports.ModelLifecyclePort;
+import storymagine.commun.coeur.ports.PartialGeneration;
 import storymagine.commun.coeur.ports.RawCompletionPort;
 
 import java.io.BufferedReader;
@@ -110,12 +111,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     @Override
     public LlmResult generate(String systemPrompt, String userPrompt, double temperature,
                                LlmCallContext ctx, GenerationOptions options) {
-        return generate(systemPrompt, userPrompt, temperature, ctx, options, text -> {});
+        return generate(systemPrompt, userPrompt, temperature, ctx, options, partial -> {});
     }
 
     @Override
     public LlmResult generate(String systemPrompt, String userPrompt, double temperature,
-                               LlmCallContext ctx, GenerationOptions options, Consumer<String> onPartialText) {
+                               LlmCallContext ctx, GenerationOptions options, Consumer<PartialGeneration> onPartial) {
         int    local  = agentCallCounts
                             .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
                             .incrementAndGet();
@@ -123,7 +124,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt, wantedThink(ctx.think()));
         try {
             LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel(),
-                    ctx.think(), options, onPartialText);
+                    ctx.think(), options, onPartial);
             log.llmCallClose(handle, result.text(), result.thinking(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
@@ -136,11 +137,11 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
 
     private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature,
                                         String agentLabel, Boolean thinkOverride, GenerationOptions options,
-                                        Consumer<String> onPartialText) {
+                                        Consumer<PartialGeneration> onPartial) {
         while (true) {
             try {
                 return streamMode
-                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride, options, onPartialText)
+                    ? sendStreaming(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride, options, onPartial)
                     : sendSync(systemPrompt, userPrompt, temperature, agentLabel, thinkOverride, options);
             } catch (ContextOverflowException e) {
                 int newSize = Math.min((int) (contextWindowSize * CONTEXT_GROW_FACTOR), maxContextWindowSize);
@@ -449,7 +450,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
 
     private LlmResult sendStreaming(String systemPrompt, String userPrompt, double temperature,
                                      String agentLabel, Boolean thinkOverride, GenerationOptions options,
-                                     Consumer<String> onPartialText) {
+                                     Consumer<PartialGeneration> onPartial) {
         OllamaRequest req = buildOllamaRequest(systemPrompt, userPrompt, temperature, thinkOverride, options);
         req.stream = true;
 
@@ -469,7 +470,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         Exception lastCause     = null;
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
             try {
-                return executeStreaming(request, agentLabel, wantedThink(thinkOverride), onPartialText);
+                return executeStreaming(request, agentLabel, wantedThink(thinkOverride), onPartial);
             } catch (ContextOverflowException e) {
                 throw e;
             } catch (GenerationCancelledException e) {
@@ -500,7 +501,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     }
 
     private LlmResult executeStreaming(HttpRequest request, String agentLabel, Boolean wantedThink,
-                                        Consumer<String> onPartialText) {
+                                        Consumer<PartialGeneration> onPartial) {
         // Obtenir les headers HTTP — Ollama ne les envoie qu'une fois la requête acceptée, donc ce
         // délai peut être aussi long qu'un chargement de modèle ou une file d'attente derrière un
         // autre appel Ollama en cours : on réutilise firstTokenTimeoutMs (même budget que l'attente
@@ -559,10 +560,11 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
                 }
                 if (chunk.message != null && chunk.message.content != null) {
                     content.append(chunk.message.content);
-                    onPartialText.accept(content.toString());
+                    onPartial.accept(new PartialGeneration(thinking.toString(), content.toString()));
                 }
                 if (chunk.message != null && chunk.message.thinking != null) {
                     thinking.append(chunk.message.thinking);
+                    onPartial.accept(new PartialGeneration(thinking.toString(), content.toString()));
                 }
                 if (chunk.done) {
                     promptTokens = chunk.promptEvalCount;

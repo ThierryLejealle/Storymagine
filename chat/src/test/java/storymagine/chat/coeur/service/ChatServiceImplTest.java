@@ -23,6 +23,7 @@ import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
 import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.coeur.ports.ModelCallPort;
+import storymagine.commun.coeur.ports.PartialGeneration;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -99,7 +100,7 @@ class ChatServiceImplTest {
 
         List<ChatTurn> streamedTurns = new java.util.ArrayList<>();
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.", new ExchangeProgressListener() {
-            @Override public void onPartialReply(String npcId, String textSoFar) {}
+            @Override public void onPartialReply(String npcId, PartialGeneration partial) {}
             @Override public void onTurnReady(ChatTurn turn) { streamedTurns.add(turn); }
         });
 
@@ -122,7 +123,9 @@ class ChatServiceImplTest {
         // liste unique pour verifier l'ORDRE relatif des evenements, pas juste leur contenu.
         List<String> events = new java.util.ArrayList<>();
         service.sendMessage(root, session, "Hello there.", new ExchangeProgressListener() {
-            @Override public void onPartialReply(String npcId, String textSoFar) { events.add("partial:" + textSoFar); }
+            @Override public void onPartialReply(String npcId, PartialGeneration partial) {
+                events.add("partial:" + partial.textSoFar());
+            }
             @Override public void onTurnReady(ChatTurn turn) { events.add("ready:" + turn.speaker()); }
         });
 
@@ -783,7 +786,7 @@ class ChatServiceImplTest {
         public int contextWindow() { return contextWindow; }
     }
 
-    /** Reports each of partialFragments via onPartialText before returning finalText — simulates a
+    /** Reports each of partialFragments via onPartial before returning finalText — simulates a
      *  streaming Ollama call for ModelCallPort.generate(..., Consumer) (see OllamaAdapter). */
     private static class StreamingStubModelCallPort implements ModelCallPort {
         private final int          contextWindow;
@@ -803,8 +806,8 @@ class ChatServiceImplTest {
 
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
-                                   GenerationOptions options, java.util.function.Consumer<String> onPartialText) {
-            partialFragments.forEach(onPartialText);
+                                   GenerationOptions options, java.util.function.Consumer<PartialGeneration> onPartial) {
+            partialFragments.forEach(fragment -> onPartial.accept(new PartialGeneration("", fragment)));
             return new LlmResult(finalText, 0, 0, 0, "");
         }
 

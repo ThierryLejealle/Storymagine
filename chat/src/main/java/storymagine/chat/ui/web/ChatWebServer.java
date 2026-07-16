@@ -11,6 +11,7 @@ import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.service.ChatService;
 import storymagine.chat.coeur.service.ChatTurnResult;
 import storymagine.chat.coeur.service.ExchangeProgressListener;
+import storymagine.commun.coeur.ports.PartialGeneration;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
 
 import java.io.IOException;
@@ -104,8 +105,9 @@ public class ChatWebServer {
      * reponse a plusieurs PNJ peut prendre 30s+ au total, autant montrer chaque replique grandir en
      * temps reel plutot que de faire attendre le tour entier (voir chat.html : sendMessage() lit le
      * flux ligne a ligne). Trois formes de ligne possibles pendant la generation (voir
-     * ExchangeProgressListener) : un PartialReplyEvent (npcId/textSoFar) a chaque fragment de texte
-     * du modele, puis un ChatTurn complet une fois la replique finie — le client remplace alors
+     * ExchangeProgressListener) : un PartialReplyEvent (npcId/thinkingSoFar/textSoFar) a chaque
+     * fragment de reflexion ou de texte du modele, puis un ChatTurn complet une fois la replique
+     * finie — le client remplace alors
      * l'apercu progressif par le rendu final, identique dans les deux cas. Derniere ligne
      * recapitulative — meme forme que /history — traitee par applyExchange() comme avant, ses
      * newTurns() etant vide puisque tout a deja ete envoye au fil de l'eau. Statut HTTP toujours
@@ -127,8 +129,8 @@ public class ChatWebServer {
             int[] streamedCount = {0};
             try {
                 ChatTurnResult result = service.sendMessage(chatScenariosRoot, session, body, new ExchangeProgressListener() {
-                    @Override public void onPartialReply(String npcId, String textSoFar) {
-                        out.writeUnchecked(new PartialReplyEvent(npcId, textSoFar));
+                    @Override public void onPartialReply(String npcId, PartialGeneration partial) {
+                        out.writeUnchecked(new PartialReplyEvent(npcId, partial.thinkingSoFar(), partial.textSoFar()));
                     }
                     @Override public void onTurnReady(ChatTurn turn) {
                         streamedCount[0]++;
@@ -429,7 +431,7 @@ public class ChatWebServer {
     private record StoppedView(boolean stopped, int removedTurnCount) {}
 
     /** One growing fragment of an in-progress Npc reply — see ExchangeProgressListener.onPartialReply. */
-    private record PartialReplyEvent(String npcId, String textSoFar) {}
+    private record PartialReplyEvent(String npcId, String thinkingSoFar, String textSoFar) {}
 
     private static void writeJson(HttpExchange ex, int status, Object payload) throws IOException {
         byte[] body = JSON.writeValueAsBytes(payload);

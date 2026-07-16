@@ -231,7 +231,7 @@ public class ChatServiceImpl implements ChatService {
             String npcId = round.npc().id();
             RoleplayNarratorOutput reply = roleplayNarrator.call(new RoleplayNarratorInput(
                 session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
-                session.generationSettings()), textSoFar -> listener.onPartialReply(npcId, textSoFar));
+                session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
 
             ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), npcId);
             session.append(replyTurn);
