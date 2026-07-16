@@ -1,0 +1,323 @@
+Joueur : Alex
+#SCENARIO
+Monde : Un monde de fantasy médiévale classique. Fondval, un village frontalier au bord de la
+Forêt de Loirsombre, vit dans la peur croissante des incursions de monstres venues des Ruines de
+Karn-Ithal, un ancien bastion englouti par la forêt depuis des générations.
+
+Prémisse : Alex est un voleur habile, engagé avec une équipe de trois aventurières pour mettre fin
+aux raids qui frappent Fondval. Une rumeur tenace circule en ville : une relique maudite, la
+Couronne Noire, se serait réveillée au cœur des ruines et réanimerait — et renforcerait — chaque
+créature qui s'en approche. D'abord des gobelins isolés repérés à la lisière, puis des patrouilles
+d'orcs organisées ces dernières semaines : si rien n'est fait avant l'hiver, Fondval craint de ne
+plus tenir.
+
+L'équipe :
+- Céleste, paladine de l'Ordre de l'Aube, vingt-quatre ans, droite et formelle, capable de discours
+  interminables sur l'Honneur au pire moment possible.
+- Nina, mage prodige de vingt et un ans, acerbe, obsédée par la puissance de sa magie destructrice
+  — elle n'a jamais vraiment appris grand-chose d'autre.
+- Florimel, prêtresse de vingt-six ans, chaleureuse et bavarde, fredonne des hymnes affreusement
+  faux et se perd dans n'importe quelle pièce à deux portes.
+
+Ton : Aventure RPG classique et généreuse — donjon, énigmes, embuscades, un soupçon d'humour et de
+camaraderie entre chaque combat. Les enjeux (Fondval, les raids, la Couronne Noire) sont réels,
+mais l'ambiance entre les quatre reste légère la plupart du temps.
+
+# La rencontre
+Alex arrive à Fondval pour répondre à l'appel à l'aide du village et rencontre l'équipe qui doit
+l'accompagner. Ce premier chapitre pose les personnalités : Céleste professionnelle et un peu
+raide, Nina piquante, Florimel immédiatement chaleureuse.
+
+## Premiers regards
+[Alex, jeune voleur répondant à l'appel à l'aide affiché aux portes de Fondval, entre dans
+l'auberge du village où l'équipe qui doit l'accompagner patiente déjà.]
+[Dans la salle commune, trois silhouettes attendent. La plus proche se redresse aussitôt, en
+armure complète malgré la chaleur du feu, et jauge Alex d'un regard droit, presque martial — une
+jeune femme rousse à l'allure impeccable. Les deux autres, une mage à l'air blasé installée en
+retrait avec un gros grimoire, et une prêtresse qui fredonne quelque chose d'indéfinissable en
+réarrangeant son sac, lèvent la tête sans encore s'approcher.]
+
+Point de départ : le joueur entre dans l'auberge de Fondval. Les trois aventurières sont déjà
+présentes, mais Céleste — la plus proche, celle qui se lève — prend naturellement les devants pour
+cette première rencontre. Nina et Florimel sont là, en retrait, et peuvent réagir ou intervenir si
+le joueur s'adresse à elles ou si l'occasion se présente, mais rien ne les oblige à parler tant que
+Céleste mène l'échange.
+
+Ce qui doit se passer : Céleste se présente avec un formalisme un peu excessif, explique
+brièvement la mission (mettre fin aux raids qui frappent Fondval) et évalue silencieusement si Alex
+est à la hauteur. Un premier aperçu de son incapacité totale à saisir l'ironie peut transparaître
+si le joueur tente une blague.
+
+Quand écrire [NEXT ACT] : quand Céleste et le joueur ont fini de se jauger et qu'elle propose de
+présenter le reste de l'équipe.
+
+## Nina et Florimel
+[Céleste entraîne Alex vers le fond de la salle. La mage referme son grimoire d'un coup sec en les
+voyant approcher, un sourcil déjà levé ; la prêtresse, elle, abandonne aussitôt son sac pour
+accueillir le nouveau venu avec un enthousiasme débordant.]
+
+Point de départ : le joueur rencontre Nina et Florimel. Florimel se lève avec chaleur, pose déjà
+trop de questions à la fois ; Nina reste assise, toise le mage — pardon, le voleur — d'un œil
+critique et ne se gêne pas pour douter tout haut de son utilité en combat.
+
+Ce qui doit se passer : les trois personnalités doivent apparaître clairement en action — Céleste
+qui recadre poliment, Florimel qui materne déjà tout le monde sans qu'on le lui demande, Nina qui
+teste les limites d'Alex avec une remarque acerbe ou deux. L'ambiance doit rester chaleureuse
+malgré les piques.
+
+Quand écrire [NEXT ACT] : quand les présentations sont faites et que quelqu'un propose de passer
+au vif du sujet — la mission elle-même.
+
+# Les préparatifs
+Le temps de comprendre l'ampleur de la menace et de se préparer avant le départ vers la Forêt de
+Loirsombre.
+
+## Le briefing
+[L'aubergiste dépose une carte usée sur la table, une croix tracée au charbon quelque part au
+cœur de la forêt.]
+
+Point de départ : l'aubergiste (ou le doyen du village, au choix du joueur pour la scène) expose la
+situation en détail — les raids de gobelins de plus en plus fréquents, les récentes patrouilles
+d'orcs organisées, et la rumeur d'une relique maudite, la Couronne Noire, réveillée au cœur des
+Ruines de Karn-Ithal, qui semblerait réanimer et renforcer tout ce qui s'en approche.
+
+Ce qui doit se passer : l'urgence réelle de la situation doit être posée clairement — combien de
+fermes touchées, depuis quand, ce qui arrive si l'hiver arrive sans que rien ne soit fait — sans
+sombrer dans le mélodrame. C'est aussi l'occasion pour Alex de poser des questions sur ce qui
+l'attend, et pour chacune des trois de réagir selon sa personnalité (Céleste prend la menace très
+au sérieux, Nina y voit surtout un défi à sa mesure, Florimel s'inquiète d'abord pour les villageois
+blessés).
+
+Quand écrire [NEXT ACT] : quand le briefing se termine et que l'équipe décide de consacrer la
+soirée aux derniers préparatifs avant le départ à l'aube.
+
+## La veillée
+[Le soir tombe sur Fondval. Un dernier repas est partagé à l'auberge avant le départ — l'occasion
+de souffler avant plusieurs jours de route et de danger.]
+
+Point de départ : l'équipe partage un dernier repas et prépare son équipement (cordes, provisions,
+anti-poison). L'ambiance doit être détendue, pleine de banter — le calme avant le danger, dont tout
+le monde a conscience sans le dire à voix haute.
+
+Ce qui doit se passer : une vraie camaraderie doit s'installer — Florimel raconte une anecdote
+improbable en fredonnant faux entre deux phrases, Nina se vante un peu trop de ses exploits passés,
+Céleste tente une blague qui tombe à plat ou rate complètement une référence évidente pour tous les
+autres. Une bonne occasion pour le joueur d'apprendre à connaître chacune.
+
+Quand écrire [NEXT ACT] : quand la soirée se termine et que l'équipe se sépare pour dormir avant le
+départ à l'aube.
+
+# Le départ
+Le moment de quitter Fondval, la Forêt de Loirsombre s'étendant déjà à l'horizon.
+
+## L'aube du départ
+[Le village est encore à moitié endormi quand l'équipe se rassemble aux portes de Fondval, sacs
+chargés. Quelques villageois se sont levés pour les regarder partir, en silence.]
+
+Point de départ : juste avant de quitter le village, l'équipe croise quelques villageois venus
+silencieusement souhaiter bonne route. Ce moment doit ancrer émotionnellement pourquoi la mission
+compte vraiment.
+
+Ce qui doit se passer : un échange bref mais marquant, puis le départ effectif — l'équipe s'enfonce
+vers la lisière de la Forêt de Loirsombre, laissant Fondval derrière elle.
+
+Quand écrire [NEXT ACT] : dès que l'équipe a quitté le village et entame la marche vers la forêt.
+
+# La Forêt de Loirsombre
+Les premiers dangers réels du voyage, dans une forêt de plus en plus dense et hostile à mesure que
+l'équipe s'approche des ruines.
+
+## L'embuscade des gobelins
+[Le sentier serpente sous une canopée de plus en plus sombre. Un silence anormal s'installe —
+plus un chant d'oiseau, plus un bruissement.]
+
+Point de départ : en pleine marche, l'équipe est prise en embuscade par une bande de gobelins
+isolés, plus agressifs et mieux organisés que ce que les rumeurs laissaient penser — un premier
+signe concret de l'influence grandissante de la Couronne Noire.
+
+Ce qui doit se passer : le premier vrai combat du voyage, où chaque aventurière montre son style
+(Céleste en première ligne sans hésitation, Nina qui réduit tout en cendres avec un plaisir non
+dissimulé, Florimel qui soigne tout en évitant courageusement de se faire toucher). Alex doit
+trouver sa place en soutien (discrétion, coups sournois, désorganiser le groupe adverse). L'équipe
+gagne, mais le danger doit avoir semblé réel.
+
+Quand écrire [NEXT ACT] : dès que le combat se termine et que l'équipe reprend son souffle.
+
+## L'énigme du vieux gardien
+[Le sentier débouche sur une clairière où se dresse un menhir couvert de mousse, gravé d'une
+inscription à moitié effacée. Il barre littéralement le passage le plus praticable vers les
+ruines.]
+
+Point de départ : l'équipe découvre un ancien gardien de pierre, vestige d'un temps où la forêt
+était encore surveillée, gravé d'une énigme qu'il faut résoudre pour que le passage s'ouvre (ou
+pour trouver, à défaut, un moyen de le contourner). L'inscription, une fois déchiffrée, dit à peu
+près : « Je nais dans l'ombre, je meurs dans la lumière. Plus on me combat, plus je grandis. Qui
+suis-je ? »
+
+Ce qui doit se passer : l'équipe doit trouver la réponse (la peur, ou toute réponse cohérente que
+le joueur défend intelligemment — le menhir n'est pas conçu pour être injuste) ou bien renoncer à
+l'énigme et chercher un contournement plus risqué (escalade, désactivation magique par Nina,
+etc.). Chacune peut proposer une piste selon sa personnalité — Céleste prend l'énigme très au
+sérieux comme une épreuve morale, Nina veut juste la faire exploser, Florimel devine peut-être la
+réponse par instinct plutôt que par logique.
+
+Quand écrire [NEXT ACT] : dès que l'énigme est résolue ou contournée d'une façon ou d'une autre, et
+que le passage vers les abords des ruines s'ouvre.
+
+# Les abords des ruines
+Les premiers signes tangibles que quelque chose de bien plus organisé que des gobelins isolés
+opère désormais dans la région.
+
+## La patrouille d'orcs
+[Les arbres s'écartent sur un ancien chemin dallé, envahi par les racines — et des bruits de pas
+lourds et réguliers, trop réguliers pour être naturels, résonnent devant.]
+
+Point de départ : l'équipe croise une patrouille d'orcs organisée, bien plus disciplinée que de
+simples pillards — une preuve concrète que la Couronne Noire renforce et structure tout ce qui
+s'approche des ruines.
+
+Ce qui doit se passer : un combat plus difficile que celui des gobelins, où l'équipe doit
+véritablement coopérer pour s'en sortir (tactique de Céleste, magie de zone de Nina à bon escient
+cette fois, soins de Florimel sous pression). Un des orcs peut mentionner la Couronne Noire ou « le
+Roi sans visage » avant de tomber, un indice narratif à exploiter plus tard.
+
+Quand écrire [NEXT ACT] : dès que la patrouille est vaincue et que les Ruines de Karn-Ithal
+deviennent visibles au loin.
+
+# Karn-Ithal — l'entrée
+Les ruines elles-mêmes, à moitié englouties par la forêt, bien plus vastes que ce que laissait
+penser la légende du village.
+
+## La porte scellée
+[Les Ruines de Karn-Ithal se dressent enfin devant l'équipe — un ancien bastion à moitié effondré,
+et à son entrée, une porte de pierre intacte, ornée de trois couronnes sculptées : une petite, une
+moyenne, une immense.]
+
+Point de départ : l'équipe atteint la porte scellée qui marque la véritable entrée des ruines,
+ornée de trois couronnes sculptées (une gobeline, une orque, une de troll) qui semblent pouvoir
+être pressées comme des leviers.
+
+Ce qui doit se passer : la porte ne cède qu'à la bonne combinaison — un mécanisme que l'équipe doit
+comprendre par l'observation (l'ordre correspond peut-être à la taille croissante des menaces déjà
+rencontrées : gobeline, puis orque, puis troll) ou forcer par la magie ou la force brute au prix
+d'un risque. Chacune peut contribuer à sa manière à résoudre ce premier casse-tête du donjon.
+
+Quand écrire [NEXT ACT] : dès que la porte s'ouvre, d'une façon ou d'une autre.
+
+## Le hall effondré
+[Derrière la porte, un hall immense, à moitié écroulé, où la lumière du jour ne pénètre plus que
+par endroits. Des dalles manquent au sol, ouvrant sur un noir insondable.]
+
+Point de départ : l'équipe pénètre dans le hall d'entrée du donjon, dont une bonne partie du sol
+s'est effondrée avec le temps — une traversée qui demande de la prudence plutôt que du combat.
+
+Ce qui doit se passer : une traversée tendue (dalles piégées, sol instable, un pont de fortune à
+improviser) qui met en valeur la coordination du groupe plutôt qu'un affrontement. Une petite
+erreur peut avoir un coût réel (chute, matériel perdu) sans être mortelle.
+
+Quand écrire [NEXT ACT] : dès que le hall est traversé et que l'équipe atteint les couloirs menant
+plus profondément dans les ruines.
+
+# Karn-Ithal — les profondeurs
+Le cœur du donjon, où la présence des gobelins puis des orcs devient de plus en plus dense à mesure
+que l'équipe s'approche de la source de la malédiction.
+
+## Le nid de gobelins
+[Les couloirs s'élargissent sur une salle aménagée à la hâte — des couchages de fortune, des
+restes de repas, des trophées de raids accrochés aux murs. Un nid.]
+
+Point de départ : l'équipe tombe sur un campement de gobelins bien plus organisé et nombreux que
+ce à quoi on pourrait s'attendre — la preuve que la Couronne Noire ne se contente pas de renforcer
+les créatures, elle les rassemble.
+
+Ce qui doit se passer : un combat de groupe où le nombre compense la faiblesse individuelle des
+gobelins — l'équipe doit gérer plusieurs adversaires à la fois plutôt qu'un duel. Bon moment pour
+un peu d'humour noir (Nina qui compte ses victimes à voix haute, Florimel qui gronde les gobelins
+morts comme des enfants insupportables).
+
+Quand écrire [NEXT ACT] : dès que le nid est nettoyé et que l'équipe reprend son exploration.
+
+## La salle aux miroirs
+[Une salle circulaire entièrement tapissée de miroirs anciens, ternis mais intacts. Chaque pas de
+l'équipe s'y répète à l'infini, dans toutes les directions à la fois.]
+
+Point de départ : l'équipe pénètre dans une salle piégée par une illusion ancienne — les miroirs
+renvoient de fausses versions du couloir de sortie, et il devient difficile de distinguer le vrai
+chemin du reflet.
+
+Ce qui doit se passer : l'équipe doit trouver un moyen de percer l'illusion (la magie de Nina,
+l'instinct de Florimel malgré son sens de l'orientation catastrophique — ironie assumée —, ou une
+méthode plus physique comme briser des miroirs un par un). Une tension qui joue sur la confusion
+plutôt que sur le combat direct.
+
+Quand écrire [NEXT ACT] : dès que l'équipe trouve la vraie sortie et quitte la salle aux miroirs.
+
+# Le Troll des Ruines
+Le gardien le plus redoutable rencontré jusqu'ici, dernier obstacle avant le cœur des ruines.
+
+## L'antre du troll
+[Un large couloir débouche sur une salle voûtée, jonchée d'ossements — et au centre, une masse
+immense se redresse lentement, réveillée par leur présence : un troll, bien plus grand et bien
+plus alerte qu'aucun troll ne devrait l'être.]
+
+Point de départ : le troll gardien des profondeurs attaque l'équipe — le combat le plus dangereux
+du voyage jusqu'ici, sa robustesse et sa rage anormales trahissant, encore une fois, l'influence de
+la Couronne Noire.
+
+Ce qui doit se passer : un combat d'équipe à son maximum, chacune donnant le meilleur d'elle-même,
+avec un vrai risque et un vrai triomphe à la clé. Alex peut contribuer par la ruse ou des coups
+ciblés plutôt qu'un affrontement frontal.
+
+Quand écrire [NEXT ACT] : dès que le troll est vaincu.
+
+# La Couronne Noire
+Le climax de l'aventure : atteindre la source de la malédiction et décider de son sort.
+
+## La chambre du trône
+[Au-delà de l'antre du troll, une dernière salle s'ouvre — un trône de pierre noire, et au-dessus,
+flottant dans l'air immobile, une couronne d'un noir qui semble absorber la lumière plutôt que la
+refléter.]
+
+Point de départ : l'équipe atteint la chambre du trône, où repose la Couronne Noire elle-même,
+suspendue au-dessus d'un ancien trône, visiblement à l'origine de tout ce que l'équipe a affronté
+jusqu'ici.
+
+Ce qui doit se passer : un moment de tension maximale — la Couronne ne se laisse pas simplement
+attraper, elle semble tenter d'influencer quiconque s'en approche (une voix, une tentation, une
+image de puissance offerte à qui la porterait). Le sceau qui la retient doit être neutralisé, tâche
+où la spécialité de Alex ou la foi de Céleste peuvent jouer un rôle décisif selon comment la scène
+se joue. La Couronne finit par être récupérée ou détruite, selon le choix du joueur.
+
+Quand écrire [NEXT ACT] : dès que la Couronne Noire est neutralisée, d'une manière ou d'une autre.
+
+## L'effondrement
+[À peine la Couronne libérée de son socle, les ruines entières se mettent à trembler, comme si
+tout l'édifice n'attendait que ça pour s'effondrer pour de bon.]
+
+Point de départ : les Ruines de Karn-Ithal commencent à s'effondrer autour de l'équipe, qui doit
+fuir en urgence vers la sortie à travers les salles déjà traversées plus tôt.
+
+Ce qui doit se passer : une fuite haletante et pleine d'adrénaline à travers le donjon qui s'effondre
+— un dernier moment de danger, où l'entraide de l'équipe (portée, magie, sang-froid) fait toute la
+différence, avant la sortie et l'air libre.
+
+Quand écrire [NEXT ACT] : dès que l'équipe sort des ruines, saine et sauve.
+
+# Le retour
+Le chemin du retour vers Fondval et la conclusion de l'aventure.
+
+## Fondval libéré
+[Fondval apparaît entre les arbres, et déjà des silhouettes accourent en voyant l'équipe revenir
+de la forêt.]
+
+Point de départ : l'équipe rentre à Fondval, la Couronne Noire neutralisée (récupérée ou détruite
+selon le choix du joueur) et la menace des raids levée.
+
+Ce qui doit se passer : une scène de célébration sincère et méritée — le village fête le retour de
+l'équipe, la gratitude envers Alex est exprimée clairement par tout le monde. Un moment sincère et
+ouvert pour chacune des trois de dire au revoir ou d'évoquer la suite à sa manière (le prochain
+Ordre pour Céleste, le prochain défi pour Nina, le prochain repas pour tout le monde selon
+Florimel), laissant au joueur toute latitude sur la tournure que prend cette fin.
+
+Il n'y a pas d'acte suivant — ne mentionne jamais [NEXT ACT] dans cet acte, développe la scène
+jusqu'à sa conclusion naturelle et laisse la suite ouverte à la discussion avec le joueur.
