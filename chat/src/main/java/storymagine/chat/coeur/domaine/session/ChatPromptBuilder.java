@@ -102,9 +102,9 @@ public final class ChatPromptBuilder {
      */
     private static final String OTHER_NPCS_RULE = """
         Other characters may be present in the scene (named above, under ALSO PRESENT, with what
-        you know about them) — that's the only thing you know about them, nothing more. Speak and
-        act only for your own character; never write dialogue or actions for another present character,
-        even briefly.
+        you knew about them from the start) — the story may have taught you more since, but never
+        anything from a private note that isn't yours. Speak and act only for your own character;
+        never write dialogue or actions for another present character, even briefly.
         Example — Marcus is present:
         Wrong: *Marcus nods and steps back.*
         Right: *I glance at Marcus, unsure if he noticed.*""";
@@ -164,8 +164,9 @@ public final class ChatPromptBuilder {
         system.append(SYSTEM_INTRO).append("\n\n");
         system.append("YOUR CHARACTER:\n").append(scene.speaker().fullSheet()).append("\n\n");
         if (!scene.otherPresent().isEmpty()) {
-            system.append("ALSO PRESENT IN THE SCENE — what you know about them (never anything from a\n")
-                  .append("private note that isn't yours):\n");
+            system.append("ALSO PRESENT IN THE SCENE — what you knew about them from the start (never\n")
+                  .append("anything from a private note that isn't yours; the story below may have taught\n")
+                  .append("you more since):\n");
             for (Npc other : scene.otherPresent()) {
                 system.append("- ").append(other.label()).append(": ").append(other.publicInfo()).append('\n');
             }

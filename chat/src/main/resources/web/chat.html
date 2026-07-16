@@ -891,7 +891,15 @@ async function restartSession() {
   }
 }
 
+// generating suit setControlsDisabled — sendEl/doBtnEl desactives bloquent bien le clic, mais pas
+// l'envoi du formulaire via la touche Entree sur inputEl (jamais desactive lui-meme, pour rester
+// tapable) : sans ce flag verifie explicitement, une reponse pouvait partir alors qu'un round a
+// plusieurs PNJ n'avait pas fini de repondre, deux appels /message en parallele mutant la meme
+// ChatSession (POJO non pense pour la concurrence, voir ChatWebServer).
+let generating = false;
+
 function setControlsDisabled(disabled) {
+  generating = disabled;
   sendEl.disabled = disabled;
   doBtnEl.disabled = disabled;
   undoBtnEl.disabled = disabled;
@@ -1029,6 +1037,7 @@ async function undoLast() {
 
 formEl.addEventListener('submit', (e) => {
   e.preventDefault();
+  if (generating) return; // inputEl reste tapable pendant un round, mais pas soumissible
   const text = inputEl.value.trim();
   if (!text) return;
   inputEl.value = '';
@@ -1036,6 +1045,7 @@ formEl.addEventListener('submit', (e) => {
 });
 
 doBtnEl.addEventListener('click', () => {
+  if (generating) return; // defense en profondeur, doBtnEl.disabled devrait deja bloquer le clic
   const typed = inputEl.value.trim();
   const text = /^DO:/i.test(typed) ? typed : ('DO: ' + typed).trim();
   inputEl.value = '';
