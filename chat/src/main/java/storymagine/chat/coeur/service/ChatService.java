@@ -6,11 +6,8 @@ import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 
-import storymagine.chat.coeur.domaine.session.ChatTurn;
-
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.Consumer;
 
 /** Entry point of the chat core : list/load scenarios, open a session, exchange turns. */
 public interface ChatService {
@@ -25,15 +22,16 @@ public interface ChatService {
     ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput);
 
     /**
-     * Same as sendMessage(), but onReplyReady is called synchronously, in order, once for every
-     * turn this exchange appends to session (the player's own turn first, then each Npc reply as
-     * soon as it comes back from the model, then any NARRATOR beat turns an act advance triggers) —
-     * before the whole round is done. Lets a caller (the web UI) show each reply the moment it's
-     * ready instead of waiting for the entire multi-Npc round to finish. The plain sendMessage()
-     * above is exactly this with a no-op callback.
+     * Same as sendMessage(), but listener is notified synchronously, in order, of everything this
+     * exchange produces before the whole round is done : each Npc reply's text as it grows
+     * (listener.onPartialReply, token by token from the model), then each turn as it's finalized
+     * and appended to session (listener.onTurnReady — the player's own turn first, then each Npc
+     * reply, then any NARRATOR beat turns an act advance triggers). Lets a caller (the web UI) show
+     * a reply growing in real time instead of waiting for it — or even the whole multi-Npc round —
+     * to finish. The plain sendMessage() above is exactly this with ExchangeProgressListener.NOOP.
      */
     ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput,
-                                Consumer<ChatTurn> onReplyReady);
+                                ExchangeProgressListener listener);
 
     /**
      * Regenerates the last exchange's reply, keeping the same player line and context. Requires

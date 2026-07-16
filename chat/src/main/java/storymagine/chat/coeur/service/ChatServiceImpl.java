@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Consumer;
 
 /**
  * Orchestrates one exchange : runs SpeakerSelector to pick which Cast member(s) answer the
@@ -98,20 +97,20 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput) {
-        return sendMessage(chatScenariosRoot, session, rawPlayerInput, turn -> {});
+        return sendMessage(chatScenariosRoot, session, rawPlayerInput, ExchangeProgressListener.NOOP);
     }
 
     @Override
     public ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput,
-                                       Consumer<ChatTurn> onReplyReady) {
+                                       ExchangeProgressListener listener) {
         PlayerMessage input = PlayerMessage.parse(rawPlayerInput);
         ChatTurn playerTurn = new ChatTurn(ChatTurn.Speaker.PLAYER, input.formattedLine());
         session.append(playerTurn);
-        onReplyReady.accept(playerTurn);
+        listener.onTurnReady(playerTurn);
         int playerTurnIndex = session.turns().size() - 1;
         try {
             List<RoundSpeaker> speakers = resolveSpeakers(session, input.formattedLine());
-            return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, 0, onReplyReady);
+            return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, 0, listener);
         } catch (GenerationCancelledException e) {
             // Retire le tour joueur en attente : rien n'a ete montre cote serveur pour cet
             // echange, le joueur doit pouvoir corriger et renvoyer son message sans qu'un tour
@@ -156,7 +155,8 @@ public class ChatServiceImpl implements ChatService {
             int replacedCount = turns.size() - (lastPlayerIdx + 1);
             session.truncateFrom(lastPlayerIdx + 1); // retire tout ce qui suit ce tour joueur, le garde lui
             List<RoundSpeaker> speakers = resolveSpeakers(session, playerTurn.text());
-            return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, replacedCount, turn -> {});
+            return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, replacedCount,
+                ExchangeProgressListener.NOOP);
         }
 
         List<RoundSpeaker> toRegenerate = new ArrayList<>();
@@ -179,7 +179,8 @@ public class ChatServiceImpl implements ChatService {
         }
         int replacedCount = turns.size() - fromIdx;
         session.truncateFrom(fromIdx);
-        return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, toRegenerate, replacedCount, turn -> {});
+        return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, toRegenerate, replacedCount,
+            ExchangeProgressListener.NOOP);
     }
 
     private static int lastPlayerTurnIndex(List<ChatTurn> turns) {
@@ -220,28 +221,29 @@ public class ChatServiceImpl implements ChatService {
 
     private ChatTurnResult generateRepliesAndFinish(Path chatScenariosRoot, ChatSession session, ChatTurn playerTurn,
                                                       List<RoundSpeaker> speakers, int replacedTurnCount,
-                                                      Consumer<ChatTurn> onReplyReady) {
+                                                      ExchangeProgressListener listener) {
         List<ChatTurn> replyTurns = new ArrayList<>();
         boolean actAdvanced = false;
         List<ChatTurn> narratorTurnsFromAdvance = List.of();
 
         for (RoundSpeaker round : speakers) {
             Scene scene = sceneFor(session, round.npc(), round.interjecting());
+            String npcId = round.npc().id();
             RoleplayNarratorOutput reply = roleplayNarrator.call(new RoleplayNarratorInput(
                 session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
-                session.generationSettings()));
+                session.generationSettings()), textSoFar -> listener.onPartialReply(npcId, textSoFar));
 
-            ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), round.npc().id());
+            ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), npcId);
             session.append(replyTurn);
             replyTurns.add(replyTurn);
-            onReplyReady.accept(replyTurn);
+            listener.onTurnReady(replyTurn);
 
             if (reply.triggeredNextAct() && !actAdvanced) {
                 int sizeBeforeAdvance = session.turns().size();
                 actAdvanced = session.advanceAct();
                 if (actAdvanced) {
                     narratorTurnsFromAdvance = session.turns().subList(sizeBeforeAdvance, session.turns().size());
-                    for (ChatTurn narratorTurn : narratorTurnsFromAdvance) onReplyReady.accept(narratorTurn);
+                    for (ChatTurn narratorTurn : narratorTurnsFromAdvance) listener.onTurnReady(narratorTurn);
                 }
             }
         }

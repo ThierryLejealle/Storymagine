@@ -10,6 +10,7 @@ import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.service.ChatService;
 import storymagine.chat.coeur.service.ChatTurnResult;
+import storymagine.chat.coeur.service.ExchangeProgressListener;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
 
 import java.io.IOException;
@@ -100,13 +101,16 @@ public class ChatWebServer {
 
     /**
      * NDJSON en chunked transfer (voir NdjsonWriter) plutot qu'un seul JSON en fin de tour : une
-     * reponse a plusieurs PNJ peut prendre 30s+ au total, autant montrer chaque bulle des qu'ELLE
-     * est prete plutot que de faire attendre le tour entier (voir chat.html : sendMessage() lit le
-     * flux ligne a ligne). Une ligne par ChatTurn produit (voir ChatService.sendMessage(...,
-     * Consumer)), puis une derniere ligne recapitulative — meme forme que /history — que le client
-     * traite avec applyExchange() comme avant, ses newTurns() etant vide puisque tout a deja ete
-     * envoye au fil de l'eau. Statut HTTP toujours 200 : le client ne regarde jamais le code de
-     * statut, seulement les champs presents sur chaque ligne (speaker/stopped/error).
+     * reponse a plusieurs PNJ peut prendre 30s+ au total, autant montrer chaque replique grandir en
+     * temps reel plutot que de faire attendre le tour entier (voir chat.html : sendMessage() lit le
+     * flux ligne a ligne). Trois formes de ligne possibles pendant la generation (voir
+     * ExchangeProgressListener) : un PartialReplyEvent (npcId/textSoFar) a chaque fragment de texte
+     * du modele, puis un ChatTurn complet une fois la replique finie — le client remplace alors
+     * l'apercu progressif par le rendu final, identique dans les deux cas. Derniere ligne
+     * recapitulative — meme forme que /history — traitee par applyExchange() comme avant, ses
+     * newTurns() etant vide puisque tout a deja ete envoye au fil de l'eau. Statut HTTP toujours
+     * 200 : le client ne regarde jamais le code de statut, seulement les champs presents sur
+     * chaque ligne (textSoFar/speaker/stopped/error).
      */
     private void handleMessage(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
@@ -122,9 +126,14 @@ public class ChatWebServer {
             NdjsonWriter out = new NdjsonWriter(os);
             int[] streamedCount = {0};
             try {
-                ChatTurnResult result = service.sendMessage(chatScenariosRoot, session, body, turn -> {
-                    streamedCount[0]++;
-                    out.writeUnchecked(turn);
+                ChatTurnResult result = service.sendMessage(chatScenariosRoot, session, body, new ExchangeProgressListener() {
+                    @Override public void onPartialReply(String npcId, String textSoFar) {
+                        out.writeUnchecked(new PartialReplyEvent(npcId, textSoFar));
+                    }
+                    @Override public void onTurnReady(ChatTurn turn) {
+                        streamedCount[0]++;
+                        out.writeUnchecked(turn);
+                    }
                 });
                 lastPromptTokens = result.promptTokens();
                 out.write(currentView(List.of(), result.replacedTurnCount(), result.compacted(), result.actAdvanced()));
@@ -418,6 +427,9 @@ public class ChatWebServer {
 
     /** removedTurnCount tells the client how many already-shown bubbles are now stale — see /stop. */
     private record StoppedView(boolean stopped, int removedTurnCount) {}
+
+    /** One growing fragment of an in-progress Npc reply — see ExchangeProgressListener.onPartialReply. */
+    private record PartialReplyEvent(String npcId, String textSoFar) {}
 
     private static void writeJson(HttpExchange ex, int status, Object payload) throws IOException {
         byte[] body = JSON.writeValueAsBytes(payload);

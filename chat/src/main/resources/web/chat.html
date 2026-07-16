@@ -33,6 +33,8 @@ main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--
 .typing .dot:nth-child(2){animation-delay:.15s}
 .typing .dot:nth-child(3){animation-delay:.3s}
 @keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+.turn.streaming .bubble::after{content:'▍';margin-left:2px;opacity:.6;animation:stream-blink 1s infinite}
+@keyframes stream-blink{0%,50%{opacity:.6}51%,100%{opacity:0}}
 footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w))}
 form{width:80%;margin:0 auto;display:flex;gap:.6rem}
 textarea{flex:1;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
@@ -544,6 +546,32 @@ function appendTurn(speaker, text, thinking, npcId) {
   return div;
 }
 
+// Apercu progressif d'une replique PNJ en cours de generation (voir sendMessage() / le champ
+// textSoFar du flux NDJSON) — PAS pousse dans renderedTurnEls : c'est un aperçu transitoire,
+// toujours remplace par la vraie bulle (appendTurn) des que le tour est fini, jamais compte dans
+// les retraits de removeLastTrackedEls (undo/retry/stop portent sur des tours reels, pas des
+// apercus). Texte remplace en entier a chaque appel (pas d'ajout), voir ModelCallPort.generate(...,
+// Consumer) : le fragment recu est toujours le texte complet genere jusqu'ici, jamais un delta.
+function appendStreamingBubble(npcId) {
+  const div = document.createElement('div');
+  div.className = 'turn llm streaming';
+  const label = document.createElement('div');
+  label.className = 'speaker-label';
+  label.textContent = (castById[npcId] && castById[npcId].label) || 'Personnage';
+  div.appendChild(label);
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  div.appendChild(bubble);
+  turnsEl.appendChild(div);
+  turnsEl.scrollTop = turnsEl.scrollHeight;
+  return div;
+}
+
+function updateStreamingBubble(el, textSoFar) {
+  el.querySelector('.bubble').innerHTML = formatText(textSoFar);
+  turnsEl.scrollTop = turnsEl.scrollHeight;
+}
+
 function showTyping() {
   const div = document.createElement('div');
   div.className = 'turn llm typing';
@@ -845,9 +873,10 @@ function stopGeneration() {
   fetch('/stop', { method: 'POST' }).catch(() => {});
 }
 
-// Chaque bulle (joueur puis chaque PNJ) apparait des qu'elle est prete, sans attendre le reste du
-// tour — voir ChatWebServer.handleMessage. Le tour joueur optimiste est remplace par la version
-// autoritaire du serveur des la premiere ligne recue (meme principe qu'avant, juste plus tot).
+// Chaque replique PNJ grandit en temps reel a mesure que le modele l'ecrit (data.textSoFar), puis
+// se fige dans sa forme definitive des que le tour est fini (data.speaker) — voir
+// ChatWebServer.handleMessage / ExchangeProgressListener. Le tour joueur optimiste est remplace par
+// la version autoritaire du serveur des la premiere ligne recue.
 async function sendMessage(text) {
   setControlsDisabled(true);
   statusEl.textContent = 'Le personnage réfléchit…';
@@ -856,11 +885,27 @@ async function sendMessage(text) {
   let playerBubbleReplaced = false;
   let stoppedInfo = null;
   let errorMessage = null;
+  let streamingEl = null;
+  let streamingNpcId = null;
   try {
     const res = await fetch('/message', { method: 'POST', body: text });
     await readNdjsonStream(res, (data) => {
-      if (data.speaker) {
+      if (data.textSoFar !== undefined) {
         if (typingTurn) { typingTurn.remove(); typingTurn = null; }
+        if (!streamingEl || streamingNpcId !== data.npcId) {
+          if (streamingEl) removeTrackedEl(streamingEl); // securite, ne devrait pas arriver
+          streamingEl = appendStreamingBubble(data.npcId);
+          streamingNpcId = data.npcId;
+        }
+        updateStreamingBubble(streamingEl, data.textSoFar);
+      } else if (data.speaker) {
+        if (typingTurn) { typingTurn.remove(); typingTurn = null; }
+        if (streamingEl && streamingNpcId === data.npcId) {
+          // l'apercu progressif a fait son office : place a la vraie bulle (icone regenerer, etc.)
+          removeTrackedEl(streamingEl);
+          streamingEl = null;
+          streamingNpcId = null;
+        }
         if (data.speaker === 'PLAYER' && !playerBubbleReplaced) {
           removeTrackedEl(optimisticTurn);
           playerBubbleReplaced = true;
@@ -876,6 +921,7 @@ async function sendMessage(text) {
       }
     });
     if (typingTurn) typingTurn.remove();
+    if (streamingEl) removeTrackedEl(streamingEl); // au cas ou (arret/erreur en plein streaming)
     if (stoppedInfo) {
       removeLastTrackedEls(stoppedInfo.removedTurnCount);
       inputEl.value = text;

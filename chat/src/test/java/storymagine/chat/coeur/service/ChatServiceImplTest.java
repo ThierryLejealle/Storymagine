@@ -18,6 +18,7 @@ import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.Scene;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
+import storymagine.commun.coeur.ports.GenerationOptions;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
 import storymagine.commun.coeur.ports.LogPort;
@@ -90,18 +91,42 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void sendMessageWithCallbackNotifiesEveryTurnInOrderAsSoonAsItIsAppended(@TempDir Path root) throws IOException {
+    void sendMessageWithListenerNotifiesEveryTurnInOrderAsSoonAsItIsAppended(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
 
-        List<ChatTurn> streamed = new java.util.ArrayList<>();
-        ChatTurnResult result = service.sendMessage(root, session, "Hello there.", streamed::add);
+        List<ChatTurn> streamedTurns = new java.util.ArrayList<>();
+        ChatTurnResult result = service.sendMessage(root, session, "Hello there.", new ExchangeProgressListener() {
+            @Override public void onPartialReply(String npcId, String textSoFar) {}
+            @Override public void onTurnReady(ChatTurn turn) { streamedTurns.add(turn); }
+        });
 
-        // meme contenu que sendMessage() sans callback, juste notifie au fil de l'eau : le tour
+        // meme contenu que sendMessage() sans listener, juste notifie au fil de l'eau : le tour
         // joueur d'abord, puis chaque replique — jamais tout d'un coup a la fin.
-        assertEquals(List.of(result.playerTurn(), result.replyTurns().get(0)), streamed);
+        assertEquals(List.of(result.playerTurn(), result.replyTurns().get(0)), streamedTurns);
+    }
+
+    @Test
+    void sendMessageWithListenerNotifiesPartialReplyTextBeforeTheTurnIsReady(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        StreamingStubModelCallPort roleplayLlm = new StreamingStubModelCallPort(32_768,
+            List.of("grunts", "grunts and nods"), "grunts and nods slowly");
+        StubModelCallPort summarizerLlm = new StubModelCallPort(32_768, "FOLDED SUMMARY", 0);
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(summarizerLlm), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        // liste unique pour verifier l'ORDRE relatif des evenements, pas juste leur contenu.
+        List<String> events = new java.util.ArrayList<>();
+        service.sendMessage(root, session, "Hello there.", new ExchangeProgressListener() {
+            @Override public void onPartialReply(String npcId, String textSoFar) { events.add("partial:" + textSoFar); }
+            @Override public void onTurnReady(ChatTurn turn) { events.add("ready:" + turn.speaker()); }
+        });
+
+        assertEquals(List.of("ready:PLAYER", "partial:grunts", "partial:grunts and nods", "ready:LLM"), events);
     }
 
     @Test
@@ -752,6 +777,35 @@ class ChatServiceImplTest {
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
             return new LlmResult(responseText, promptTokens, 0, 0, "");
+        }
+
+        @Override
+        public int contextWindow() { return contextWindow; }
+    }
+
+    /** Reports each of partialFragments via onPartialText before returning finalText — simulates a
+     *  streaming Ollama call for ModelCallPort.generate(..., Consumer) (see OllamaAdapter). */
+    private static class StreamingStubModelCallPort implements ModelCallPort {
+        private final int          contextWindow;
+        private final List<String> partialFragments;
+        private final String       finalText;
+
+        StreamingStubModelCallPort(int contextWindow, List<String> partialFragments, String finalText) {
+            this.contextWindow    = contextWindow;
+            this.partialFragments = partialFragments;
+            this.finalText        = finalText;
+        }
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+            return new LlmResult(finalText, 0, 0, 0, "");
+        }
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
+                                   GenerationOptions options, java.util.function.Consumer<String> onPartialText) {
+            partialFragments.forEach(onPartialText);
+            return new LlmResult(finalText, 0, 0, 0, "");
         }
 
         @Override

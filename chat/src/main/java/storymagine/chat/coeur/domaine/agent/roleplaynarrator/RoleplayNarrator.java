@@ -12,6 +12,7 @@ import storymagine.commun.coeur.ports.ModelCallPort;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -69,6 +70,16 @@ public class RoleplayNarrator {
     public int contextWindow() { return llm.contextWindow(); }
 
     public RoleplayNarratorOutput call(RoleplayNarratorInput input) {
+        return call(input, text -> {});
+    }
+
+    /**
+     * Comme call(), avec onPartialReply notifié à chaque fragment du texte VISIBLE (pas la
+     * réflexion) généré par le modèle — le texte complet généré jusqu'ici à chaque appel, pas
+     * juste le dernier fragment (voir ModelCallPort.generate(..., Consumer)). Sert à afficher la
+     * réplique au fil de l'eau côté UI plutôt que d'attendre la fin du tour (voir ChatServiceImpl).
+     */
+    public RoleplayNarratorOutput call(RoleplayNarratorInput input, Consumer<String> onPartialReply) {
         ChatPrompt prompt = ChatPromptBuilder.build(input.scenario(), input.scene(), input.currentAct(),
             input.summary(), input.recentTurns());
 
@@ -89,13 +100,13 @@ public class RoleplayNarrator {
         // de s'en debrouiller, voir ModelCallPort).
         LlmCallContext     ctx = LlmCallContext.of(AGENT_NAME, input.scenario().name()).withThink(true);
 
-        LlmResult result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options);
+        LlmResult result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, onPartialReply);
         if (result.text().isBlank()) {
             // Observed in practice (evols/2026-07-15-2318) : a small model can burn its whole
             // token budget reasoning in circles and return nothing at all. One retry, same prompt
             // — sampling is stochastic (no seed pinned), so a second attempt usually just works.
             // Give up after that : a loop here would risk masking a real, persistent problem.
-            result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options);
+            result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, onPartialReply);
         }
 
         String rawReply = result.text().strip();
