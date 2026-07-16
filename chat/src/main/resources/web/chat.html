@@ -6,15 +6,15 @@
 <title>Storymagine Chat</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8E%AD</text></svg>">
 <style>
-:root{--gauge-w:22px;--saves-w:150px}
+:root{--gauge-w:22px;--saves-w:150px;--cast-w:130px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#fff;color:#111827;
      display:flex;flex-direction:column}
-header{padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem 1.5rem;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between}
+header{padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w));border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between}
 header h1{font-size:1.1rem;font-weight:700}
 header .status{font-size:.8rem;color:#9ca3af}
-main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1.5rem 1.5rem;width:80%;margin:0 auto}
+main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1.5rem calc(1.5rem + var(--cast-w));width:80%;margin:0 auto}
 .turn{margin-bottom:1.1rem;max-width:80%;line-height:1.6}
 .turn.player{margin-left:auto;text-align:right}
 .turn .bubble{display:inline-block;padding:.6rem .9rem;border-radius:10px;text-align:left}
@@ -22,7 +22,7 @@ main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--
 .turn.llm .bubble{background:#f3f4f6;color:#111827}
 .turn .bubble em{font-style:italic;opacity:.85}
 .turn .bubble .tag{font-weight:700;font-size:.78rem;letter-spacing:.02em;opacity:.75}
-.thinking{margin-top:.4rem;font-size:.78rem;color:#9ca3af}
+.thinking{margin-bottom:.4rem;font-size:.78rem;color:#9ca3af}
 .thinking summary{cursor:pointer;user-select:none;font-weight:600;color:#6b7280}
 .thinking summary:hover{color:#2563eb}
 .thinking-text{margin-top:.4rem;white-space:pre-wrap;font-style:italic}
@@ -33,7 +33,7 @@ main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--
 .typing .dot:nth-child(2){animation-delay:.15s}
 .typing .dot:nth-child(3){animation-delay:.3s}
 @keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
-footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem 1.5rem}
+footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w))}
 form{width:80%;margin:0 auto;display:flex;gap:.6rem}
 textarea{flex:1;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
          font-size:.95rem;line-height:1.4;height:2.8rem}
@@ -93,6 +93,9 @@ button:disabled{background:#9ca3af;cursor:default}
 #styleModeSelect{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:.3rem .6rem;border-radius:8px;font-size:.8rem;font:inherit}
 #saveBtn{display:block;width:100%;background:#2563eb;color:#fff;border:none;padding:.5rem .6rem;
             border-radius:6px;font-size:.78rem;font-weight:600;margin-bottom:.8rem}
+#restartBtn{display:block;width:100%;background:#fff;color:#dc2626;border:1px solid #fecaca;padding:.5rem .6rem;
+            border-radius:6px;font-size:.78rem;font-weight:600;margin-bottom:.5rem}
+#restartBtn:hover{background:#fee2e2}
 #savesPanel{position:fixed;top:0;right:var(--gauge-w);bottom:0;width:var(--saves-w);overflow-y:auto;
             background:#fafafa;border-left:1px solid #e5e7eb;padding:2.4rem .6rem .6rem;z-index:900}
 #savesPanel h2{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:.5rem}
@@ -104,6 +107,32 @@ button:disabled{background:#9ca3af;cursor:default}
             font-size:.85rem;line-height:1;cursor:pointer}
 .save-delete-btn:hover{background:#fee2e2}
 .saves-empty{font-size:.72rem;color:#9ca3af;font-style:italic}
+#castPanel{position:fixed;top:0;left:0;bottom:0;width:var(--cast-w);overflow-y:auto;
+            background:#fafafa;border-right:1px solid #e5e7eb;padding:2.4rem .6rem .6rem;z-index:900}
+.cast-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+#castPanel h2{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:0}
+#reloadScenarioBtn{flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:.75rem;
+            padding:.1rem .4rem;cursor:pointer;color:#6b7280}
+#reloadScenarioBtn:hover{border-color:#2563eb;color:#2563eb}
+.npc-row{display:flex;gap:.3rem;margin-bottom:.4rem;align-items:center}
+.npc-vignette{display:block;flex:1;min-width:0;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:6px;
+            padding:.5rem .4rem;font-size:.72rem;text-align:left;font-weight:600;line-height:1.2}
+.npc-vignette:hover{border-color:#2563eb;color:#2563eb}
+.npc-vignette.absent{background:#f3f4f6;color:#9ca3af;font-weight:400;text-decoration:line-through}
+.npc-interject-btn{flex:none;width:1.7rem;height:1.7rem;padding:0;display:flex;align-items:center;justify-content:center;
+            background:#fff;color:#c7cbd1;border:1px solid #e5e7eb;border-radius:6px;font-size:.8rem;cursor:pointer}
+.npc-interject-btn:hover{border-color:#2563eb;color:#2563eb}
+.npc-interject-btn.active{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.cast-empty{font-size:.72rem;color:#9ca3af;font-style:italic}
+.speaker-label{font-size:.72rem;font-weight:700;color:#6b7280;margin-bottom:.25rem}
+.speaker-row{display:flex;align-items:center;gap:.35rem}
+.speaker-row .speaker-label{margin-bottom:.25rem}
+.retry-bubble-btn{flex:none;width:1.3rem;height:1.3rem;padding:0;margin-bottom:.25rem;display:flex;
+            align-items:center;justify-content:center;background:transparent;color:#c7cbd1;
+            border:1px solid transparent;border-radius:5px;font-size:.78rem;cursor:pointer;opacity:0;
+            transition:opacity .12s}
+.turn:hover .retry-bubble-btn{opacity:1}
+.retry-bubble-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
 
 /* ===== Mode Immersif — large et aere, labels de locuteur au lieu de bulles colorees ===== */
 body.style-immersif{
@@ -120,7 +149,9 @@ body.style-immersif .turn .bubble{display:block;padding:0;border-radius:0;backgr
 body.style-immersif .turn .bubble::before{display:block;font-size:.72rem;font-weight:700;letter-spacing:.12em;
   text-transform:uppercase;margin-bottom:.5rem}
 body.style-immersif .turn.player .bubble::before{content:"Toi";color:#5b6b8c}
-body.style-immersif .turn.llm .bubble::before{content:"Personnage";color:#8b93a7}
+body.style-immersif .turn.llm .bubble::before{display:none}
+body.style-immersif .turn .speaker-label{font-size:.72rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:.5rem;color:#8b93a7}
 body.style-immersif .turn .bubble em{opacity:1;color:#55607a}
 
 /* ===== Mode Script — transcript pleine largeur, gouttiere de locuteur, sans bulles ===== */
@@ -136,14 +167,26 @@ body.style-script .turn::before{content:"PERSONNAGE";position:absolute;left:0;to
   text-align:right;padding-right:1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;color:#9ca3af;
   border-right:2px solid #e5e7eb}
 body.style-script .turn.player::before{content:"TOI";color:#2563eb}
+body.style-script .turn.llm::before{display:none}
+body.style-script .turn .speaker-label{position:absolute;left:0;top:.85rem;width:7rem;text-align:right;
+  padding-right:1rem;font-size:.7rem;font-weight:700;letter-spacing:.06em;color:#9ca3af;
+  border-right:2px solid #e5e7eb;margin:0}
 body.style-script .turn .bubble em{opacity:1;color:#4b5563}
 </style>
 </head>
 <body>
 <div id="gaugeLabel"></div>
 <div id="gauge" title="Utilisation du contexte"><div id="gaugeFill"></div></div>
+<div id="castPanel">
+  <div class="cast-panel-header">
+    <h2>Personnages</h2>
+    <button id="reloadScenarioBtn" type="button" title="Recharger le scénario et les personnages depuis les fichiers (garde la conversation en cours)">⟳</button>
+  </div>
+  <div id="castList"><p class="cast-empty">—</p></div>
+</div>
 <div id="savesPanel">
   <h2>Sauvegardes</h2>
+  <button id="restartBtn" type="button" title="Recommencer le scénario depuis le début (l'historique actuel est archivé, pas perdu)">🔄 Recommencer</button>
   <button id="saveBtn" type="button" title="Créer un point de sauvegarde">💾 Sauvegarder</button>
   <div id="savesList"><p class="saves-empty">Aucune sauvegarde.</p></div>
 </div>
@@ -191,13 +234,16 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
       <input type="number" id="topKInput" min="1" max="200" placeholder="100">
     </label>
     <label>Max tokens
-      <input type="number" id="maxTokensInput" min="50" max="8000" step="50" placeholder="1200">
+      <input type="number" id="maxTokensInput" min="50" max="8000" step="50" placeholder="3250">
     </label>
     <label>Min-P
       <input type="number" id="minPInput" min="0" max="1" step="0.01" placeholder="0.05">
     </label>
     <label>Repeat penalty
       <input type="number" id="repeatPenaltyInput" min="1" max="1.3" step="0.01" placeholder="1.08">
+    </label>
+    <label>💬 Chance d'interjection
+      <input type="number" id="interjectionChanceInput" min="0" max="1" step="0.05" placeholder="0.50" title="Probabilité, pour chaque PNJ présent éligible (icône 💬 activée) non visé, de réagir quand même quand un seul autre PNJ est nommé par son nom">
     </label>
     <label class="checkbox-label">
       <input type="checkbox" id="showThinkingInput"> 🧠 Afficher la réflexion
@@ -240,7 +286,10 @@ const analysisTitleEl = document.getElementById('analysisTitle');
 const analysisContentEl = document.getElementById('analysisContent');
 const analysisCloseBtnEl = document.getElementById('analysisCloseBtn');
 const saveBtnEl = document.getElementById('saveBtn');
+const restartBtnEl = document.getElementById('restartBtn');
 const savesListEl = document.getElementById('savesList');
+const castListEl = document.getElementById('castList');
+const reloadScenarioBtnEl = document.getElementById('reloadScenarioBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const tempInput = document.getElementById('tempInput');
@@ -249,6 +298,7 @@ const topKInput = document.getElementById('topKInput');
 const maxTokensInput = document.getElementById('maxTokensInput');
 const minPInput = document.getElementById('minPInput');
 const repeatPenaltyInput = document.getElementById('repeatPenaltyInput');
+const interjectionChanceInput = document.getElementById('interjectionChanceInput');
 const showThinkingInput = document.getElementById('showThinkingInput');
 const settingsApplyBtn = document.getElementById('settingsApplyBtn');
 const settingsResetBtn = document.getElementById('settingsResetBtn');
@@ -289,10 +339,21 @@ function fillSettingsPanel(settings) {
   maxTokensInput.value = s.maxTokens != null ? s.maxTokens : '';
   minPInput.value = s.minP != null ? s.minP : '';
   repeatPenaltyInput.value = s.repeatPenalty != null ? s.repeatPenalty : '';
-  showThinkingInput.checked = s.showThinking === true;
+  interjectionChanceInput.value = s.interjectionChance != null ? s.interjectionChance : '';
+  showThinkingInput.checked = s.showThinking !== false;
 }
 
 tempInput.addEventListener('input', () => { tempVal.textContent = tempInput.value; });
+
+// Ces champs sont vides par defaut (= "utilise le defaut serveur", cf. fillSettingsPanel) et
+// n'affichent leur valeur que via le placeholder grise — mais un champ vide fait repartir les
+// fleches +/- natives du navigateur de 0, pas du placeholder. Au premier focus, on materialise le
+// placeholder en vraie valeur pour que +/- incremente depuis un nombre sense, pas depuis rien.
+[topKInput, maxTokensInput, minPInput, repeatPenaltyInput, interjectionChanceInput].forEach(input => {
+  input.addEventListener('focus', () => {
+    if (!input.value && input.placeholder) input.value = input.placeholder;
+  });
+});
 
 settingsBtn.addEventListener('click', () => {
   settingsPanel.classList.toggle('hidden');
@@ -314,6 +375,7 @@ function applyPreset(name) {
   params.set('minP', p.minP);
   params.set('repeatPenalty', p.repeatPenalty);
   if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
+  if (interjectionChanceInput.value) params.set('interjectionChance', interjectionChanceInput.value);
   params.set('showThinking', showThinkingInput.checked);
   postSettings(params.toString());
   statusEl.textContent = 'Préréglage appliqué.';
@@ -330,6 +392,7 @@ function applySettings() {
   if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
   if (minPInput.value) params.set('minP', minPInput.value);
   if (repeatPenaltyInput.value) params.set('repeatPenalty', repeatPenaltyInput.value);
+  if (interjectionChanceInput.value) params.set('interjectionChance', interjectionChanceInput.value);
   params.set('showThinking', showThinkingInput.checked);
   postSettings(params.toString());
   statusEl.textContent = 'Réglages appliqués.';
@@ -360,6 +423,57 @@ function formatText(raw) {
 // removeTrackedEl des qu'il est remplace par la version autoritaire du serveur.
 const renderedTurnEls = [];
 
+// id -> {id, label, present}, reconstruit a chaque reponse serveur (history.cast rides along on
+// every response, voir ChatHistoryView) — utilise par appendTurn pour resoudre le nom affiche
+// d'un tour LLM a partir de son npcId.
+let castById = {};
+
+function updateCastPanel(cast) {
+  castById = {};
+  if (!cast || !cast.length) {
+    castListEl.innerHTML = '<p class="cast-empty">—</p>';
+    return;
+  }
+  castListEl.innerHTML = '';
+  for (const npc of cast) {
+    castById[npc.id] = npc;
+    const row = document.createElement('div');
+    row.className = 'npc-row';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'npc-vignette' + (npc.present ? '' : ' absent');
+    btn.textContent = (npc.present ? '🔊 ' : '🔇 ') + npc.label;
+    btn.title = npc.present ? 'Cliquer pour rendre absent de la scène' : 'Cliquer pour rendre présent';
+    btn.addEventListener('click', () => toggleNpcPresent(npc.id, !npc.present));
+
+    const interjectBtn = document.createElement('button');
+    interjectBtn.type = 'button';
+    interjectBtn.className = 'npc-interject-btn' + (npc.interjecting ? ' active' : '');
+    interjectBtn.textContent = '💬';
+    interjectBtn.title = npc.interjecting
+      ? 'Peut réagir même sans être visé (cliquer pour désactiver)'
+      : 'Ne réagit que si visé par son nom (cliquer pour activer les interjections)';
+    interjectBtn.addEventListener('click', () => toggleNpcInterjecting(npc.id, !npc.interjecting));
+
+    row.appendChild(btn);
+    row.appendChild(interjectBtn);
+    castListEl.appendChild(row);
+  }
+}
+
+async function toggleNpcPresent(id, present) {
+  const res = await fetch('/set-present?id=' + encodeURIComponent(id) + '&present=' + present, { method: 'POST' });
+  const data = await res.json();
+  updateCastPanel(data.cast);
+}
+
+async function toggleNpcInterjecting(id, interjecting) {
+  const res = await fetch('/set-interjecting?id=' + encodeURIComponent(id) + '&interjecting=' + interjecting, { method: 'POST' });
+  const data = await res.json();
+  updateCastPanel(data.cast);
+}
+
 function removeTrackedEl(el) {
   const i = renderedTurnEls.indexOf(el);
   if (i !== -1) renderedTurnEls.splice(i, 1);
@@ -373,7 +487,7 @@ function removeLastTrackedEls(count) {
   }
 }
 
-function appendTurn(speaker, text, thinking) {
+function appendTurn(speaker, text, thinking, npcId) {
   if (speaker === 'NARRATOR') {
     const div = document.createElement('div');
     div.className = 'narrator-note';
@@ -385,11 +499,30 @@ function appendTurn(speaker, text, thinking) {
   }
   const div = document.createElement('div');
   div.className = 'turn ' + (speaker === 'PLAYER' ? 'player' : 'llm');
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.innerHTML = formatText(text);
-  div.appendChild(bubble);
+  if (speaker === 'LLM') {
+    const labelRow = document.createElement('div');
+    labelRow.className = 'speaker-row';
+    const label = document.createElement('div');
+    label.className = 'speaker-label';
+    label.textContent = (castById[npcId] && castById[npcId].label) || 'Personnage';
+    labelRow.appendChild(label);
+
+    // Regenere a partir de CETTE bulle (voir ChatService.retry(fromNpcId)) : ne marche que si ce
+    // PNJ a repondu dans le tour le plus recent, sinon le serveur renvoie une erreur (affichee via
+    // statusEl) — pas de logique cote client pour deviner si le bouton "devrait" s'afficher ici.
+    const retryBtn = document.createElement('button');
+    retryBtn.type = 'button';
+    retryBtn.className = 'retry-bubble-btn';
+    retryBtn.textContent = '↻';
+    retryBtn.title = 'Régénérer à partir de cette réplique';
+    retryBtn.addEventListener('click', () => retryLast(npcId));
+    labelRow.appendChild(retryBtn);
+
+    div.appendChild(labelRow);
+  }
   if (thinking) {
+    // Avant la bulle : le modele reflechit avant de repondre, l'affichage suit ce meme ordre
+    // (voir aussi le fichier de log, meme principe applique cote FileLogAdapter).
     const details = document.createElement('details');
     details.className = 'thinking';
     const summary = document.createElement('summary');
@@ -401,6 +534,10 @@ function appendTurn(speaker, text, thinking) {
     details.appendChild(thinkingText);
     div.appendChild(details);
   }
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = formatText(text);
+  div.appendChild(bubble);
   turnsEl.appendChild(div);
   renderedTurnEls.push(div);
   turnsEl.scrollTop = turnsEl.scrollHeight;
@@ -501,10 +638,11 @@ function updateChrome(history) {
 // Rendu complet depuis zero : uniquement au chargement/rechargement de la page, a partir de
 // history.turns (la fenetre courante de tours, pas l'historique complet de la session).
 function render(history) {
+  updateCastPanel(history.cast); // avant la boucle : appendTurn resout les labels via castById
   turnsEl.innerHTML = '';
   renderedTurnEls.length = 0;
   for (const turn of history.turns) {
-    appendTurn(turn.speaker, turn.text, turn.thinking);
+    appendTurn(turn.speaker, turn.text, turn.thinking, turn.npcId);
   }
   fillSettingsPanel(history.generationSettings);
   updateChrome(history);
@@ -515,6 +653,7 @@ function render(history) {
 // a produit (history.newTurns) — sans jamais tout effacer, pour qu'un compactage cote serveur
 // (qui raccourcit history.turns) ne fasse pas disparaitre a l'ecran des tours deja vus.
 function applyExchange(history) {
+  updateCastPanel(history.cast); // avant la boucle : appendTurn resout les labels via castById
   removeLastTrackedEls(history.removedTurnCount);
   if (history.compacted) {
     const note = document.createElement('div');
@@ -523,7 +662,7 @@ function applyExchange(history) {
     turnsEl.appendChild(note);
   }
   for (const turn of history.newTurns) {
-    appendTurn(turn.speaker, turn.text, turn.thinking);
+    appendTurn(turn.speaker, turn.text, turn.thinking, turn.npcId);
   }
   if (history.actAdvanced) {
     const note = document.createElement('div');
@@ -541,6 +680,30 @@ function actSuffix(actTitle) {
 async function loadHistory() {
   const res = await fetch('/history');
   render(await res.json());
+}
+
+// Lit une reponse NDJSON (une ligne = un objet JSON) au fil de l'eau, appelant onLine des qu'une
+// ligne complete est disponible — voir ChatWebServer.handleMessage/NdjsonWriter. Chaque ligne est
+// soit un ChatTurn (champ speaker), soit la vue recapitulative finale (meme forme que /history),
+// soit {stopped,...}, soit {error,...} — sendMessage() distingue au champ present, pas a un type
+// explicite, pour reutiliser telles quelles les formes JSON deja utilisees ailleurs dans ce fichier.
+async function readNdjsonStream(response, onLine) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (line) onLine(JSON.parse(line));
+    }
+  }
+  const rest = buf.trim();
+  if (rest) onLine(JSON.parse(rest));
 }
 
 // L'id est l'horodatage brut du serveur (yyyy-MM-dd-HHmmss-SSS) : reformate juste pour l'affichage.
@@ -620,6 +783,55 @@ async function loadSave(id) {
   }
 }
 
+// Relit scenario.txt et les .txt de personnages depuis le disque, sans toucher a la conversation
+// en cours (voir ChatSession.reloadScenario) — repeint via render() comme loadSave, la reponse a la
+// meme forme que /history.
+async function reloadScenario() {
+  setControlsDisabled(true);
+  statusEl.textContent = 'Rechargement du scénario…';
+  try {
+    const res = await fetch('/reload-scenario', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+      return;
+    }
+    render(data);
+    statusEl.textContent = 'Scénario et personnages rechargés.';
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+  }
+}
+
+// Remplacement complet de l'etat (comme loadSave) : repeint tout via render(). L'historique actuel
+// n'est pas perdu cote disque (voir ChatStoragePort.resetSession, meme mecanisme que le prompt de
+// reset du CLI) — juste archive et retire de la session en cours, d'ou le message de confirmation
+// qui rassure sans pour autant mentir sur le fait que la conversation affichee, elle, disparait.
+async function restartSession() {
+  if (!confirm('Recommencer ce scénario depuis le début ? La conversation affichée sera remise à zéro (l\'historique actuel est archivé, pas supprimé).')) {
+    return;
+  }
+  setControlsDisabled(true);
+  statusEl.textContent = 'Redémarrage du scénario…';
+  try {
+    const res = await fetch('/restart', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+      return;
+    }
+    render(data);
+    await loadSaves();
+    statusEl.textContent = 'Scénario redémarré.';
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+  }
+}
+
 function setControlsDisabled(disabled) {
   sendEl.disabled = disabled;
   doBtnEl.disabled = disabled;
@@ -633,34 +845,54 @@ function stopGeneration() {
   fetch('/stop', { method: 'POST' }).catch(() => {});
 }
 
+// Chaque bulle (joueur puis chaque PNJ) apparait des qu'elle est prete, sans attendre le reste du
+// tour — voir ChatWebServer.handleMessage. Le tour joueur optimiste est remplace par la version
+// autoritaire du serveur des la premiere ligne recue (meme principe qu'avant, juste plus tot).
 async function sendMessage(text) {
   setControlsDisabled(true);
   statusEl.textContent = 'Le personnage réfléchit…';
   const optimisticTurn = appendTurn('PLAYER', text);
-  const typingTurn = showTyping();
+  let typingTurn = showTyping();
+  let playerBubbleReplaced = false;
+  let stoppedInfo = null;
+  let errorMessage = null;
   try {
     const res = await fetch('/message', { method: 'POST', body: text });
-    const data = await res.json();
-    typingTurn.remove();
-    if (data.stopped) {
-      removeTrackedEl(optimisticTurn);
+    await readNdjsonStream(res, (data) => {
+      if (data.speaker) {
+        if (typingTurn) { typingTurn.remove(); typingTurn = null; }
+        if (data.speaker === 'PLAYER' && !playerBubbleReplaced) {
+          removeTrackedEl(optimisticTurn);
+          playerBubbleReplaced = true;
+        }
+        appendTurn(data.speaker, data.text, data.thinking, data.npcId);
+        if (data.speaker !== 'PLAYER') typingTurn = showTyping();
+      } else if (data.stopped !== undefined) {
+        stoppedInfo = data;
+      } else if (data.error !== undefined) {
+        errorMessage = data.error;
+      } else {
+        applyExchange(data); // derniere ligne : vue recapitulative, newTurns deja tout envoye au fil de l'eau
+      }
+    });
+    if (typingTurn) typingTurn.remove();
+    if (stoppedInfo) {
+      removeLastTrackedEls(stoppedInfo.removedTurnCount);
       inputEl.value = text;
       statusEl.textContent = 'Génération arrêtée — corrige et renvoie.';
-    } else if (data.error) {
-      // Meme motif que data.stopped : quelle que soit la raison de l'echec (timeout, erreur
-      // Ollama...), le brouillon du joueur ne doit jamais disparaitre, seulement le cas explicitement
-      // annule (data.stopped) restaurait le texte avant ce fix.
-      removeTrackedEl(optimisticTurn);
+    } else if (errorMessage) {
+      // Les bulles deja recues avant l'erreur restent affichees (elles correspondent a l'etat
+      // reel de la session cote serveur) — seul le brouillon joueur, s'il n'a pas ete remplace,
+      // doit disparaitre pour laisser le joueur corriger et renvoyer.
+      if (!playerBubbleReplaced) removeTrackedEl(optimisticTurn);
       inputEl.value = text;
-      statusEl.textContent = 'Erreur : ' + data.error + ' — corrige et renvoie.';
+      statusEl.textContent = 'Erreur : ' + errorMessage + ' — corrige et renvoie.';
     } else {
-      removeTrackedEl(optimisticTurn);
-      applyExchange(data);
       statusEl.textContent = '';
     }
   } catch (err) {
-    typingTurn.remove();
-    removeTrackedEl(optimisticTurn);
+    if (typingTurn) typingTurn.remove();
+    if (!playerBubbleReplaced) removeTrackedEl(optimisticTurn);
     inputEl.value = text;
     statusEl.textContent = 'Erreur réseau : ' + err + ' — corrige et renvoie.';
   } finally {
@@ -669,12 +901,15 @@ async function sendMessage(text) {
   }
 }
 
-async function retryLast() {
+// npcId absent : regenere tout le tour (bouton global). npcId present : ne regenere qu'a partir
+// de la reponse de ce PNJ (icone ↻ sur une bulle, voir appendTurn) — voir ChatService.retry(fromNpcId).
+async function retryLast(npcId) {
   setControlsDisabled(true);
   statusEl.textContent = 'Nouvelle réponse…';
   const typingTurn = showTyping();
   try {
-    const res = await fetch('/retry', { method: 'POST' });
+    const url = npcId ? '/retry?npcId=' + encodeURIComponent(npcId) : '/retry';
+    const res = await fetch(url, { method: 'POST' });
     const data = await res.json();
     typingTurn.remove();
     if (data.stopped) {
@@ -730,7 +965,7 @@ doBtnEl.addEventListener('click', () => {
   sendMessage(text);
 });
 
-retryBtnEl.addEventListener('click', retryLast);
+retryBtnEl.addEventListener('click', () => retryLast());
 undoBtnEl.addEventListener('click', undoLast);
 nextActBtnEl.addEventListener('click', nextAct);
 prevActBtnEl.addEventListener('click', previousAct);
@@ -738,6 +973,8 @@ analyzeNextActBtnEl.addEventListener('click', analyzeNextAct);
 analyzeMindStateBtnEl.addEventListener('click', analyzeMindState);
 analysisCloseBtnEl.addEventListener('click', () => analysisOverlayEl.classList.add('hidden'));
 saveBtnEl.addEventListener('click', saveNow);
+restartBtnEl.addEventListener('click', restartSession);
+reloadScenarioBtnEl.addEventListener('click', reloadScenario);
 stopBtnEl.addEventListener('click', stopGeneration);
 
 inputEl.addEventListener('keydown', (e) => {

@@ -14,6 +14,7 @@ import storymagine.commun.coeur.ports.GenerationCancelledException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -75,6 +76,10 @@ public class ChatWebServer {
         server.createContext("/retry",    this::handleRetry);
         server.createContext("/undo",     this::handleUndo);
         server.createContext("/settings", this::handleSettings);
+        server.createContext("/set-present", this::handleSetPresent);
+        server.createContext("/set-interjecting", this::handleSetInterjecting);
+        server.createContext("/reload-scenario", this::handleReloadScenario);
+        server.createContext("/restart", this::handleRestart);
         server.createContext("/stop",     this::handleStop);
         server.setExecutor(Executors.newFixedThreadPool(2));
         server.start();
@@ -93,6 +98,16 @@ public class ChatWebServer {
         writeJson(ex, 200, currentView(List.of(), 0, false, false));
     }
 
+    /**
+     * NDJSON en chunked transfer (voir NdjsonWriter) plutot qu'un seul JSON en fin de tour : une
+     * reponse a plusieurs PNJ peut prendre 30s+ au total, autant montrer chaque bulle des qu'ELLE
+     * est prete plutot que de faire attendre le tour entier (voir chat.html : sendMessage() lit le
+     * flux ligne a ligne). Une ligne par ChatTurn produit (voir ChatService.sendMessage(...,
+     * Consumer)), puis une derniere ligne recapitulative — meme forme que /history — que le client
+     * traite avec applyExchange() comme avant, ses newTurns() etant vide puisque tout a deja ete
+     * envoye au fil de l'eau. Statut HTTP toujours 200 : le client ne regarde jamais le code de
+     * statut, seulement les champs presents sur chaque ligne (speaker/stopped/error).
+     */
     private void handleMessage(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8).strip();
@@ -101,31 +116,48 @@ public class ChatWebServer {
             return;
         }
         beginGeneration();
-        try {
-            ChatTurnResult result = service.sendMessage(chatScenariosRoot, session, body);
-            lastPromptTokens = result.promptTokens();
-            writeJson(ex, 200, currentView(result.newTurns(), result.replacedTurnCount(), result.compacted(),
-                result.actAdvanced()));
-        } catch (GenerationCancelledException e) {
-            // sendMessage() a deja retire le tour joueur orphelin (voir ChatServiceImpl) — rien
-            // n'a ete affiche cote serveur pour ce tour, donc rien a faire disparaitre.
-            writeJson(ex, 200, new StoppedView(true, 0));
-        } catch (Exception e) {
-            writeJson(ex, 500, new ErrorView(e.getMessage()));
+        ex.getResponseHeaders().add("Content-Type", "application/x-ndjson; charset=utf-8");
+        ex.sendResponseHeaders(200, 0);
+        try (var os = ex.getResponseBody()) {
+            NdjsonWriter out = new NdjsonWriter(os);
+            int[] streamedCount = {0};
+            try {
+                ChatTurnResult result = service.sendMessage(chatScenariosRoot, session, body, turn -> {
+                    streamedCount[0]++;
+                    out.writeUnchecked(turn);
+                });
+                lastPromptTokens = result.promptTokens();
+                out.write(currentView(List.of(), result.replacedTurnCount(), result.compacted(), result.actAdvanced()));
+            } catch (GenerationCancelledException e) {
+                // sendMessage() a deja retire tout ce tour (y compris le tour joueur, voir
+                // ChatServiceImpl) — le client doit faire disparaitre exactement les tours deja
+                // recus via le flux (streamedCount), pas juste le tour joueur optimiste.
+                out.write(new StoppedView(true, streamedCount[0]));
+            } catch (Exception e) {
+                out.write(new ErrorView(e.getMessage()));
+            }
         } finally {
             endGeneration();
         }
     }
 
+    /**
+     * npcId absent : regenere tout le tour (bouton global). npcId present : ne regenere qu'a
+     * partir de la reponse de ce PNJ (bouton par bulle, voir chat.html) — voir
+     * ChatService.retry(fromNpcId) pour pourquoi ca peut aussi redefaire des repliques suivantes.
+     */
     private void handleRetry(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        String npcId = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery())).get("npcId");
         beginGeneration();
         try {
-            ChatTurnResult result = service.retry(chatScenariosRoot, session);
+            ChatTurnResult result = npcId == null || npcId.isBlank()
+                ? service.retry(chatScenariosRoot, session)
+                : service.retry(chatScenariosRoot, session, npcId);
             lastPromptTokens = result.promptTokens();
-            // seule la reponse est remplacee : newTurns() inclut aussi le tour joueur inchange, on
-            // ne renvoie donc que la reponse pour ne pas le faire dupliquer cote UI.
-            writeJson(ex, 200, currentView(List.of(result.replyTurn()), result.replacedTurnCount(),
+            // seules les repliques sont remplacees : newTurns() inclut aussi le tour joueur
+            // inchange, on ne renvoie donc que les repliques pour ne pas le faire dupliquer cote UI.
+            writeJson(ex, 200, currentView(result.replyTurns(), result.replacedTurnCount(),
                 result.compacted(), result.actAdvanced()));
         } catch (IllegalStateException e) {
             writeJson(ex, 409, new ErrorView(e.getMessage()));
@@ -165,6 +197,54 @@ public class ChatWebServer {
     }
 
     private static String nullToEmpty(String s) { return s == null ? "" : s; }
+
+    /** Mutes/unmutes one Cast member (a vignette click). No-op (see ChatSession.setPresent) if it would mute the last present Npc. */
+    private void handleSetPresent(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        Map<String, String> fields = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery()));
+        String id = fields.get("id");
+        boolean present = Boolean.parseBoolean(fields.get("present"));
+        service.setNpcPresent(chatScenariosRoot, session, id, present);
+        writeJson(ex, 200, currentView(List.of(), 0, false, false));
+    }
+
+    /** Opts a Cast member in/out of unprompted interjections (a vignette's 💬 icon). No "keep at least one" guard, unlike presence. */
+    private void handleSetInterjecting(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        Map<String, String> fields = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery()));
+        String id = fields.get("id");
+        boolean interjecting = Boolean.parseBoolean(fields.get("interjecting"));
+        service.setNpcInterjecting(chatScenariosRoot, session, id, interjecting);
+        writeJson(ex, 200, currentView(List.of(), 0, false, false));
+    }
+
+    /** Refresh button — re-reads scenario.txt and every character .txt from disk, keeps the conversation so far. */
+    private void handleReloadScenario(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        try {
+            service.reloadScenario(chatScenariosRoot, session);
+            writeJson(ex, 200, currentView(List.of(), 0, false, false));
+        } catch (Exception e) {
+            writeJson(ex, 500, new ErrorView(e.getMessage()));
+        }
+    }
+
+    /**
+     * Bouton "Recommencer" — remplacement complet de l'etat (comme /load-save), la reponse a la
+     * meme forme que /history pour que le client refasse un rendu complet. Le client confirme avec
+     * le joueur avant d'appeler ce point d'entree (voir chat.html) — l'ecrasement est donc toujours
+     * un choix explicite, pas un accident a rattraper.
+     */
+    private void handleRestart(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        try {
+            service.restartSession(chatScenariosRoot, session);
+            lastPromptTokens = 0;
+            writeJson(ex, 200, currentView(List.of(), 0, false, false));
+        } catch (Exception e) {
+            writeJson(ex, 500, new ErrorView(e.getMessage()));
+        }
+    }
 
     private void handleNextAct(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
@@ -265,7 +345,7 @@ public class ChatWebServer {
     /**
      * GET renvoie les réglages courants de la session (nuls = valeur par défaut de
      * RoleplayNarrator) ; POST les remplace, en formulaire url-encoded (temperature=0.9&topK=40&
-     * maxTokens=1200) plutôt qu'en JSON — on évite ainsi de désérialiser un record Jackson côté
+     * maxTokens=2500) plutôt qu'en JSON — on évite ainsi de désérialiser un record Jackson côté
      * entrée, seule la sérialisation (sortie) est utilisée ailleurs dans ce serveur. Un champ vide
      * ou absent revient à null (retour au défaut).
      */
@@ -280,7 +360,8 @@ public class ChatWebServer {
         GenerationSettings settings = new GenerationSettings(
             parseDouble(fields.get("temperature")), parseInt(fields.get("topK")), parseInt(fields.get("maxTokens")),
             parseDouble(fields.get("minP")), parseBoolean(fields.get("showThinking")),
-            parseDouble(fields.get("topP")), parseDouble(fields.get("repeatPenalty")));
+            parseDouble(fields.get("topP")), parseDouble(fields.get("repeatPenalty")),
+            parseDouble(fields.get("interjectionChance")));
         session.updateGenerationSettings(settings);
         writeJson(ex, 200, settings);
     }
@@ -315,7 +396,15 @@ public class ChatWebServer {
                                          boolean actAdvanced) {
         return new ChatHistoryView(session.scenario().name(), session.turns(), newTurns, removedTurnCount, compacted,
             lastPromptTokens, contextWindow, session.currentAct(), session.scenario().acts().size(), actAdvanced,
-            currentActTitle(), session.generationSettings());
+            currentActTitle(), session.generationSettings(), castView());
+    }
+
+    private List<NpcView> castView() {
+        var present = session.presentNpcIds();
+        var interjecting = session.interjectingNpcIds();
+        return session.scenario().cast().npcs().stream()
+            .map(npc -> new NpcView(npc.id(), npc.label(), present.contains(npc.id()), interjecting.contains(npc.id())))
+            .toList();
     }
 
     /** Display-only title of the current act (see ScenarioAct.title), null if there is none active. */
@@ -335,6 +424,28 @@ public class ChatWebServer {
         ex.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
         ex.sendResponseHeaders(status, body.length);
         try (var os = ex.getResponseBody()) { os.write(body); }
+    }
+
+    /**
+     * One JSON object per line (NDJSON), flushed right away so the client's streaming reader sees
+     * it immediately instead of buffered — see handleMessage. writeUnchecked wraps IOException
+     * (broken pipe, client navigated away mid-generation) so it can be used from inside a
+     * Consumer&lt;ChatTurn&gt; callback, which can't declare a checked exception.
+     */
+    private static final class NdjsonWriter {
+        private final OutputStream os;
+
+        NdjsonWriter(OutputStream os) { this.os = os; }
+
+        void write(Object payload) throws IOException {
+            os.write(JSON.writeValueAsBytes(payload));
+            os.write('\n');
+            os.flush();
+        }
+
+        void writeUnchecked(Object payload) {
+            try { write(payload); } catch (IOException e) { throw new UncheckedIOException(e); }
+        }
     }
 
     private static byte[] readResource(String classpath) {

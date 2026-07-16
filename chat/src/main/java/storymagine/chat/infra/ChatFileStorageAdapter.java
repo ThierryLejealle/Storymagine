@@ -1,6 +1,8 @@
 package storymagine.chat.infra;
 
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.SavePoint;
@@ -14,27 +16,46 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * File-based ChatStoragePort : chatScenariosRoot/{name}/character.txt + scenario.txt (single file :
- * premise, optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown outline of
- * acts — see ScenarioOutlineParser) and history.md + summary.md + act.txt (persisted session,
- * rewritten after every turn and on reset) + full-history.md (append-only archive of every turn
- * ever folded into the summary — never rewritten, never truncated). saves/{stamp}/ holds the same
- * three session files per player-triggered save point (see createSavePoint), never touched by the
- * automatic save/reset flow above. See ChatStoragePort for the directory convention.
+ * File-based ChatStoragePort : chatScenariosRoot/{name}/scenario.txt (single file : an optional
+ * "Joueur : X" first line — see ChatScenario.playerName, stripped before the rest is parsed —
+ * then the premise, optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown
+ * outline of acts — see ScenarioOutlineParser) + one ".txt" file per Cast member (any name except scenario.txt,
+ * act.txt, present.txt, interject.txt — see loadCast ; "character.txt" is just an ordinary Npc
+ * file under this rule, which is how a legacy single-character scenario naturally becomes a
+ * one-Npc Cast with no special case) and history.md + summary.md + act.txt + present.txt +
+ * interject.txt (persisted session, rewritten after every turn and on reset) + full-history.md
+ * (append-only archive of every turn ever folded into the summary — never rewritten, never
+ * truncated). saves/{stamp}/ holds the same five session files per player-triggered save point
+ * (see createSavePoint), never touched by the automatic save/reset flow above. See ChatStoragePort
+ * for the directory convention.
  */
 public class ChatFileStorageAdapter implements ChatStoragePort {
 
-    private static final String CHARACTER_FILE = "character.txt";
     private static final String SCENARIO_FILE  = "scenario.txt";
     private static final String HISTORY_FILE      = "history.md";
     private static final String SUMMARY_FILE      = "summary.md";
     private static final String ACT_FILE          = "act.txt";
+    private static final String PRESENT_FILE      = "present.txt";
+    private static final String INTERJECT_FILE    = "interject.txt";
     private static final String FULL_HISTORY_FILE = "full-history.md";
+    private static final String TXT_EXTENSION = ".txt";
+
+    /** Top-level ".txt" files that are session/scenario plumbing, never a Cast member's sheet. */
+    private static final Set<String> RESERVED_TXT_FILES = Set.of(SCENARIO_FILE, ACT_FILE, PRESENT_FILE, INTERJECT_FILE);
+
+    private static final String NAME_HEADING_PREFIX = "# ";
+    private static final String SECRET_MARKER_LINE  = "# SECRET";
+    /** Optional "Joueur : X" as the very first line of scenario.txt — see ChatScenario.playerName. */
+    private static final Pattern PLAYER_NAME_LINE = Pattern.compile("^Joueur\\s*:\\s*(.+)$", Pattern.CASE_INSENSITIVE);
 
     private static final String PLAYER_HEADER   = "### PLAYER";
     private static final String LLM_HEADER      = "### LLM";
@@ -56,7 +77,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         try (var entries = Files.list(chatScenariosRoot)) {
             return entries
                 .filter(Files::isDirectory)
-                .filter(dir -> Files.exists(dir.resolve(CHARACTER_FILE)) && Files.exists(dir.resolve(SCENARIO_FILE)))
+                .filter(dir -> Files.exists(dir.resolve(SCENARIO_FILE)) && !loadCast(dir).npcs().isEmpty())
                 .map(dir -> dir.getFileName().toString())
                 .sorted()
                 .toList();
@@ -68,18 +89,67 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     @Override
     public ChatScenario loadScenario(Path chatScenariosRoot, String name) {
         Path dir = chatScenariosRoot.resolve(name);
-        String characterSheet = readText(dir.resolve(CHARACTER_FILE));
-        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(readText(dir.resolve(SCENARIO_FILE)));
-        return new ChatScenario(name, characterSheet, outline.premise(), outline.acts(),
-            extractCharacterName(characterSheet));
+        Cast cast = loadCast(dir);
+        String raw = readText(dir.resolve(SCENARIO_FILE));
+        String[] lines = raw.split("\n", 2);
+        Matcher m = PLAYER_NAME_LINE.matcher(lines[0].strip());
+        String playerName = m.matches() ? m.group(1).strip() : null;
+        String rest = m.matches() ? (lines.length > 1 ? lines[1] : "") : raw;
+        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(rest);
+        return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName);
     }
 
-    private static final String NAME_HEADING_PREFIX = "# ";
+    /** Every ".txt" file in dir except the reserved ones (see RESERVED_TXT_FILES), alphabetical by filename. */
+    private static Cast loadCast(Path dir) {
+        if (!Files.isDirectory(dir)) return new Cast(List.of());
+        try (var entries = Files.list(dir)) {
+            List<Npc> npcs = entries
+                .filter(Files::isRegularFile)
+                .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
+                .filter(f -> !RESERVED_TXT_FILES.contains(f.getFileName().toString()))
+                .sorted(Comparator.comparing(f -> f.getFileName().toString()))
+                .map(ChatFileStorageAdapter::parseNpcFile)
+                .toList();
+            return new Cast(npcs);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
-    /** Optional "# Name" first line of character.txt — kept in characterSheet, not stripped. */
-    private static String extractCharacterName(String characterSheet) {
-        int newline = characterSheet.indexOf('\n');
-        String firstLine = (newline < 0 ? characterSheet : characterSheet.substring(0, newline)).strip();
+    /**
+     * id = filename without ".txt". name = optional "# Name" first line (kept verbatim in
+     * publicInfo, not stripped — the character should still read it there, same convention as the
+     * old single-character.txt). An optional "# SECRET" line (on its own, case-insensitive) splits
+     * the rest : everything before is publicInfo, everything after is secretInfo — see Npc. No
+     * such line : the whole file is publicInfo, secretInfo is "" (a purely public character).
+     */
+    private static Npc parseNpcFile(Path file) {
+        String fileName = file.getFileName().toString();
+        String id = fileName.substring(0, fileName.length() - TXT_EXTENSION.length());
+        String content = readText(file);
+        String name = extractCharacterName(content);
+
+        String[] lines = content.split("\n", -1);
+        int secretLineIdx = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].strip().equalsIgnoreCase(SECRET_MARKER_LINE)) { secretLineIdx = i; break; }
+        }
+        String publicInfo;
+        String secretInfo;
+        if (secretLineIdx < 0) {
+            publicInfo = content.strip();
+            secretInfo = "";
+        } else {
+            publicInfo = String.join("\n", Arrays.copyOfRange(lines, 0, secretLineIdx)).strip();
+            secretInfo = String.join("\n", Arrays.copyOfRange(lines, secretLineIdx + 1, lines.length)).strip();
+        }
+        return new Npc(id, name, publicInfo, secretInfo);
+    }
+
+    /** Optional "# Name" first line of an Npc file — kept in publicInfo, not stripped. */
+    private static String extractCharacterName(String content) {
+        int newline = content.indexOf('\n');
+        String firstLine = (newline < 0 ? content : content.substring(0, newline)).strip();
         return firstLine.startsWith(NAME_HEADING_PREFIX) ? firstLine.substring(NAME_HEADING_PREFIX.length()).strip() : "";
     }
 
@@ -93,8 +163,18 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         writeSessionFiles(chatScenariosRoot.resolve(session.scenario().name()), session);
     }
 
-    /** Shared by loadSession and loadSavePoint — same three files, different directory. */
+    /**
+     * Shared by loadSession and loadSavePoint — same five files, different directory. No
+     * history.md at all means this directory was never written by writeSessionFiles (a scenario
+     * played for the very first time, "continuer" chosen out of habit on something brand new) —
+     * building a hollow ChatSession here used to silently drop the opening act's "[...]" beats
+     * (only ChatSession.fresh() produced them), leaving the player with no introduction at all.
+     * Delegating to fresh() instead gives the same opening every other "reset" path already gets.
+     */
     private static ChatSession readSessionFiles(Path dir, ChatScenario scenario) {
+        if (!existsAndReadable(dir.resolve(HISTORY_FILE))) {
+            return ChatSession.fresh(scenario);
+        }
         String summary = existsAndReadable(dir.resolve(SUMMARY_FILE)) ? readText(dir.resolve(SUMMARY_FILE)) : "";
         List<ChatTurn> turns = existsAndReadable(dir.resolve(HISTORY_FILE))
             ? parseHistory(readText(dir.resolve(HISTORY_FILE)))
@@ -102,14 +182,31 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         int currentAct = existsAndReadable(dir.resolve(ACT_FILE))
             ? Integer.parseInt(readText(dir.resolve(ACT_FILE)).strip())
             : (scenario.acts().isEmpty() ? 0 : 1);
-        return new ChatSession(scenario, turns, summary, currentAct);
+        Set<String> presentNpcIds = existsAndReadable(dir.resolve(PRESENT_FILE))
+            ? parseIdList(readText(dir.resolve(PRESENT_FILE)))
+            : ChatSession.allPresent(scenario);
+        Set<String> interjectingNpcIds = existsAndReadable(dir.resolve(INTERJECT_FILE))
+            ? parseIdList(readText(dir.resolve(INTERJECT_FILE)))
+            : ChatSession.allPresent(scenario); // meme defaut "tout le monde" qu'une session neuve
+        return new ChatSession(scenario, turns, summary, currentAct, presentNpcIds, interjectingNpcIds);
     }
 
-    /** Shared by saveSession and createSavePoint — same three files, different directory. */
+    private static Set<String> parseIdList(String content) {
+        Set<String> ids = new LinkedHashSet<>();
+        for (String line : content.split("\n")) {
+            String id = line.strip();
+            if (!id.isEmpty()) ids.add(id);
+        }
+        return ids;
+    }
+
+    /** Shared by saveSession and createSavePoint — same five files, different directory. */
     private static void writeSessionFiles(Path dir, ChatSession session) {
         writeText(dir.resolve(HISTORY_FILE), formatHistory(session.turns()));
         writeText(dir.resolve(SUMMARY_FILE), session.summary());
         writeText(dir.resolve(ACT_FILE), String.valueOf(session.currentAct()));
+        writeText(dir.resolve(PRESENT_FILE), String.join("\n", session.presentNpcIds()));
+        writeText(dir.resolve(INTERJECT_FILE), String.join("\n", session.interjectingNpcIds()));
     }
 
     /**
@@ -123,6 +220,8 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         archiveIfExists(dir.resolve(HISTORY_FILE), dir, stamp);
         archiveIfExists(dir.resolve(SUMMARY_FILE), dir, stamp);
         archiveIfExists(dir.resolve(ACT_FILE), dir, stamp);
+        archiveIfExists(dir.resolve(PRESENT_FILE), dir, stamp);
+        archiveIfExists(dir.resolve(INTERJECT_FILE), dir, stamp);
     }
 
     /**
@@ -175,8 +274,8 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     public void deleteSavePoint(Path chatScenariosRoot, ChatScenario scenario, String saveId) {
         Path dir = saveDir(chatScenariosRoot, scenario, saveId);
         if (!Files.isDirectory(dir)) return;
-        // Toujours a plat (history.md/summary.md/act.txt, jamais de sous-dossier) : pas besoin
-        // d'une suppression recursive arborescente.
+        // Toujours a plat (history.md/summary.md/act.txt/present.txt, jamais de sous-dossier) :
+        // pas besoin d'une suppression recursive arborescente.
         try (var entries = Files.list(dir)) {
             for (Path file : (Iterable<Path>) entries::iterator) {
                 Files.delete(file);
@@ -208,15 +307,16 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     private static String formatHistory(List<ChatTurn> turns) {
         StringBuilder sb = new StringBuilder();
         for (ChatTurn turn : turns) {
-            sb.append(headerFor(turn.speaker())).append('\n').append(turn.text()).append("\n\n");
+            sb.append(headerFor(turn)).append('\n').append(turn.text()).append("\n\n");
         }
         return sb.toString();
     }
 
-    private static String headerFor(ChatTurn.Speaker speaker) {
-        return switch (speaker) {
+    /** LLM turns carry their npcId as "### LLM: {id}" ; PLAYER/NARRATOR never have one to carry. */
+    private static String headerFor(ChatTurn turn) {
+        return switch (turn.speaker()) {
             case PLAYER   -> PLAYER_HEADER;
-            case LLM      -> LLM_HEADER;
+            case LLM      -> turn.npcId() != null ? LLM_HEADER + ": " + turn.npcId() : LLM_HEADER;
             case NARRATOR -> NARRATOR_HEADER;
         };
     }
@@ -224,27 +324,37 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     private static List<ChatTurn> parseHistory(String content) {
         List<ChatTurn> turns = new ArrayList<>();
         ChatTurn.Speaker current = null;
+        String currentNpcId = null;
         StringBuilder buf = new StringBuilder();
         for (String line : content.split("\n", -1)) {
-            if (line.equals(PLAYER_HEADER) || line.equals(LLM_HEADER) || line.equals(NARRATOR_HEADER)) {
-                flush(turns, current, buf);
-                current = line.equals(PLAYER_HEADER) ? ChatTurn.Speaker.PLAYER
-                         : line.equals(LLM_HEADER)    ? ChatTurn.Speaker.LLM
-                                                       : ChatTurn.Speaker.NARRATOR;
+            if (line.equals(PLAYER_HEADER) || line.equals(NARRATOR_HEADER) || isLlmHeader(line)) {
+                flush(turns, current, currentNpcId, buf);
+                if (line.equals(PLAYER_HEADER))        { current = ChatTurn.Speaker.PLAYER;   currentNpcId = null; }
+                else if (line.equals(NARRATOR_HEADER)) { current = ChatTurn.Speaker.NARRATOR;  currentNpcId = null; }
+                else                                    { current = ChatTurn.Speaker.LLM;       currentNpcId = llmHeaderNpcId(line); }
                 buf.setLength(0);
             } else {
                 if (!buf.isEmpty()) buf.append('\n');
                 buf.append(line);
             }
         }
-        flush(turns, current, buf);
+        flush(turns, current, currentNpcId, buf);
         return turns;
     }
 
-    private static void flush(List<ChatTurn> turns, ChatTurn.Speaker speaker, StringBuilder buf) {
+    private static boolean isLlmHeader(String line) {
+        return line.equals(LLM_HEADER) || line.startsWith(LLM_HEADER + ": ");
+    }
+
+    /** null for a bare "### LLM" (pre-multi-NPC history — see ChatTurn.npcId). */
+    private static String llmHeaderNpcId(String line) {
+        return line.equals(LLM_HEADER) ? null : line.substring((LLM_HEADER + ": ").length());
+    }
+
+    private static void flush(List<ChatTurn> turns, ChatTurn.Speaker speaker, String npcId, StringBuilder buf) {
         if (speaker == null) return;
         String text = buf.toString().strip();
-        if (!text.isEmpty()) turns.add(new ChatTurn(speaker, text));
+        if (!text.isEmpty()) turns.add(new ChatTurn(speaker, text, "", npcId));
     }
 
     private static boolean existsAndReadable(Path file) {

@@ -1,6 +1,8 @@
 package storymagine.chat.coeur.domaine.session;
 
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 
 import java.util.List;
@@ -91,6 +93,45 @@ public final class ChatPromptBuilder {
 
         Begin and stay in the scene.""";
 
+    /**
+     * Appended after SYSTEM_FORMATTING only when Scene.otherPresent() is non-empty — a fresh
+     * failure mode this project hadn't needed to guard against before multiple Npcs could share a
+     * scene : a small model asked to play one character can drift into narrating another present
+     * character's own dialogue/actions. Same "same geste, deux issues" teaching technique already
+     * used elsewhere in this prompt (concrete wrong/right on the identical situation).
+     */
+    private static final String OTHER_NPCS_RULE = """
+        Other characters may be present in the scene (named above, under ALSO PRESENT) — you know
+        only their names, nothing else about them. Speak and act only for your own character;
+        never write dialogue or actions for another present character, even briefly.
+        Example — Marcus is present:
+        Wrong: *Marcus nods and steps back.*
+        Right: *I glance at Marcus, unsure if he noticed.*""";
+
+    /**
+     * Appended after OTHER_NPCS_RULE only when Scene.interjecting() is true — this speaker was not
+     * addressed this turn but is reacting anyway (see SpeakerSelector.rollInterjectors). Reviewed
+     * with Fable (2026-07-15) : first draft repeated the length rule three times and its "serious"
+     * example had the reacting character command the whole room, teaching scene-stealing by
+     * example — small models imitate examples over abstract rules. Fixed here : the length rule is
+     * stated once, both examples share the same situation (paired Wrong/Right, house style), and
+     * the "serious" Right stays a reaction aimed at the threat, never a directive to the room.
+     */
+    private static final String INTERJECTION_RULE = """
+        This is an interjection, not your main turn: the player addressed someone else, and you are
+        reacting from where you are to the exchange you just witnessed. Default to one short line or
+        gesture. Only if that exchange itself just turned serious — a threat, violence, a shocking
+        reveal — give your reaction the weight it deserves. Either way the scene still belongs to the
+        player and the character they addressed: react, then leave them the next move.
+        Example — the player asked Elena a question and she just answered calmly:
+        Wrong (turns it into a full turn): *I set down my mug and lean forward, launching into a long
+        story of my own about the last time someone asked me that...*
+        Right: *I grunt from my corner.* "Don't believe a word of it."
+        Example — the player just drew a blade on Elena:
+        Wrong (token remark, ignores the danger): *I raise an eyebrow.* "Trouble again?"
+        Right (full weight, still only a reaction): *I am on my feet before the blade clears its
+        sheath, hand on my dagger, watching you closely.* "Put it away. Now.\"""";
+
     /** Fallback used when the current act's text does not itself specify a "[NEXT ACT]" condition. */
     private static final String NEXT_ACT_RULE_DEFAULT = """
         If you feel this act's events have reached their natural conclusion and it's time to move
@@ -106,13 +147,25 @@ public final class ChatPromptBuilder {
 
     /**
      * currentAct is 1-based ; 0 means the scenario has no acts (or none is active), in which case
-     * no CURRENT ACT section is added — existing act-less scenarios are unaffected.
+     * no CURRENT ACT section is added — existing act-less scenarios are unaffected. scene.speaker()
+     * gets their full sheet (public + secret, see Npc.fullSheet()) ; scene.otherPresent() are named
+     * only — no other Npc's sheet, public or secret, ever reaches this prompt (see Npc.md /
+     * the multi-NPC plan : "everyone knows the story, but each only knows their own sheet").
+     * scene.interjecting() adds INTERJECTION_RULE — this speaker is reacting unprompted, not the
+     * one the player addressed (see SpeakerSelector.rollInterjectors).
      */
-    public static ChatPrompt build(ChatScenario scenario, int currentAct, String summary,
-                                    List<ChatTurn> recentTurns, PlayerMessage input) {
+    public static ChatPrompt build(ChatScenario scenario, Scene scene, int currentAct, String summary,
+                                    List<ChatTurn> recentTurns) {
         StringBuilder system = new StringBuilder();
         system.append(SYSTEM_INTRO).append("\n\n");
-        system.append("YOUR CHARACTER:\n").append(scenario.characterSheet()).append("\n\n");
+        system.append("YOUR CHARACTER:\n").append(scene.speaker().fullSheet()).append("\n\n");
+        if (!scene.otherPresent().isEmpty()) {
+            system.append("ALSO PRESENT IN THE SCENE (names only — you know nothing else about them):\n");
+            for (Npc other : scene.otherPresent()) {
+                system.append("- ").append(other.label()).append('\n');
+            }
+            system.append('\n');
+        }
         system.append("SCENARIO (this may describe events scripted to happen later, including how you will react\n")
               .append("to them — for your character, that future does not exist yet. You learn of a scripted event\n")
               .append("only when it actually happens in the chat: until then, never hint at it, prepare for it, or\n")
@@ -137,33 +190,44 @@ public final class ChatPromptBuilder {
             system.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
         system.append(SYSTEM_FORMATTING);
+        if (!scene.otherPresent().isEmpty()) {
+            system.append("\n\n").append(OTHER_NPCS_RULE);
+        }
+        if (scene.interjecting()) {
+            system.append("\n\n").append(INTERJECTION_RULE);
+        }
 
-        String characterLabel = characterLabel(scenario);
+        // recentTurns already ends with the player's own line (it's appended to the session
+        // before this is called) — no separate "{playerName}: ..." trailer needed, just the
+        // prefill for whoever's about to speak. This is also what makes a multi-Npc round work :
+        // for the 2nd+ speaker, recentTurns' last line is the previous speaker's reply, not the
+        // player's — the prefill below is the only thing that needs to know who's speaking now.
         StringBuilder user = new StringBuilder();
         if (!recentTurns.isEmpty()) {
-            user.append("Recent exchange:\n").append(transcript(recentTurns, characterLabel)).append('\n');
+            user.append("Recent exchange:\n")
+                .append(transcript(recentTurns, scenario.cast(), scenario.playerName())).append('\n');
         }
-        user.append("Player: ").append(input.formattedLine()).append("\n\n").append(characterLabel).append(":");
+        user.append(scene.speaker().label()).append(":");
 
         return new ChatPrompt(system.toString(), user.toString());
     }
 
-    /** The character's name if character.txt declared one (see ChatScenario), "Character" otherwise. */
-    public static String characterLabel(ChatScenario scenario) {
-        String name = scenario.characterName();
-        return name == null || name.isBlank() ? "Character" : name;
-    }
-
-    /** "Player: .../{characterLabel}: .../Narration: ..." transcript, shared with ChatSummarizer folding. */
-    public static String transcript(List<ChatTurn> turns, String characterLabel) {
+    /** "{playerName}: .../{name}: .../Narration: ..." transcript, shared with ChatSummarizer folding. */
+    public static String transcript(List<ChatTurn> turns, Cast cast, String playerName) {
         StringBuilder sb = new StringBuilder();
         for (ChatTurn turn : turns) {
             sb.append(switch (turn.speaker()) {
-                case PLAYER   -> "Player: ";
-                case LLM      -> characterLabel + ": ";
+                case PLAYER   -> playerName + ": ";
+                case LLM      -> labelFor(turn.npcId(), cast) + ": ";
                 case NARRATOR -> "Narration: ";
             }).append(turn.text()).append('\n');
         }
         return sb.toString();
+    }
+
+    /** "Character" fallback matches the pre-multi-NPC behaviour for a turn with no npcId (older history). */
+    private static String labelFor(String npcId, Cast cast) {
+        if (npcId == null) return "Character";
+        return cast.find(npcId).map(Npc::label).orElse(npcId);
     }
 }

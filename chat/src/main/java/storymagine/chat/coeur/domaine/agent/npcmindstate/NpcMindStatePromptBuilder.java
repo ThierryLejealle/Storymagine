@@ -1,6 +1,7 @@
 package storymagine.chat.coeur.domaine.agent.npcmindstate;
 
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
@@ -47,9 +48,10 @@ public final class NpcMindStatePromptBuilder {
         Deny it once more, then if pressed again, admit part of the truth to win back his trust.""";
 
     /** currentAct is 0 if the scenario has no acts (or none is active) — same convention as ChatPromptBuilder. */
-    public static MindStatePrompt build(ChatScenario scenario, int currentAct, String summary, List<ChatTurn> recentTurns) {
+    public static MindStatePrompt build(ChatScenario scenario, Npc speaker, int currentAct, String summary,
+                                         List<ChatTurn> recentTurns) {
         StringBuilder user = new StringBuilder();
-        user.append("CHARACTER SHEET:\n").append(scenario.characterSheet()).append("\n\n");
+        user.append("CHARACTER SHEET:\n").append(speaker.fullSheet()).append("\n\n");
         user.append("PREMISE:\n").append(scenario.premise()).append("\n\n");
         List<ScenarioAct> acts = scenario.acts();
         if (currentAct > 0 && currentAct <= acts.size()) {
@@ -60,9 +62,9 @@ public final class NpcMindStatePromptBuilder {
         if (summary != null && !summary.isBlank()) {
             user.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
-        String characterLabel = ChatPromptBuilder.characterLabel(scenario);
         if (!recentTurns.isEmpty()) {
-            user.append("Recent exchange:\n").append(ChatPromptBuilder.transcript(recentTurns, characterLabel));
+            user.append("Recent exchange:\n")
+                .append(ChatPromptBuilder.transcript(recentTurns, scenario.cast(), scenario.playerName()));
         }
 
         return new MindStatePrompt(SYSTEM, user.toString());

@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.agent.clarityreviewer.ScenarioClarityReviewer;
 import storymagine.chat.coeur.domaine.agent.continuityreviewer.ScenarioContinuityReviewer;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.scenariotester.ActTestResult;
 import storymagine.chat.coeur.domaine.scenariotester.ScenarioTestReport;
@@ -25,8 +27,8 @@ class ScenarioTesterServiceImplTest {
     private static ChatScenario twoActScenario() {
         ScenarioAct act1 = ScenarioAct.leaf(ActNumber.of(1), "Arrival", "They arrive at the inn.");
         ScenarioAct act2 = ScenarioAct.leaf(ActNumber.of(2), "The storm", "Lightning strikes the roof.");
-        return new ChatScenario("inn-test", "A grumpy innkeeper.", "A stormy night.",
-            List.of(act1, act2), "Innkeeper");
+        Cast cast = new Cast(List.of(new Npc("innkeeper", "Innkeeper", "A grumpy innkeeper.", "")));
+        return new ChatScenario("inn-test", cast, "A stormy night.", List.of(act1, act2));
     }
 
     @Test

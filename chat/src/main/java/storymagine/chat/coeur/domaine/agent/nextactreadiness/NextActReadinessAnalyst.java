@@ -43,7 +43,7 @@ public class NextActReadinessAnalyst {
     public String agentName() { return AGENT_NAME; }
 
     public NextActReadinessAnalystOutput call(NextActReadinessAnalystInput input) {
-        NextActPrompt prompt = NextActReadinessPromptBuilder.build(input.scenario(), input.currentAct(),
+        NextActPrompt prompt = NextActReadinessPromptBuilder.build(input.scenario(), input.speaker(), input.currentAct(),
             input.summary(), input.recentTurns());
 
         GenerationSettings settings = input.settings() != null ? input.settings() : GenerationSettings.DEFAULT;
@@ -54,8 +54,10 @@ public class NextActReadinessAnalyst {
             settings.minP() != null ? settings.minP() : MIN_P_DEFAULT,
             settings.repeatPenalty() != null ? settings.repeatPenalty() : REPEAT_PENALTY_DEFAULT);
 
+        // think=true meme si ce popup n'affiche pas la reflexion (voir RoleplayNarrator) : elle
+        // ameliore la reponse elle-meme, pas seulement sa lisibilite pour le joueur.
         String raw = llm.generate(prompt.system(), prompt.user(), temperature,
-            LlmCallContext.of(AGENT_NAME, input.scenario().name()), options).text();
+            LlmCallContext.of(AGENT_NAME, input.scenario().name()).withThink(true), options).text();
         return parse(raw);
     }
 

@@ -2,7 +2,9 @@ package storymagine.chat.coeur.domaine.agent.npcmindstate;
 
 import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
@@ -18,8 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NpcMindStateAnalystTest {
 
     private static ChatScenario scenario() {
-        return new ChatScenario("inn", "A grumpy innkeeper.", "A stormy night at the inn.", List.of(
-            ScenarioAct.leaf(ActNumber.of(1), "", "First act.")), "");
+        Cast cast = new Cast(List.of(new Npc("innkeeper", "", "A grumpy innkeeper.", "")));
+        return new ChatScenario("inn", cast, "A stormy night at the inn.", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "First act.")));
+    }
+
+    private static Npc speaker() {
+        return scenario().cast().npcs().get(0);
     }
 
     @Test
@@ -34,7 +41,7 @@ class NpcMindStateAnalystTest {
         NpcMindStateAnalyst analyst = new NpcMindStateAnalyst(llm);
 
         NpcMindStateAnalystOutput output = analyst.call(new NpcMindStateAnalystInput(
-            scenario(), 1, "", List.of(), GenerationSettings.DEFAULT));
+            scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
 
         assertEquals("The player is questioning her about the missing ledger.", output.situation());
         assertEquals("She is nervous he might already know the truth.", output.thoughts());
@@ -53,7 +60,7 @@ class NpcMindStateAnalystTest {
         NpcMindStateAnalyst analyst = new NpcMindStateAnalyst(llm);
 
         NpcMindStateAnalystOutput output = analyst.call(new NpcMindStateAnalystInput(
-            scenario(), 1, "", List.of(), GenerationSettings.DEFAULT));
+            scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
 
         assertEquals("", output.plans());
     }
@@ -64,7 +71,7 @@ class NpcMindStateAnalystTest {
             "SITUATION:\nX\nTHOUGHTS:\nX\nPLANS:\n[RIEN]");
         NpcMindStateAnalyst analyst = new NpcMindStateAnalyst(llm);
 
-        analyst.call(new NpcMindStateAnalystInput(scenario(), 1, "They arrived at dusk.",
+        analyst.call(new NpcMindStateAnalystInput(scenario(), speaker(), 1, "They arrived at dusk.",
             List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "I open the door.")), GenerationSettings.DEFAULT));
 
         assertTrue(llm.lastUserPrompt.contains("A grumpy innkeeper."));
@@ -74,9 +81,21 @@ class NpcMindStateAnalystTest {
         assertTrue(llm.lastUserPrompt.contains("I open the door."));
     }
 
+    @Test
+    void alwaysRequestsThinkingEvenThoughThisPopupNeverDisplaysIt() {
+        CapturingModelCallPort llm = new CapturingModelCallPort(
+            "SITUATION:\nX\nTHOUGHTS:\nX\nPLANS:\n[RIEN]");
+        NpcMindStateAnalyst analyst = new NpcMindStateAnalyst(llm);
+
+        analyst.call(new NpcMindStateAnalystInput(scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
+
+        assertEquals(Boolean.TRUE, llm.lastCtx.think());
+    }
+
     private static class CapturingModelCallPort implements ModelCallPort {
         private final String responseText;
         String lastUserPrompt;
+        LlmCallContext lastCtx;
 
         CapturingModelCallPort(String responseText) {
             this.responseText = responseText;
@@ -85,6 +104,7 @@ class NpcMindStateAnalystTest {
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
             this.lastUserPrompt = userPrompt;
+            this.lastCtx = ctx;
             return LlmResult.of(responseText);
         }
 

@@ -1,3 +1,4 @@
+Joueur : Alex
 Monde : Fantastique médiéval sombre. La ville portuaire de Bragheval, connue pour sa guilde des
 voleurs officieuse et sa tolérance discrète envers les affaires louches tant qu'elles ne
 dérangent pas les puissants.
@@ -20,7 +21,10 @@ Point de départ de la scène : les deux voleurs viennent de franchir la porte e
 effondrée du temple, torches éteintes, yeux habitués à l'obscurité. L'air sent la poussière
 froide et quelque chose de plus organique, plus ancien. Le silence est total — ce qui, pour un
 lieu pareil, n'est pas rassurant.
-[Vous venez de franchir la porte extérieure effondrée du temple, torches éteintes, dans un silence total.]
+[Sylka Corvenoire, la partenaire de toujours d'Alex dans ce genre de coups, est à ses côtés — ils
+viennent d'être engagés pour récupérer intacte la Larme de Vaskorreth, une relique cachée dans ce
+temple oublié du dieu déchu des dettes impayées.]
+[Ils viennent de franchir la porte extérieure effondrée du temple, torches éteintes, dans un silence total.]
 
 Ton : Tension, ambiance oppressante, humour noir ponctuel pour relâcher la pression entre deux
 moments de danger. Les pièges et rencontres doivent avoir des conséquences réelles, pas

@@ -38,14 +38,18 @@ public class ScenarioTesterServiceImpl implements ScenarioTesterService {
     public ScenarioTestReport testScenario(ChatScenario scenario) {
         List<ActTestResult> results     = new ArrayList<>();
         StringBuilder        storySoFar = new StringBuilder();
+        // Teste avec la fiche du premier Npc du Cast — un choix simple, deterministe : cet outil
+        // de QA statique (hors session de jeu) n'a pas de notion de "qui parle ce tour" a lui
+        // donner, contrairement a RoleplayNarrator (voir SpeakerSelector/Scene).
+        String characterSheet = scenario.cast().npcs().get(0).fullSheet();
 
         for (ScenarioAct act : scenario.acts()) {
             ScenarioContinuityReviewerOutput continuity = continuityReviewer.call(new ScenarioContinuityReviewerInput(
-                scenario.characterSheet(), scenario.premise(), storySoFar.toString(),
+                characterSheet, scenario.premise(), storySoFar.toString(),
                 act.number(), act.title(), act.text()));
 
             ScenarioClarityReviewerOutput clarity = clarityReviewer.call(new ScenarioClarityReviewerInput(
-                scenario.characterSheet(), scenario.premise(), act.number(), act.title(), act.text()));
+                characterSheet, scenario.premise(), act.number(), act.title(), act.text()));
 
             List<String> suggestions = Stream.concat(
                     continuity.suggestions().stream().map(s -> "[Continuité] " + s),

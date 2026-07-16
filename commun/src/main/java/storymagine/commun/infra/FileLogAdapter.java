@@ -221,20 +221,20 @@ public class FileLogAdapter implements LogPort {
         String start = LocalDateTime.now().format(TRACE_TS);
         TraceState state = new TraceState(start, agentName, localNum, systemPrompt, userPrompt, think);
         openTraces.put(stem, state);
-        writeTraceFile(stem, state, null, -1);
+        writeTraceFile(stem, state, null, "", -1);
         return stem;
     }
 
     @Override
-    public void llmCallClose(String handle, String response, long elapsedMs,
+    public void llmCallClose(String handle, String response, String thinking, long elapsedMs,
                               int tokIn, int tokOut) {
         if (handle == null || handle.isEmpty()) return;
         TraceState state = openTraces.remove(handle);
         if (state == null) return;
-        writeTraceFile(handle, state, response, elapsedMs);
+        writeTraceFile(handle, state, response, thinking, elapsedMs);
     }
 
-    private void writeTraceFile(String stem, TraceState state, String response, long elapsedMs) {
+    private void writeTraceFile(String stem, TraceState state, String response, String thinking, long elapsedMs) {
         boolean done = response != null && elapsedMs >= 0;
 
         StringBuilder header = new StringBuilder();
@@ -252,11 +252,18 @@ public class FileLogAdapter implements LogPort {
             header.append("- Durée    : —\n");
         }
 
-        String responseSection = done ? response : "⏳ En attente…";
+        String responseSection  = done ? response : "⏳ En attente…";
+        // La reflexion est generee par le modele AVANT la reponse finale (chain-of-thought) : la
+        // section apparait donc avant RÉPONSE dans le fichier, pas apres, pour suivre l'ordre reel
+        // de generation plutot que l'ordre d'ecriture du code.
+        String thinkingSection  = (thinking != null && !thinking.isBlank())
+                ? "\n\n---\n\n## RÉFLEXION\n\n" + thinking
+                : "";
         String content = "# " + state.agentName + " — appel " + state.localNum + "\n\n"
                 + header + "\n"
                 + "---\n\n## PROMPT SYSTÈME\n\n" + state.systemPrompt
                 + "\n\n---\n\n## PROMPT UTILISATEUR\n\n" + state.userPrompt
+                + thinkingSection
                 + "\n\n---\n\n## RÉPONSE\n\n" + responseSection;
 
         Path dir = runDir != null ? runDir : initRunDir();

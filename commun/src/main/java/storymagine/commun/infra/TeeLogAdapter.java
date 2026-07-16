@@ -93,8 +93,8 @@ public class TeeLogAdapter implements LogPort {
     }
 
     @Override
-    public void llmCallClose(String handle, String response, long elapsedMs,
+    public void llmCallClose(String handle, String response, String thinking, long elapsedMs,
                               int tokIn, int tokOut) {
-        delegates.forEach(d -> d.llmCallClose(handle, response, elapsedMs, tokIn, tokOut));
+        delegates.forEach(d -> d.llmCallClose(handle, response, thinking, elapsedMs, tokIn, tokOut));
     }
 }

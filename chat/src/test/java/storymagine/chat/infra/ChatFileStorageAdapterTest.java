@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,9 +39,38 @@ class ChatFileStorageAdapterTest {
         ChatScenario scenario = adapter.loadScenario(root, "inn");
 
         assertEquals("inn", scenario.name());
-        assertEquals("A grumpy innkeeper.", scenario.characterSheet());
+        assertEquals(1, scenario.cast().npcs().size());
+        assertEquals("A grumpy innkeeper.", scenario.cast().npcs().get(0).publicInfo());
         assertEquals("A stormy night.", scenario.premise());
         assertTrue(scenario.acts().isEmpty());
+        assertEquals("Alex", scenario.playerName(), "pas de ligne \"Joueur : ...\" dans ce fixture, retombe sur le defaut");
+    }
+
+    @Test
+    void loadScenarioReadsAnOptionalPlayerNameFirstLine(@TempDir Path root) throws IOException {
+        Path dir = root.resolve("inn");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("character.txt"), "sheet", StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("scenario.txt"), "Joueur : Kael\nA stormy night.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals("Kael", scenario.playerName());
+        assertEquals("A stormy night.", scenario.premise(), "la ligne Joueur est retiree, jamais melangee a la premisse");
+    }
+
+    @Test
+    void loadScenarioReadsThePlayerNameFirstLineAheadOfAScenarioHeading(@TempDir Path root) throws IOException {
+        Path dir = root.resolve("inn");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("character.txt"), "sheet", StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("scenario.txt"),
+            "Joueur : Kael\n#SCENARIO\nA stormy night.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals("Kael", scenario.playerName());
+        assertEquals("A stormy night.", scenario.premise());
     }
 
     @Test
@@ -78,7 +108,9 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
-    void loadSessionWithNoHistoryYetIsEmpty(@TempDir Path root) throws IOException {
+    void loadSessionWithNoHistoryYetIsEmptyForAnActLessScenarioWithNoBracketedBeats(@TempDir Path root) throws IOException {
+        // "premise" n'a aucune ligne "[...]" et ce scenario n'a pas d'actes : aucune intro a
+        // generer, la session est bien vide — cas de base, distinct du suivant.
         writeScenarioFiles(root, "inn", "sheet", "premise");
         ChatScenario scenario = adapter.loadScenario(root, "inn");
 
@@ -87,6 +119,21 @@ class ChatFileStorageAdapterTest {
         assertTrue(session.turns().isEmpty());
         assertEquals("", session.summary());
         assertEquals(0, session.currentAct());
+    }
+
+    @Test
+    void loadSessionWithNoHistoryYetStillGetsTheOpeningActsBeats(@TempDir Path root) throws IOException {
+        // Regression : un scenario jamais joue (aucun history.md sur disque) chargeait une session
+        // creuse, sans les lignes "[...]" de l'acte 1 — le joueur n'avait aucune introduction a
+        // l'ecran. loadSession() doit produire la meme intro que ChatSession.fresh() directement.
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "[The door creaks open.]\n\nBody text.");
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        ChatSession session = adapter.loadSession(root, scenario);
+
+        assertEquals(1, session.currentAct());
+        assertEquals(List.of(new ChatTurn(ChatTurn.Speaker.NARRATOR, "The door creaks open.")), session.turns());
     }
 
     @Test
@@ -150,18 +197,22 @@ class ChatFileStorageAdapterTest {
         assertFalse(Files.exists(root.resolve("inn/history.md")));
         assertFalse(Files.exists(root.resolve("inn/summary.md")));
         assertFalse(Files.exists(root.resolve("inn/act.txt")));
+        assertFalse(Files.exists(root.resolve("inn/present.txt")));
+        assertFalse(Files.exists(root.resolve("inn/interject.txt")));
         assertTrue(Files.exists(root.resolve("inn/character.txt")));
         ChatSession reloaded = adapter.loadSession(root, scenario);
         assertTrue(reloaded.turns().isEmpty());
         assertEquals("", reloaded.summary());
 
-        // pas de perte : history/summary/act archives, pas supprimes
+        // pas de perte : history/summary/act/present/interject archives, pas supprimes
         try (var archived = Files.list(root.resolve("inn/archive"))) {
             List<String> names = archived.map(p -> p.getFileName().toString()).toList();
-            assertEquals(3, names.size());
+            assertEquals(5, names.size());
             assertTrue(names.stream().anyMatch(n -> n.endsWith("history.md")));
             assertTrue(names.stream().anyMatch(n -> n.endsWith("summary.md")));
             assertTrue(names.stream().anyMatch(n -> n.endsWith("act.txt")));
+            assertTrue(names.stream().anyMatch(n -> n.endsWith("present.txt")));
+            assertTrue(names.stream().anyMatch(n -> n.endsWith("interject.txt")));
         }
     }
 
@@ -291,6 +342,113 @@ class ChatFileStorageAdapterTest {
 
         assertThrows(IllegalArgumentException.class,
             () -> adapter.deleteSavePoint(root, scenario, "../../etc/passwd"));
+    }
+
+    // ── Cast multi-fichiers ──────────────────────────────────────────────────
+
+    @Test
+    void loadScenarioBuildsACastFromEveryTxtFileExceptScenarioTxt(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "A grumpy innkeeper.", "A stormy night.");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nA retired soldier.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(2, scenario.cast().npcs().size());
+        assertTrue(scenario.cast().find("character").isPresent());
+        assertEquals("Marcus", scenario.cast().find("marcus").orElseThrow().name());
+    }
+
+    @Test
+    void loadScenarioSplitsPublicAndSecretInfoOnTheSecretMarker(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/elena.txt"),
+            "# Elena\nA sharp-tongued merchant.\n\n# SECRET\nSecretly a smuggler.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        var elena = scenario.cast().find("elena").orElseThrow();
+        // Le "# Name" reste dans publicInfo, verbatim, meme convention que l'ancien character.txt
+        // (le modele doit encore pouvoir le lire) — seul le contenu APRES "# SECRET" est isole.
+        assertEquals("# Elena\nA sharp-tongued merchant.", elena.publicInfo());
+        assertEquals("Secretly a smuggler.", elena.secretInfo());
+    }
+
+    @Test
+    void loadScenarioLeavesSecretInfoEmptyWhenThereIsNoSecretMarker(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "A grumpy innkeeper.", "premise");
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals("", scenario.cast().npcs().get(0).secretInfo());
+    }
+
+    // ── npcId et presence ────────────────────────────────────────────────────
+
+    @Test
+    void saveThenLoadRoundTripsWhichNpcSpokeEachLlmTurn(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nsoldier", StandardCharsets.UTF_8);
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        ChatSession session = new ChatSession(scenario, List.of(
+            new ChatTurn(ChatTurn.Speaker.PLAYER, "Hi both."),
+            new ChatTurn(ChatTurn.Speaker.LLM, "Hello.", "", "character"),
+            new ChatTurn(ChatTurn.Speaker.LLM, "Greetings.", "", "marcus")
+        ), "", 0);
+
+        adapter.saveSession(root, session);
+        ChatSession reloaded = adapter.loadSession(root, scenario);
+
+        assertEquals(session.turns(), reloaded.turns());
+        assertEquals("character", reloaded.turns().get(1).npcId());
+        assertEquals("marcus", reloaded.turns().get(2).npcId());
+    }
+
+    @Test
+    void saveThenLoadRoundTripsPresentNpcIds(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nsoldier", StandardCharsets.UTF_8);
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        ChatSession session = new ChatSession(scenario, List.of(), "", 0, Set.of("marcus"));
+
+        adapter.saveSession(root, session);
+        ChatSession reloaded = adapter.loadSession(root, scenario);
+
+        assertEquals(Set.of("marcus"), reloaded.presentNpcIds());
+    }
+
+    @Test
+    void loadSessionWithNoPresentFileDefaultsToEveryCastMemberPresent(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nsoldier", StandardCharsets.UTF_8);
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        ChatSession session = adapter.loadSession(root, scenario);
+
+        assertEquals(Set.of("character", "marcus"), session.presentNpcIds());
+    }
+
+    @Test
+    void saveThenLoadRoundTripsInterjectingNpcIds(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nsoldier", StandardCharsets.UTF_8);
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        ChatSession session = new ChatSession(scenario, List.of(), "", 0, Set.of("character", "marcus"), Set.of("marcus"));
+
+        adapter.saveSession(root, session);
+        ChatSession reloaded = adapter.loadSession(root, scenario);
+
+        assertEquals(Set.of("marcus"), reloaded.interjectingNpcIds());
+    }
+
+    @Test
+    void loadSessionWithNoInterjectFileDefaultsToEveryCastMemberEligible(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nsoldier", StandardCharsets.UTF_8);
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        ChatSession session = adapter.loadSession(root, scenario);
+
+        assertEquals(Set.of("character", "marcus"), session.interjectingNpcIds());
     }
 
     private static void writeScenarioFiles(Path root, String name, String character, String scenarioText) throws IOException {

@@ -22,11 +22,10 @@ public class ChatSummarizer {
     public int contextWindow() { return llm.contextWindow(); }
 
     public ChatSummarizerOutput call(ChatSummarizerInput input) {
-        String characterLabel = input.characterLabel() == null || input.characterLabel().isBlank()
-            ? "Character" : input.characterLabel();
-        String system = "You summarize a roleplay chat between Player and " + characterLabel + """
-            . Fold the new turns into
-            the previous summary and produce one updated summary.
+        String system = """
+            You summarize a roleplay chat between the player and one or more characters, each
+            labeled by name in the turns below. Fold the new turns into the previous summary and
+            produce one updated summary.
 
             How to read the turns:
             - Text between *asterisks* is physical action or scene detail, not speech.
@@ -58,7 +57,7 @@ public class ChatSummarizer {
             + "\n\nNEW TURNS:\n" + input.transcriptToFold()
             + "\n\nUPDATED SUMMARY:";
 
-        String raw = llm.generate(system, user, 0.4, LlmCallContext.of(agentName())).text();
+        String raw = llm.generate(system, user, 0.4, LlmCallContext.of(agentName()).withThink(true)).text();
         return new ChatSummarizerOutput(raw.strip());
     }
 

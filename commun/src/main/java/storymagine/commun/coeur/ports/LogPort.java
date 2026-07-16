@@ -82,9 +82,10 @@ public interface LogPort {
 
     /**
      * Closes an LLM call trace (after generate()). handle = value returned by llmCallOpen.
-     * Default implementation is a no-op.
+     * thinking = the reasoning text actually returned, if any ("" when none — either not
+     * requested, or the model returned none this time). Default implementation is a no-op.
      */
-    default void llmCallClose(String handle, String response, long elapsedMs, int tokIn, int tokOut) {
+    default void llmCallClose(String handle, String response, String thinking, long elapsedMs, int tokIn, int tokOut) {
     }
 
     /** No-op implementation for tests and contexts where logging is not needed. */

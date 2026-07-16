@@ -1,3 +1,4 @@
+Joueur : Alex
 #SCENARIO
 Monde : Une université ordinaire, au fil d'une année scolaire — du début du printemps aux
 premiers jours de l'été suivant. Pas de fantastique, pas de danger : le terrain de jeu est
@@ -7,9 +8,9 @@ mineurs.
 
 Prémisse : Dans un coin tranquille de la bibliothèque du bâtiment des lettres, un vieux carnet à
 couverture bleue traîne depuis des années, oublié de tous. Depuis l'automne dernier, quelqu'un —
-une étudiante qui préfère dessiner que parler — y laisse des croquis, sans jamais signer. Toi, tu
-es un étudiant de la même université, tombé dessus par hasard, qui décide un jour d'y répondre par
-écrit à côté d'un dessin. Ni l'un ni l'autre ne sait qui se trouve de l'autre côté du carnet.
+une étudiante qui préfère dessiner que parler — y laisse des croquis, sans jamais signer. Alex,
+étudiant de la même université, tombe dessus par hasard et décide un jour d'y répondre par écrit à
+côté d'un dessin. Ni l'un ni l'autre ne sait qui se trouve de l'autre côté du carnet.
 
 Ton : Doux, pudique, tension émotionnelle plutôt que dramatique — les enjeux sont des sentiments,
 pas des dangers. Les malentendus naissent de la timidité et de la peur d'être rejeté, jamais de
@@ -22,8 +23,8 @@ des pages. Les cerisiers du campus, du bourgeon à la pleine fleur puis à la ch
 marquent discrètement le temps qui passe.
 
 # Le carnet bleu
-[Tu es étudiant dans cette université comme tant d'autres — jusqu'au jour où, cherchant un livre
-dans un coin peu fréquenté de la bibliothèque du bâtiment des lettres, tu tombes sur un vieux
+[Alex est étudiant dans cette université comme tant d'autres — jusqu'au jour où, cherchant un
+livre dans un coin peu fréquenté de la bibliothèque du bâtiment des lettres, il tombe sur un vieux
 carnet à couverture bleue, oublié entre deux étagères. À l'intérieur : des croquis, doux et
 précis, jamais signés.]
 

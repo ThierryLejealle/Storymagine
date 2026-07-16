@@ -1,6 +1,7 @@
 package storymagine.chat.coeur.domaine.agent.nextactreadiness;
 
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
@@ -47,20 +48,21 @@ public final class NextActReadinessPromptBuilder {
         They still need to actually discover the hidden door somewhere in the cellar.""";
 
     /** currentAct must be a valid 1-based act with a next act pending — callers check this first (see ChatServiceImpl). */
-    public static NextActPrompt build(ChatScenario scenario, int currentAct, String summary, List<ChatTurn> recentTurns) {
+    public static NextActPrompt build(ChatScenario scenario, Npc speaker, int currentAct, String summary,
+                                       List<ChatTurn> recentTurns) {
         ScenarioAct act = scenario.acts().get(currentAct - 1);
 
         StringBuilder user = new StringBuilder();
-        user.append("CHARACTER SHEET:\n").append(scenario.characterSheet()).append("\n\n");
+        user.append("CHARACTER SHEET:\n").append(speaker.fullSheet()).append("\n\n");
         user.append("PREMISE:\n").append(scenario.premise()).append("\n\n");
         user.append("CURRENT ACT (").append(currentAct).append(" of ").append(scenario.acts().size())
             .append("):\n").append(act.text()).append("\n\n");
         if (summary != null && !summary.isBlank()) {
             user.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
-        String characterLabel = ChatPromptBuilder.characterLabel(scenario);
         if (!recentTurns.isEmpty()) {
-            user.append("Recent exchange:\n").append(ChatPromptBuilder.transcript(recentTurns, characterLabel));
+            user.append("Recent exchange:\n")
+                .append(ChatPromptBuilder.transcript(recentTurns, scenario.cast(), scenario.playerName()));
         }
 
         return new NextActPrompt(SYSTEM, user.toString());

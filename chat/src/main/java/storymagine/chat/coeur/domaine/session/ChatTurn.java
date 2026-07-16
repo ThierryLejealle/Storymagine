@@ -9,11 +9,15 @@ package storymagine.chat.coeur.domaine.session;
  * turn, and empty even for an LLM turn unless the session had GenerationSettings.showThinking on
  * for that call. Never persisted to disk (ChatFileStorageAdapter never writes it) — reconstructed
  * turns from history.md always get "" back, since it's ephemeral debug info for the current run.
+ * npcId is which Cast member spoke this LLM turn (see Npc) — null for PLAYER/NARRATOR turns, and
+ * for LLM turns predating the multi-NPC Cast (a single-Npc scenario's history read from before
+ * this field existed) : ChatPromptBuilder.transcript() falls back to a generic "Character" label
+ * in that case, matching the old single-character behaviour exactly.
  */
-public record ChatTurn(Speaker speaker, String text, String thinking) {
+public record ChatTurn(Speaker speaker, String text, String thinking, String npcId) {
 
     public ChatTurn(Speaker speaker, String text) {
-        this(speaker, text, "");
+        this(speaker, text, "", null);
     }
 
     public enum Speaker { PLAYER, LLM, NARRATOR }

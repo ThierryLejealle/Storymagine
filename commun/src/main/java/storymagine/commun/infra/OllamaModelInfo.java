@@ -17,7 +17,13 @@ class OllamaModelInfo {
     long diskBytes = 0;
     long vramBytes = 0;
 
-    String formatDeclared(String modelName, int configCtx) {
+    /**
+     * effectiveSupportsThinking : la valeur masquée (voir OllamaAdapter.supportsThinking()), pas le
+     * champ brut supportsThinking de cette classe (celui d'/api/show, jamais corrigé pour gemma4) —
+     * un seul "ce modèle pense-t-il ?" doit sortir du port, jamais deux réponses contradictoires
+     * selon la méthode appelée.
+     */
+    String formatDeclared(String modelName, int configCtx, boolean effectiveSupportsThinking) {
         StringBuilder sb = new StringBuilder();
         sb.append("  Modèle      : ").append(modelName).append("\n");
         if (!parameterSize.isEmpty())
@@ -33,7 +39,7 @@ class OllamaModelInfo {
         if (layerCount > 0) sb.append("  Couches     : ").append(layerCount).append("  |  ");
         if (headCount > 0)  sb.append("Têtes: ").append(headCount).append("  |  ");
         if (embeddingLength > 0) sb.append("Embedding: ").append(embeddingLength).append("\n");
-        sb.append("  Thinking    : ").append(supportsThinking ? "oui" : "non").append("\n");
+        sb.append("  Thinking    : ").append(effectiveSupportsThinking ? "oui" : "non").append("\n");
         return sb.toString().stripTrailing();
     }
 

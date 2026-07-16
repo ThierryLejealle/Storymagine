@@ -1,3 +1,4 @@
+Joueur : Alex
 #SCENARIO
 Monde : Fantastique médiéval sombre. La ville portuaire de Bragheval, connue pour sa guilde des
 voleurs officieuse et sa tolérance discrète envers les affaires louches tant qu'elles ne
@@ -18,7 +19,7 @@ pièges, portes) et qui prend tout son sens à la toute fin, avec la dette perso
 envers ce lieu précis.
 
 # Le prêtre de Bragheval
-[Toi et Sylka Corvenoire, ta partenaire de toujours dans ce genre de coups, avez été engagés par un commanditaire resté dans l'ombre pour rapporter intacte la Larme de Vaskorreth, une relique cachée dans le temple oublié du dieu déchu des dettes impayées — encore faut-il trouver ce temple.]
+[Alex et Sylka Corvenoire, sa partenaire de toujours dans ce genre de coups, ont été engagés par un commanditaire resté dans l'ombre pour rapporter intacte la Larme de Vaskorreth, une relique cachée dans le temple oublié du dieu déchu des dettes impayées — encore faut-il trouver ce temple.]
 [La nuit tombe sur Bragheval ; quelque part dans un quartier discret, un vieil homme garde un secret depuis des années.]
 
 Point de départ : la nuit vient de tomber sur Bragheval. Le joueur et Sylka savent qu'un ancien
@@ -93,7 +94,7 @@ Quand écrire [NEXT ACT] : quand le joueur et Sylka ont franchi le seuil et se t
 l'intérieur de la maison du prêtre.
 
 # La maison fouillée
-[Le prêtre absent, vous voilà dans l'obscurité de sa maison, prêts à la fouiller.]
+[Le prêtre absent, Alex et Sylka se retrouvent dans l'obscurité de sa maison, prêts à la fouiller.]
 
 Point de départ : le joueur et Sylka sont entrés dans la maison du prêtre, de nuit. Ils doivent la
 fouiller sans se faire surprendre, à la recherche de tout ce qui pourrait indiquer l'emplacement
@@ -220,7 +221,7 @@ Quand écrire [NEXT ACT] : quand la situation avec le mendiant est réglée, d'u
 autre, et que le joueur et Sylka sont enfin en sécurité pour la nuit.
 
 # Les préparatifs
-[La carte en poche, vous consacrez la journée aux derniers préparatifs avant le départ.]
+[La carte en poche, Alex et Sylka consacrent la journée aux derniers préparatifs avant le départ.]
 
 Point de départ : le lendemain matin à Bragheval, le joueur et Sylka préparent leur expédition vers
 le temple : équipement, provisions, dernières informations à glaner en ville. Pas d'action
@@ -263,7 +264,7 @@ paume — une marque en forme de pièce, dont elle refuse de parler.
 Quand écrire [NEXT ACT] : quand la soirée à la taverne se termine.
 
 ## Le départ à l'aube
-[Bragheval s'éveille à peine que vous êtes déjà sur la route — et quelqu'un, quelque part, vous regarde partir.]
+[Bragheval s'éveille à peine qu'Alex et Sylka sont déjà sur la route — et quelqu'un, quelque part, les regarde partir.]
 
 Point de départ : à l'aube, le joueur et Sylka quittent Bragheval pour de bon, en direction de la
 jungle.
@@ -276,7 +277,7 @@ Quand écrire [NEXT ACT] : quand le joueur et Sylka ont quitté Bragheval et s'e
 vers la jungle.
 
 # La jungle
-[Bragheval déjà loin derrière vous, la jungle dense referme peu à peu son emprise humide et bruyante.]
+[Bragheval déjà loin derrière eux, la jungle dense referme peu à peu son emprise humide et bruyante.]
 
 Point de départ : le joueur et Sylka progressent vers la jungle dense à l'est de Bragheval, en
 direction du temple indiqué sur la carte.
@@ -344,7 +345,7 @@ Quand écrire [NEXT ACT] : quand la nuit se termine et que les ruines du temple 
 l'horizon.
 
 # Le seuil
-[Les ruines du Temple de Vaskorreth se dressent enfin devant vous, aussi imposantes que redoutées.]
+[Les ruines du Temple de Vaskorreth se dressent enfin devant Alex et Sylka, aussi imposantes que redoutées.]
 
 Point de départ : le joueur et Sylka arrivent devant l'entrée effondrée du Temple de Vaskorreth.
 C'est ici que Sylka doit laisser transparaître clairement sa nervosité inhabituelle face à ce lieu
@@ -469,7 +470,7 @@ Quand écrire [NEXT ACT] : quand le joueur et Sylka parviennent à semer ou dist
 au moins temporairement, et atteignent la salle centrale du temple.
 
 # La Larme de Vaskorreth
-[Le premier danger surmonté, vous atteignez enfin la salle centrale du temple.]
+[Le premier danger surmonté, Alex et Sylka atteignent enfin la salle centrale du temple.]
 
 Point de départ : le joueur et Sylka atteignent enfin la salle centrale du temple, où repose la
 Larme de Vaskorreth — la relique en forme de goutte de verre noir qu'ils sont venus chercher.

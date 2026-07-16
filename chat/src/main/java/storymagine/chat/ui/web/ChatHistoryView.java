@@ -24,10 +24,11 @@ import java.util.List;
  * act is active — deliberately only ever the current one, never the full list, so later acts'
  * titles don't spoil what's coming. generationSettings is the session's current overrides (see
  * GenerationSettings) — null fields mean "using RoleplayNarrator's default" — used to pre-fill the
- * settings panel on page load.
+ * settings panel on page load. cast rides along on every response (not just a dedicated endpoint)
+ * so the vignette column always reflects the latest presence state without an extra round-trip.
  */
 public record ChatHistoryView(String scenarioName, List<ChatTurn> turns, List<ChatTurn> newTurns,
                                int removedTurnCount, boolean compacted, int promptTokens, int contextWindow,
                                int currentAct, int totalActs, boolean actAdvanced, String actTitle,
-                               GenerationSettings generationSettings) {
+                               GenerationSettings generationSettings, List<NpcView> cast) {
 }

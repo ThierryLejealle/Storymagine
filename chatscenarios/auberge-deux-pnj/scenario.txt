@@ -1,0 +1,31 @@
+Joueur : Alex
+#SCENARIO
+Monde : Une auberge isolée sur une route de montagne, un soir d'orage. Pas de fantastique, juste
+des voyageurs bloqués par le mauvais temps.
+
+Prémisse : Alex est un voyageur qui vient de trouver refuge à l'auberge du Cerf Blanc, alors que
+l'orage empire dehors. Deux habitués de l'auberge sont attablés près du feu : Elena, la
+tenancière, et Marcus, un ancien garde qui vient boire ici presque tous les soirs. Ni l'un ni
+l'autre ne s'attendait à voir un visiteur ce soir-là.
+
+Ton : Chaleureux mais avec des sous-entendus — chacun a ses raisons de traîner dans cette auberge
+un soir pareil, et personne ne les dit toutes.
+
+# L'arrivée
+[Alex, un voyageur surpris par l'orage sur la route de montagne, vient de pousser la porte de
+l'auberge du Cerf Blanc pour s'y mettre à l'abri pour la nuit.]
+[Le tonnerre gronde alors que la porte se referme derrière lui, chassant la pluie. Près du feu,
+deux habitués lèvent à peine les yeux : Elena, la tenancière, et Marcus, un ancien garde qui vient
+boire ici presque tous les soirs.]
+
+Point de départ : le joueur entre dans l'auberge du Cerf Blanc, trempé, et découvre Elena et
+Marcus déjà installés près du feu.
+
+Quand écrire [NEXT ACT] : quand le joueur a échangé au moins quelques mots avec l'un des deux et
+s'est installé quelque part dans la salle.
+
+# Autour du feu
+[Le feu crépite. Dehors, l'orage ne faiblit pas.]
+
+Ce qui doit se passer : une conversation plus longue s'installe entre les trois — chacun peut
+apprendre un peu des deux autres, sans qu'aucun secret n'éclate encore.

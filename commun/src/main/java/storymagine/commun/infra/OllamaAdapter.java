@@ -113,16 +113,15 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
                             .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
                             .incrementAndGet();
         long   t0     = System.currentTimeMillis();
-        Boolean resolvedThink = resolveThink(ctx.think() != null ? ctx.think() : (think ? Boolean.TRUE : Boolean.FALSE));
-        String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt, resolvedThink);
+        String handle = log.llmCallOpen(ctx.agentName(), local, systemPrompt, userPrompt, wantedThink(ctx.think()));
         try {
             LlmResult result = generateInternal(systemPrompt, userPrompt, temperature, ctx.agentLabel(),
                     ctx.think(), options);
-            log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
+            log.llmCallClose(handle, result.text(), result.thinking(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
         } catch (RuntimeException e) {
-            log.llmCallClose(handle, "ERREUR : " + e.getMessage(),
+            log.llmCallClose(handle, "ERREUR : " + e.getMessage(), "",
                     System.currentTimeMillis() - t0, 0, 0);
             throw e;
         }
@@ -158,15 +157,14 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
                             .computeIfAbsent(ctx.agentName(), k -> new AtomicInteger(0))
                             .incrementAndGet();
         long   t0     = System.currentTimeMillis();
-        Boolean resolvedThink = resolveThink(ctx.think() != null ? ctx.think() : (think ? Boolean.TRUE : Boolean.FALSE));
-        String handle = log.llmCallOpen(ctx.agentName(), local, "", prompt, resolvedThink);
+        String handle = log.llmCallOpen(ctx.agentName(), local, "", prompt, wantedThink(ctx.think()));
         try {
             LlmResult result = completeInternal(prompt, temperature, ctx.think());
-            log.llmCallClose(handle, result.text(), System.currentTimeMillis() - t0,
+            log.llmCallClose(handle, result.text(), result.thinking(), System.currentTimeMillis() - t0,
                     result.promptTokens(), result.responseTokens());
             return result;
         } catch (RuntimeException e) {
-            log.llmCallClose(handle, "ERREUR : " + e.getMessage(),
+            log.llmCallClose(handle, "ERREUR : " + e.getMessage(), "",
                     System.currentTimeMillis() - t0, 0, 0);
             throw e;
         }
@@ -199,7 +197,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         req.options.put("top_p",          topP);
         req.options.put("repeat_penalty", repeatPenalty);
         if (numPredict >= 0) req.options.put("num_predict", numPredict);
-        req.think = resolveThink(thinkOverride != null ? thinkOverride : (think ? Boolean.TRUE : Boolean.FALSE));
+        req.think = resolveThink(wantedThink(thinkOverride));
 
         HttpRequest request;
         try {
@@ -232,7 +230,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
                     throw new RuntimeException("Ollama error : " + resp.error);
                 }
                 String text = resp.response != null ? resp.response : "";
-                logLlmCall("chat/raw", resp.promptEvalCount, resp.evalCount, resp.evalDuration, req.think);
+                logLlmCall("chat/raw", resp.promptEvalCount, resp.evalCount, resp.evalDuration, wantedThink(thinkOverride));
                 return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration, "");
 
             } catch (RuntimeException e) {
@@ -307,7 +305,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     @Override
     public String modelInfoBlock() {
         if (cachedModelInfo == null) return "";
-        String declared = cachedModelInfo.formatDeclared(model, contextWindowSize);
+        String declared = cachedModelInfo.formatDeclared(model, contextWindowSize, supportsThinking());
         String runtime  = cachedModelInfo.formatRuntime();
         return runtime.isEmpty() ? declared : declared + "\n" + runtime;
     }
@@ -411,7 +409,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
                 }
                 String text     = resp.message != null ? resp.message.content : "";
                 String thinking = resp.message != null && resp.message.thinking != null ? resp.message.thinking : "";
-                logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration, req.think);
+                logLlmCall(agentLabel, resp.promptEvalCount, resp.evalCount, resp.evalDuration, wantedThink(thinkOverride));
                 return new LlmResult(text, resp.promptEvalCount, resp.evalCount, resp.evalDuration, thinking);
 
             } catch (RuntimeException e) {
@@ -462,7 +460,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         Exception lastCause     = null;
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
             try {
-                return executeStreaming(request, agentLabel, req.think);
+                return executeStreaming(request, agentLabel, wantedThink(thinkOverride));
             } catch (ContextOverflowException e) {
                 throw e;
             } catch (GenerationCancelledException e) {
@@ -492,7 +490,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
             "Ollama stream : échec après " + totalAttempts + " tentative(s) : " + lastCause.getMessage(), lastCause);
     }
 
-    private LlmResult executeStreaming(HttpRequest request, String agentLabel, Boolean think) {
+    private LlmResult executeStreaming(HttpRequest request, String agentLabel, Boolean wantedThink) {
         // Obtenir les headers HTTP — Ollama ne les envoie qu'une fois la requête acceptée, donc ce
         // délai peut être aussi long qu'un chargement de modèle ou une file d'attente derrière un
         // autre appel Ollama en cours : on réutilise firstTokenTimeoutMs (même budget que l'attente
@@ -568,7 +566,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
             throw new RuntimeException("Erreur lecture stream Ollama : " + e.getMessage(), e);
         }
 
-        logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration, think);
+        logLlmCall(agentLabel, promptTokens, evalTokens, evalDuration, wantedThink);
         return new LlmResult(content.toString(), promptTokens, evalTokens, evalDuration, thinking.toString());
     }
 
@@ -580,6 +578,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
+            future.cancel(true);
             try { raw.close(); } catch (IOException ignored) {}
             throw new RuntimeException("Timeout stream Ollama (" + timeoutMs + "ms sans nouveau token)");
         } catch (ExecutionException e) {
@@ -588,6 +587,15 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
             throw new RuntimeException("Erreur lecture stream : " + cause.getMessage(), cause);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            // STOP (voir ChatWebServer.handleStop) interrompt CE thread pendant l'attente — sans
+            // fermer le flux ici (comme le fait deja le cas Timeout ci-dessus), la connexion vers
+            // Ollama restait ouverte et la generation continuait server-side malgre le clic Stop :
+            // le thread lecteur de fond restait bloque sur reader.readLine(), jamais reveille tant
+            // que le socket n'etait pas ferme. future.cancel(true) seul ne suffit pas (lecture
+            // bloquante classique, n'honore pas l'interruption) — raw.close() est ce qui debloque
+            // reellement le thread de fond et coupe la connexion.
+            future.cancel(true);
+            try { raw.close(); } catch (IOException ignored) {}
             throw new RuntimeException("Interrompu pendant la lecture stream Ollama");
         }
     }
@@ -613,7 +621,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
         // thinkOverride (LlmCallContext) prime sur le réglage par défaut de l'adaptateur.
         // false est envoyé explicitement (jamais omis) : un champ absent laisse Ollama appliquer
         // son comportement par défaut, qui est "réflexion activée" pour les modèles qui la supportent.
-        req.think = resolveThink(thinkOverride != null ? thinkOverride : (think ? Boolean.TRUE : Boolean.FALSE));
+        req.think = resolveThink(wantedThink(thinkOverride));
         req.messages = List.of(
             new OllamaMessage("system", systemPrompt),
             new OllamaMessage("user",   userPrompt)
@@ -622,15 +630,30 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     }
 
     /**
-     * Neutralise une demande d'activation explicite du thinking si le modèle probé ne la supporte
-     * pas (capacité "thinking" absente de /api/show — certains imports hf.co/ rejettent think=true
-     * en HTTP 400 même quand le modèle réfléchit très bien par défaut). Dans ce cas, on retombe sur
-     * "pas de préférence" (champ absent) plutôt que de faire échouer l'appel.
+     * (correctif modèle gemma4 sur thinking) Neutralise une demande d'activation explicite du
+     * thinking si le modèle probé ne la supporte pas (capacité "thinking" absente de /api/show —
+     * certains imports hf.co/ rejettent think=true en HTTP 400). Dans ce cas, on retombe sur "pas
+     * de préférence" (champ absent) plutôt que de faire échouer l'appel — vérifié empiriquement le
+     * 2026-07-15 : un champ absent laisse Ollama appliquer son comportement par défaut, qui inclut
+     * bien la réflexion pour ces modèles (elle réfléchit nativement, seule l'activation *explicite*
+     * est rejetée). Le problème est donc entièrement absorbé ici : l'appelant, lui, voit toujours
+     * sa demande honorée (voir wantedThink(), utilisé pour la traçabilité/logs — jamais cette
+     * valeur neutralisée, qui ne concerne que ce qui part sur le fil).
      */
     private Boolean resolveThink(Boolean wanted) {
         if (Boolean.TRUE.equals(wanted) && cachedModelInfo != null && !cachedModelInfo.supportsThinking)
             return null;
         return wanted;
+    }
+
+    /**
+     * Ce que l'appelant a réellement demandé (LlmCallContext.think(), ou le défaut de l'adaptateur
+     * si absent) — jamais null, contrairement à resolveThink() qui peut neutraliser ce souhait pour
+     * le fil (voir resolveThink). Utilisé pour la traçabilité (logs) : les logs doivent refléter la
+     * demande, pas le bricolage interne fait pour la satisfaire.
+     */
+    private Boolean wantedThink(Boolean thinkOverride) {
+        return thinkOverride != null ? thinkOverride : (think ? Boolean.TRUE : Boolean.FALSE);
     }
 
     private void logLlmCall(String agentLabel, int promptTokens, int evalTokens, long evalDurationNs, Boolean think) {

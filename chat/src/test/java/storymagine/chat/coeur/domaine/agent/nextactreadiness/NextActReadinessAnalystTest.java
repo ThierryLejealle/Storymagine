@@ -2,7 +2,9 @@ package storymagine.chat.coeur.domaine.agent.nextactreadiness;
 
 import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
@@ -18,9 +20,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NextActReadinessAnalystTest {
 
     private static ChatScenario scenario() {
-        return new ChatScenario("inn", "A grumpy innkeeper.", "A stormy night at the inn.", List.of(
+        Cast cast = new Cast(List.of(new Npc("innkeeper", "", "A grumpy innkeeper.", "")));
+        return new ChatScenario("inn", cast, "A stormy night at the inn.", List.of(
             ScenarioAct.leaf(ActNumber.of(1), "", "First act."),
-            ScenarioAct.leaf(ActNumber.of(2), "", "They explore the cellar. [NEXT ACT] once they find the hidden door.")), "");
+            ScenarioAct.leaf(ActNumber.of(2), "", "They explore the cellar. [NEXT ACT] once they find the hidden door.")));
+    }
+
+    private static Npc speaker() {
+        return scenario().cast().npcs().get(0);
     }
 
     @Test
@@ -35,7 +42,7 @@ class NextActReadinessAnalystTest {
         NextActReadinessAnalyst analyst = new NextActReadinessAnalyst(llm);
 
         NextActReadinessAnalystOutput output = analyst.call(new NextActReadinessAnalystInput(
-            scenario(), 1, "", List.of(), GenerationSettings.DEFAULT));
+            scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
 
         assertEquals("The story moves on once they find the hidden door in the cellar.", output.conditionUnderstood());
         assertEquals("Not met yet, they are still searching.", output.currentState());
@@ -54,7 +61,7 @@ class NextActReadinessAnalystTest {
         NextActReadinessAnalyst analyst = new NextActReadinessAnalyst(llm);
 
         NextActReadinessAnalystOutput output = analyst.call(new NextActReadinessAnalystInput(
-            scenario(), 1, "", List.of(), GenerationSettings.DEFAULT));
+            scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
 
         assertEquals("", output.missing());
     }
@@ -64,7 +71,7 @@ class NextActReadinessAnalystTest {
         CapturingModelCallPort llm = new CapturingModelCallPort("CONDITION:\nX\nSTATE:\nX\nMISSING:\n[RIEN]");
         NextActReadinessAnalyst analyst = new NextActReadinessAnalyst(llm);
 
-        analyst.call(new NextActReadinessAnalystInput(scenario(), 1, "They arrived at dusk.",
+        analyst.call(new NextActReadinessAnalystInput(scenario(), speaker(), 1, "They arrived at dusk.",
             List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "I open the door.")), GenerationSettings.DEFAULT));
 
         assertTrue(llm.lastUserPrompt.contains("A grumpy innkeeper."));
@@ -74,9 +81,21 @@ class NextActReadinessAnalystTest {
         assertTrue(llm.lastUserPrompt.contains("I open the door."));
     }
 
+    @Test
+    void alwaysRequestsThinkingEvenThoughThisPopupNeverDisplaysIt() {
+        CapturingModelCallPort llm = new CapturingModelCallPort("CONDITION:\nX\nSTATE:\nX\nMISSING:\n[RIEN]");
+        NextActReadinessAnalyst analyst = new NextActReadinessAnalyst(llm);
+
+        analyst.call(new NextActReadinessAnalystInput(
+            scenario(), speaker(), 1, "", List.of(), GenerationSettings.DEFAULT));
+
+        assertEquals(Boolean.TRUE, llm.lastCtx.think());
+    }
+
     private static class CapturingModelCallPort implements ModelCallPort {
         private final String responseText;
         String lastUserPrompt;
+        LlmCallContext lastCtx;
 
         CapturingModelCallPort(String responseText) {
             this.responseText = responseText;
@@ -85,6 +104,7 @@ class NextActReadinessAnalystTest {
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
             this.lastUserPrompt = userPrompt;
+            this.lastCtx = ctx;
             return LlmResult.of(responseText);
         }
 
