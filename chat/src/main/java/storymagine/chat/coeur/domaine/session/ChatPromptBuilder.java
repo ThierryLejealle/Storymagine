@@ -101,9 +101,10 @@ public final class ChatPromptBuilder {
      * used elsewhere in this prompt (concrete wrong/right on the identical situation).
      */
     private static final String OTHER_NPCS_RULE = """
-        Other characters may be present in the scene (named above, under ALSO PRESENT) — you know
-        only their names, nothing else about them. Speak and act only for your own character;
-        never write dialogue or actions for another present character, even briefly.
+        Other characters may be present in the scene (named above, under ALSO PRESENT, with what
+        you know about them) — that's the only thing you know about them, nothing more. Speak and
+        act only for your own character; never write dialogue or actions for another present character,
+        even briefly.
         Example — Marcus is present:
         Wrong: *Marcus nods and steps back.*
         Right: *I glance at Marcus, unsure if he noticed.*""";
@@ -148,11 +149,14 @@ public final class ChatPromptBuilder {
     /**
      * currentAct is 1-based ; 0 means the scenario has no acts (or none is active), in which case
      * no CURRENT ACT section is added — existing act-less scenarios are unaffected. scene.speaker()
-     * gets their full sheet (public + secret, see Npc.fullSheet()) ; scene.otherPresent() are named
-     * only — no other Npc's sheet, public or secret, ever reaches this prompt (see Npc.md /
-     * the multi-NPC plan : "everyone knows the story, but each only knows their own sheet").
-     * scene.interjecting() adds INTERJECTION_RULE — this speaker is reacting unprompted, not the
-     * one the player addressed (see SpeakerSelector.rollInterjectors).
+     * gets their full sheet (public + secret, see Npc.fullSheet()) ; scene.otherPresent() are
+     * established companions (never the player — see ChatServiceImpl.sceneFor), so each gets their
+     * PUBLIC sheet only (see Npc.publicInfo()) : a secret never reaches another Npc's prompt, but
+     * their public traits do, since teammates who've adventured together already know that much
+     * about each other (see evols : replaces the earlier "names only, you know nothing about them",
+     * which read oddly for a party mid-campaign). scene.interjecting() adds INTERJECTION_RULE —
+     * this speaker is reacting unprompted, not the one the player addressed (see
+     * SpeakerSelector.rollInterjectors).
      */
     public static ChatPrompt build(ChatScenario scenario, Scene scene, int currentAct, String summary,
                                     List<ChatTurn> recentTurns) {
@@ -160,9 +164,10 @@ public final class ChatPromptBuilder {
         system.append(SYSTEM_INTRO).append("\n\n");
         system.append("YOUR CHARACTER:\n").append(scene.speaker().fullSheet()).append("\n\n");
         if (!scene.otherPresent().isEmpty()) {
-            system.append("ALSO PRESENT IN THE SCENE (names only — you know nothing else about them):\n");
+            system.append("ALSO PRESENT IN THE SCENE — what you know about them (never anything from a\n")
+                  .append("private note that isn't yours):\n");
             for (Npc other : scene.otherPresent()) {
-                system.append("- ").append(other.label()).append('\n');
+                system.append("- ").append(other.label()).append(": ").append(other.publicInfo()).append('\n');
             }
             system.append('\n');
         }

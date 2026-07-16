@@ -157,9 +157,13 @@ Elena a autrefois volé dans un temple... (fiche secrète)
 - Ligne `# SECRET` seule (insensible à la casse) optionnelle : sépare fiche publique / fiche
   secrète. Absente : tout le fichier est public, pas de partie secrète.
 - **Le PNJ qui parle reçoit toujours sa fiche complète (publique + secrète)** — il se connaît
-  lui-même. **Les autres PNJ présents dans la scène ne sont connus QUE par leur nom** — jamais leur
-  fiche, ni publique ni secrète (règle anti-triche du prompt, voir `ChatPromptBuilder
-  .OTHER_NPCS_RULE`).
+  lui-même. **Les autres PNJ présents dans la scène reçoivent leur fiche PUBLIQUE** (jamais leur
+  `# SECRET`, qui ne fuite jamais vers un autre PNJ — règle anti-triche, voir `ChatPromptBuilder
+  .OTHER_NPCS_RULE`). Revu le 2026-07-16 : avant, les autres PNJ n'étaient connus que par leur nom
+  ("tu ne sais rien d'eux"), ce qui lisait bizarrement pour une équipe qui voyage ensemble depuis
+  plusieurs chapitres — `scene.otherPresent()` ne contient jamais le joueur, seulement des PNJ déjà
+  établis comme coéquipiers dès la prémisse du scénario, donc partager leur fiche publique entre
+  eux est toujours cohérent narrativement.
 - Bonne pratique pour donner du relief : des secrets qui se répondent entre eux sans jamais être
   méchants ni casser l'histoire (aspirations, envies, non-dits) — voir `quete-des-amazones` pour un
   exemple à trois PNJ dont les secrets s'entrecroisent.

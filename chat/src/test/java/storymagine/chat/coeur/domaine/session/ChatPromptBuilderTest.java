@@ -165,16 +165,19 @@ class ChatPromptBuilderTest {
     }
 
     @Test
-    void otherPresentNpcsAreListedByNameOnlyNeverTheirSheet() {
+    void otherPresentNpcsShareTheirPublicSheetButNeverTheirSecret() {
         Npc speaker = new Npc("elena", "Elena", "Elena's sheet.", "");
-        Npc other   = new Npc("marcus", "Marcus", "Marcus's secret sheet text.", "");
+        Npc other   = new Npc("marcus", "Marcus", "Marcus's public sheet text.", "Marcus's secret sheet text.");
         ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker, other)), "premise", List.of());
 
         ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(other), false), 0, "", List.of());
 
         assertTrue(prompt.system().contains("ALSO PRESENT"));
         assertTrue(prompt.system().contains("Marcus"));
-        assertFalse(prompt.system().contains("Marcus's secret sheet text."));
+        assertTrue(prompt.system().contains("Marcus's public sheet text."),
+            "les coequipiers deja etablis connaissent la fiche publique des uns et des autres");
+        assertFalse(prompt.system().contains("Marcus's secret sheet text."),
+            "le SECRET d'un PNJ ne doit jamais fuiter dans le prompt d'un autre");
     }
 
     @Test
