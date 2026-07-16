@@ -489,14 +489,22 @@ function removeLastTrackedEls(count) {
   }
 }
 
+// Un nouveau tour/fragment ne doit forcer le defilement vers le bas que si le joueur suivait deja
+// la conversation en bas — sinon ca l'empeche de remonter lire un tour precedent pendant qu'une
+// replique s'ecrit au fil de l'eau (plusieurs mises a jour par seconde, voir updateStreamingBubble).
+function isNearBottom() {
+  return turnsEl.scrollHeight - turnsEl.scrollTop - turnsEl.clientHeight < 80;
+}
+
 function appendTurn(speaker, text, thinking, npcId) {
+  const stick = isNearBottom();
   if (speaker === 'NARRATOR') {
     const div = document.createElement('div');
     div.className = 'narrator-note';
     div.textContent = text;
     turnsEl.appendChild(div);
     renderedTurnEls.push(div);
-    turnsEl.scrollTop = turnsEl.scrollHeight;
+    if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
     return div;
   }
   const div = document.createElement('div');
@@ -542,7 +550,7 @@ function appendTurn(speaker, text, thinking, npcId) {
   div.appendChild(bubble);
   turnsEl.appendChild(div);
   renderedTurnEls.push(div);
-  turnsEl.scrollTop = turnsEl.scrollHeight;
+  if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
   return div;
 }
 
@@ -553,6 +561,7 @@ function appendTurn(speaker, text, thinking, npcId) {
 // apercus). Texte remplace en entier a chaque appel (pas d'ajout), voir ModelCallPort.generate(...,
 // Consumer) : le fragment recu est toujours le texte complet genere jusqu'ici, jamais un delta.
 function appendStreamingBubble(npcId) {
+  const stick = isNearBottom();
   const div = document.createElement('div');
   div.className = 'turn llm streaming';
   const label = document.createElement('div');
@@ -563,21 +572,23 @@ function appendStreamingBubble(npcId) {
   bubble.className = 'bubble';
   div.appendChild(bubble);
   turnsEl.appendChild(div);
-  turnsEl.scrollTop = turnsEl.scrollHeight;
+  if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
   return div;
 }
 
 function updateStreamingBubble(el, textSoFar) {
+  const stick = isNearBottom();
   el.querySelector('.bubble').innerHTML = formatText(textSoFar);
-  turnsEl.scrollTop = turnsEl.scrollHeight;
+  if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
 }
 
 function showTyping() {
+  const stick = isNearBottom();
   const div = document.createElement('div');
   div.className = 'turn llm typing';
   div.innerHTML = '<div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
   turnsEl.appendChild(div);
-  turnsEl.scrollTop = turnsEl.scrollHeight;
+  if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
   return div;
 }
 
