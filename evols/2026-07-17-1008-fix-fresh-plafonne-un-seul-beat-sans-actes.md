@@ -40,12 +40,11 @@ prémisse à 3 blocs `[...]`, vérifie qu'un seul tour NARRATOR est créé (le p
 `mvn -pl chat -am clean test` : 208 tests (+1), tous verts. `mvn compile` (racine) : aucune
 régression cross-module.
 
-## 5. Ce qui reste non résolu
+## 5. Mise à jour — cause racine trouvée et corrigée séparément
 
-La cause exacte de `scenario.acts()` vide pour le fichier original de l'utilisateur (encodage,
-caractère invisible, structure de headings différente de ce qui a été testé) n'a pas pu être
-confirmée — le fichier a été vidé entre le moment du bug et l'investigation. Ce fix corrige le
-SYMPTÔME (plusieurs beats déversés d'un coup) de façon défensive, quelle que soit la cause exacte
-d'une détection d'actes vide. Si le problème "aucun acte détecté" se reproduit sur un scénario
-utilisateur dont le fichier est encore intact, il faudra le récupérer pour continuer l'investigation
-sur la cause racine (probablement liée au parsing de `#`/`##`/`#SCENARIO`).
+La cause exacte a finalement été identifiée une fois l'utilisateur en mesure de fournir le vrai
+fichier (non vidé) : fins de ligne **CRLF** (Windows), qui cassaient totalement la détection des
+titres `#`/`##` dans `ScenarioOutlineParser`. Voir
+`evols/2026-07-17-1015-fix-crlf-casse-detection-titres.md` pour le détail complet — ce fix-ci
+(plafonner à un seul beat) reste utile en soi comme filet de sécurité défensif, indépendamment de
+la cause du fichier de l'utilisateur.

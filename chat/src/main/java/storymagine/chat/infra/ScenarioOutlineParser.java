@@ -27,7 +27,14 @@ final class ScenarioOutlineParser {
 
     record Outline(String premise, List<ScenarioAct> acts) {}
 
-    static Outline parse(String raw) {
+    static Outline parse(String rawInput) {
+        // Normalise CRLF/CR -> LF avant tout decoupage sur "\n" : sans ca, chaque ligne garde un
+        // '\r' final invisible, et HEADING.matches() echoue TOUJOURS dessus — '.' n'inclut pas '\r'
+        // par defaut en Java, donc "(.*)$" ne peut jamais l'absorber. Resultat observe en vrai : un
+        // fichier scenario.txt enregistre avec des fins de ligne Windows (CRLF) perdait tous ses
+        // titres "#"/"##", scenario.acts() se retrouvait vide, et le fallback "pas d'actes" (voir
+        // ChatSession.fresh) deversait toute la premisse d'un coup — voir evols/2026-07-17-...
+        String raw = rawInput.replace("\r\n", "\n").replace("\r", "\n");
         List<Heading> headings = splitHeadings(raw);
         if (headings.isEmpty()) return new Outline(raw.strip(), List.of());
 

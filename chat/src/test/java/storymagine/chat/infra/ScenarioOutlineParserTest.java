@@ -101,6 +101,22 @@ class ScenarioOutlineParserTest {
     }
 
     @Test
+    void windowsCrlfLineEndingsDoNotHideTheHeadingsFromTheParser() {
+        // Bug reel observe : un scenario.txt enregistre avec des fins de ligne Windows (CRLF)
+        // perdait TOUS ses titres "#"/"##" — HEADING.matches() echouait sur chaque ligne a cause du
+        // '\r' final invisible, scenario.acts() se retrouvait vide, et tout le fichier retombait en
+        // premisse plate (voir evols/2026-07-17-...). Meme contenu que
+        // scenarioMarkerDelimitsThePremiseFromTheFirstAct, juste avec \r\n au lieu de \n.
+        String withCrlf = "#SCENARIO\r\nThe premise text.\r\n\r\n# Act One\r\nAct one body.";
+
+        var outline = ScenarioOutlineParser.parse(withCrlf);
+
+        assertEquals("The premise text.", outline.premise());
+        assertEquals(1, outline.acts().size());
+        assertEquals("Act One", outline.acts().get(0).title());
+    }
+
+    @Test
     void nextActConditionLineStaysInsideTheResolvedTextVerbatim() {
         var outline = ScenarioOutlineParser.parse("""
             #SCENARIO
