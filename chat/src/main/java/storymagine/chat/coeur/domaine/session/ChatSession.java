@@ -63,9 +63,15 @@ public class ChatSession {
      */
     public static ChatSession fresh(ChatScenario scenario) {
         int startAct = scenario.acts().isEmpty() ? 0 : 1;
-        List<String> openingBeats = startAct > 0
+        // Un scenario sans actes n'a qu'UN SEUL etat d'ouverture, pas une pile a deverser d'un
+        // coup : meme convention que scenario.acts() (toujours un seul beat d'ouverture par acte).
+        // Sans ce plafond, une premisse plate contenant plusieurs blocs "[...]" (plusieurs scenes
+        // narratives distinctes, pas forcement pensees comme des "actes") les affichait tous a la
+        // fois avant meme le premier message du joueur.
+        List<String> allBeats = startAct > 0
             ? scenario.acts().get(startAct - 1).beats()
             : Teaser.extractAll(scenario.premise());
+        List<String> openingBeats = startAct > 0 || allBeats.isEmpty() ? allBeats : List.of(allBeats.get(0));
         return new ChatSession(scenario, narratorTurns(openingBeats), "", startAct);
     }
 

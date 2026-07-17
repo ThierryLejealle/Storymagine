@@ -94,6 +94,15 @@ Dans le corps de chaque acte (ou dans la prémisse pour un scénario sans actes)
 crochets `[...]` devient une réplique NARRATOR affichée au joueur au moment où cet acte devient
 courant :
 
+**⚠️ Scénario SANS actes (`scenario.acts()` vide) : un seul bloc `[...]` compte.** Si la prémisse
+en contient plusieurs, seul le PREMIER est affiché à l'ouverture — les autres sont ignorés (revu
+le 2026-07-17, voir `evols/2026-07-17-...`). Un scénario sans actes n'a qu'un seul état d'ouverture,
+pas une pile à déverser d'un coup ; sans ce plafond, une prémisse plate contenant plusieurs blocs
+`[...]` (plusieurs scènes narratives pensées pour s'enchaîner) les affichait TOUTES avant même le
+premier message du joueur, sans jamais appeler le LLM. Si votre scénario a plusieurs scènes
+d'ouverture distinctes, utilisez de vrais actes (`#`/`##`, voir §2.3) plutôt qu'une prémisse plate —
+c'est le seul moyen d'obtenir une progression normale entre elles.
+
 ```
 [Le tonnerre gronde alors qu'Alex referme derrière lui la porte de l'auberge.]
 ```

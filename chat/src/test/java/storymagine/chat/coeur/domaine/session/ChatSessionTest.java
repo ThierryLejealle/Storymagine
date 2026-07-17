@@ -44,6 +44,20 @@ class ChatSessionTest {
     }
 
     @Test
+    void freshWithoutActsOnlyUsesTheFirstBracketedLineEvenIfThePremiseHasSeveral() {
+        // Un scenario sans actes n'a qu'UN SEUL etat d'ouverture — plusieurs blocs "[...]" dans une
+        // premisse plate (plusieurs scenes narratives pensees pour s'enchainer, pas forcement comme
+        // des actes formels) ne doivent jamais etre tous deverses d'un coup avant le premier message.
+        ChatScenario scenario = scenario(
+            "Premise title\n[A storm is brewing.]\n\nMore text.\n[They reach the door.]\n\n[It creaks open.]",
+            List.of());
+
+        ChatSession session = ChatSession.fresh(scenario);
+
+        assertEquals(List.of(new ChatTurn(ChatTurn.Speaker.NARRATOR, "A storm is brewing.")), session.turns());
+    }
+
+    @Test
     void freshWithNoBracketedLinesOpensWithNoTurns() {
         ChatScenario scenario = scenario("premise", List.of(
             ScenarioAct.leaf(ActNumber.of(1), "", "Act one, no story beats.")));
