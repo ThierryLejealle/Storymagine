@@ -152,8 +152,12 @@ Elena, la trentaine, tient l'auberge... (fiche publique)
 Elena a autrefois volé dans un temple... (fiche secrète)
 ```
 
-- Première ligne `# Nom` optionnelle : devient le nom affiché (`Npc.label()`) — gardée verbatim
-  dans la fiche publique, pas retirée. Absente : le PNJ s'affiche sous son id de fichier.
+- Première ligne `# Nom` **obligatoire** (revu le 2026-07-17) : devient le nom affiché
+  (`Npc.label()`) — gardée verbatim dans la fiche publique, pas retirée. Un fichier `.txt` sans
+  cette ligne en premier n'est PAS chargé comme PNJ — il est silencieusement ignoré (voir
+  `ChatFileStorageAdapter.hasNameHeading`). Avant, n'importe quel `.txt` égaré dans le dossier
+  (note, brouillon, sauvegarde manuelle) devenait un PNJ fantôme sans avertissement, avec son id de
+  fichier comme nom — risque réel signalé par l'utilisateur.
 - Ligne `# SECRET` seule (insensible à la casse) optionnelle : sépare fiche publique / fiche
   secrète. Absente : tout le fichier est public, pas de partie secrète.
 - **Le PNJ qui parle reçoit toujours sa fiche complète (publique + secrète)** — il se connaît

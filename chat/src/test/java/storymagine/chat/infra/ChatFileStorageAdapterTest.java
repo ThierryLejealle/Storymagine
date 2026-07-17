@@ -40,7 +40,7 @@ class ChatFileStorageAdapterTest {
 
         assertEquals("inn", scenario.name());
         assertEquals(1, scenario.cast().npcs().size());
-        assertEquals("A grumpy innkeeper.", scenario.cast().npcs().get(0).publicInfo());
+        assertEquals("# Character\nA grumpy innkeeper.", scenario.cast().npcs().get(0).publicInfo());
         assertEquals("A stormy night.", scenario.premise());
         assertTrue(scenario.acts().isEmpty());
         assertEquals("Alex", scenario.playerName(), "pas de ligne \"Joueur : ...\" dans ce fixture, retombe sur le defaut");
@@ -359,6 +359,20 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
+    void loadScenarioIgnoresATxtFileWithNoNameHeadingInsteadOfLoadingItAsANamelessNpc(@TempDir Path root) throws IOException {
+        // Un fichier .txt egare dans le dossier (note, brouillon, sauvegarde manuelle...) ne doit
+        // jamais devenir un PNJ fantome silencieux — seuls les fichiers commencant par "# Nom" comptent.
+        writeScenarioFiles(root, "inn", "A grumpy innkeeper.", "A stormy night.");
+        Files.writeString(root.resolve("inn/marcus.txt"), "# Marcus\nA retired soldier.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/notes.txt"), "Idees en vrac pour la suite, pas un perso.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(2, scenario.cast().npcs().size(), "notes.txt n'a pas de \"# Nom\" en premiere ligne, ignore");
+        assertTrue(scenario.cast().find("notes").isEmpty());
+    }
+
+    @Test
     void loadScenarioSplitsPublicAndSecretInfoOnTheSecretMarker(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn", "sheet", "premise");
         Files.writeString(root.resolve("inn/elena.txt"),
@@ -451,10 +465,11 @@ class ChatFileStorageAdapterTest {
         assertEquals(Set.of("character", "marcus"), session.interjectingNpcIds());
     }
 
+    /** character is the sheet BODY only — "# Character" is prepended, now required for a .txt file to load as an Npc. */
     private static void writeScenarioFiles(Path root, String name, String character, String scenarioText) throws IOException {
         Path dir = root.resolve(name);
         Files.createDirectories(dir);
-        Files.writeString(dir.resolve("character.txt"), character, StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("character.txt"), "# Character\n" + character, StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("scenario.txt"), scenarioText, StandardCharsets.UTF_8);
     }
 

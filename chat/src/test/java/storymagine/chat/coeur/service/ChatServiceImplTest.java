@@ -46,7 +46,7 @@ class ChatServiceImplTest {
     private static void writeScenarioFiles(Path root, String name) throws IOException {
         Path dir = root.resolve(name);
         Files.createDirectories(dir);
-        Files.writeString(dir.resolve("character.txt"), "A grumpy innkeeper.", StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("character.txt"), "# Character\nA grumpy innkeeper.", StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("scenario.txt"), "A stormy night at the inn.", StandardCharsets.UTF_8);
     }
 

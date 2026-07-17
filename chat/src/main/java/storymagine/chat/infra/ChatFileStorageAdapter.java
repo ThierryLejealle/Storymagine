@@ -28,10 +28,11 @@ import java.util.regex.Pattern;
  * File-based ChatStoragePort : chatScenariosRoot/{name}/scenario.txt (single file : an optional
  * "Joueur : X" first line — see ChatScenario.playerName, stripped before the rest is parsed —
  * then the premise, optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown
- * outline of acts — see ScenarioOutlineParser) + one ".txt" file per Cast member (any name except scenario.txt,
- * act.txt, present.txt, interject.txt — see loadCast ; "character.txt" is just an ordinary Npc
- * file under this rule, which is how a legacy single-character scenario naturally becomes a
- * one-Npc Cast with no special case) and history.md + summary.md + act.txt + present.txt +
+ * outline of acts — see ScenarioOutlineParser) + one ".txt" file per Cast member (any name except
+ * scenario.txt, act.txt, present.txt, interject.txt, AND whose first line is a "# Name" heading —
+ * see loadCast ; "character.txt" is just an ordinary Npc file under this rule, which is how a
+ * legacy single-character scenario naturally becomes a one-Npc Cast with no special case) and
+ * history.md + summary.md + act.txt + present.txt +
  * interject.txt (persisted session, rewritten after every turn and on reset) + full-history.md
  * (append-only archive of every turn ever folded into the summary — never rewritten, never
  * truncated). saves/{stamp}/ holds the same five session files per player-triggered save point
@@ -99,7 +100,14 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName);
     }
 
-    /** Every ".txt" file in dir except the reserved ones (see RESERVED_TXT_FILES), alphabetical by filename. */
+    /**
+     * Every ".txt" file in dir except the reserved ones (see RESERVED_TXT_FILES) AND whose first
+     * line is a "# Name" heading, alphabetical by filename. The heading requirement means a stray
+     * ".txt" dropped into a scenario directory (an old draft, a note, a misnamed backup) is quietly
+     * ignored instead of silently becoming a bogus Cast member — every real character file already
+     * starts with "# Name" by convention (see §3 of chatscenarios/rules.md), so this costs nothing
+     * for well-formed scenarios and only protects against the accidental case.
+     */
     private static Cast loadCast(Path dir) {
         if (!Files.isDirectory(dir)) return new Cast(List.of());
         try (var entries = Files.list(dir)) {
@@ -107,6 +115,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
                 .filter(f -> !RESERVED_TXT_FILES.contains(f.getFileName().toString()))
+                .filter(ChatFileStorageAdapter::hasNameHeading)
                 .sorted(Comparator.comparing(f -> f.getFileName().toString()))
                 .map(ChatFileStorageAdapter::parseNpcFile)
                 .toList();
@@ -114,6 +123,15 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    private static boolean hasNameHeading(Path file) {
+        return firstLine(readText(file)).startsWith(NAME_HEADING_PREFIX);
+    }
+
+    private static String firstLine(String content) {
+        int newline = content.indexOf('\n');
+        return (newline < 0 ? content : content.substring(0, newline)).strip();
     }
 
     /**
@@ -146,10 +164,14 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         return new Npc(id, name, publicInfo, secretInfo);
     }
 
-    /** Optional "# Name" first line of an Npc file — kept in publicInfo, not stripped. */
+    /**
+     * "# Name" first line of an Npc file — kept in publicInfo, not stripped. Always present by the
+     * time this runs : loadCast already filtered out any ".txt" file without one (see
+     * hasNameHeading), so the empty-string fallback here only matters for direct callers/tests that
+     * bypass that filter.
+     */
     private static String extractCharacterName(String content) {
-        int newline = content.indexOf('\n');
-        String firstLine = (newline < 0 ? content : content.substring(0, newline)).strip();
+        String firstLine = firstLine(content);
         return firstLine.startsWith(NAME_HEADING_PREFIX) ? firstLine.substring(NAME_HEADING_PREFIX.length()).strip() : "";
     }
 
