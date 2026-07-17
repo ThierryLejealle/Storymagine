@@ -588,7 +588,7 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void restartSessionWipesTheConversationAndResetsPresenceButKeepsTheScenario(@TempDir Path root) throws IOException {
+    void restartSessionWipesTheConversationAndResetsPresence(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
@@ -601,12 +601,36 @@ class ChatServiceImplTest {
 
         assertEquals(List.of(), session.turns(), "retour a une conversation vierge");
         assertEquals(Set.of("elena", "marcus"), session.presentNpcIds(), "la presence repart de zero, pas de mute qui survit");
-        assertEquals(scenario, session.scenario(), "le scenario lui-meme n'est pas touche");
+        // Cast n'a pas d'equals() structurel, donc pas de comparaison exacte scenario/session.scenario()
+        // ici : la relecture depuis le disque produit une instance differente meme a contenu identique
+        // (voir restartSessionPicksUpEditsMadeToTheScenarioFilesSinceTheSessionWasOpened, plus bas).
+        assertEquals(scenario.name(), session.scenario().name());
 
         // persiste aussi sur le slot de session live, pas seulement en memoire
         ChatSession reloaded = newService(32_768).openSession(root, scenario, false);
         assertEquals(List.of(), reloaded.turns());
         assertEquals(Set.of("elena", "marcus"), reloaded.presentNpcIds());
+    }
+
+    @Test
+    void restartSessionPicksUpEditsMadeToTheScenarioFilesSinceTheSessionWasOpened(@TempDir Path root) throws IOException {
+        // "Recommencer" doit repartir du contenu ACTUEL sur le disque, pas rejouer le scenario
+        // encore en memoire depuis l'ouverture de la session — sinon une correction de scenario.txt
+        // ou d'une fiche perso pendant la partie est ignoree tant qu'on ne fait pas explicitement
+        // Recharger avant de Recommencer.
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "Hello there.");
+
+        Files.writeString(root.resolve("inn").resolve("elena.txt"), "# Elena\nUpdated public sheet.",
+            StandardCharsets.UTF_8);
+
+        service.restartSession(root, session);
+
+        assertTrue(session.scenario().cast().find("elena").orElseThrow().publicInfo().contains("Updated public sheet."),
+            "la fiche relue depuis le disque doit refleter l'edition, pas l'ancienne version en memoire");
     }
 
     @Test

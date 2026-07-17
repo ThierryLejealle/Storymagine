@@ -439,10 +439,18 @@ public class ChatServiceImpl implements ChatService {
         storage.saveSession(chatScenariosRoot, session);
     }
 
+    /**
+     * Re-reads the scenario/cast from disk first (like reloadScenario) instead of reusing whatever
+     * session.scenario() already held in memory — a restart is meant to be a true fresh start, so
+     * it must pick up any edit made to scenario.txt or a character's .txt file since the session
+     * was opened, not just wipe the conversation while replaying a stale in-memory scenario.
+     */
     @Override
     public void restartSession(Path chatScenariosRoot, ChatSession session) {
-        storage.resetSession(chatScenariosRoot, session.scenario());
-        ChatSession fresh = ChatSession.fresh(session.scenario());
+        ChatScenario freshScenario = storage.loadScenario(chatScenariosRoot, session.scenario().name());
+        storage.resetSession(chatScenariosRoot, freshScenario);
+        session.reloadScenario(freshScenario);
+        ChatSession fresh = ChatSession.fresh(freshScenario);
         session.restore(fresh.summary(), fresh.turns(), fresh.currentAct(), fresh.presentNpcIds(),
             fresh.interjectingNpcIds());
         storage.saveSession(chatScenariosRoot, session);
