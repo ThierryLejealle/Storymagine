@@ -21,7 +21,7 @@ class ChatPromptBuilderTest {
     }
 
     private static Scene sceneFor(ChatScenario scenario) {
-        return new Scene(scenario.cast().npcs().get(0), List.of(), false);
+        return new Scene(scenario.cast().npcs().get(0), List.of(), List.of(), false);
     }
 
     private final ChatScenario scenario = scenarioWith("A grumpy innkeeper.", "A stormy night at the inn.", List.of());
@@ -144,7 +144,7 @@ class ChatPromptBuilderTest {
     void userPrefillUsesTheSpeakingNpcsName() {
         Cast cast = new Cast(List.of(new Npc("sylka", "Sylka", "sheet", "")));
         ChatScenario named = new ChatScenario("test", cast, "premise", List.of());
-        Scene scene = new Scene(cast.npcs().get(0), List.of(), false);
+        Scene scene = new Scene(cast.npcs().get(0), List.of(), List.of(), false);
 
         ChatPrompt prompt = ChatPromptBuilder.build(named, scene, 0, "", List.of());
 
@@ -158,7 +158,7 @@ class ChatPromptBuilderTest {
         Npc speaker = new Npc("elena", "Elena", "A sharp-tongued merchant.", "Secretly a smuggler.");
         ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker)), "premise", List.of());
 
-        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), false), 0, "", List.of());
+        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(), false), 0, "", List.of());
 
         assertTrue(prompt.system().contains("A sharp-tongued merchant."));
         assertTrue(prompt.system().contains("Secretly a smuggler."));
@@ -170,7 +170,7 @@ class ChatPromptBuilderTest {
         Npc other   = new Npc("marcus", "Marcus", "Marcus's public sheet text.", "Marcus's secret sheet text.");
         ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker, other)), "premise", List.of());
 
-        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(other), false), 0, "", List.of());
+        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(other), List.of(), false), 0, "", List.of());
 
         assertTrue(prompt.system().contains("ALSO PRESENT"));
         assertTrue(prompt.system().contains("Marcus"));
@@ -186,11 +186,40 @@ class ChatPromptBuilderTest {
         Npc other   = new Npc("marcus", "Marcus", "sheet", "");
         ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker, other)), "premise", List.of());
 
-        ChatPrompt alone = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), false), 0, "", List.of());
-        ChatPrompt withOther = ChatPromptBuilder.build(named, new Scene(speaker, List.of(other), false), 0, "", List.of());
+        ChatPrompt alone = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(), false), 0, "", List.of());
+        ChatPrompt withOther = ChatPromptBuilder.build(named, new Scene(speaker, List.of(other), List.of(), false), 0, "", List.of());
 
         assertFalse(alone.system().contains("ALSO PRESENT"));
-        assertTrue(withOther.system().contains("never write dialogue or actions for another present character"));
+        // normalise les espaces/retours a la ligne : ce test ne doit pas dependre du retour a la
+        // ligne exact choisi dans OTHER_NPCS_RULE (piege deja rencontre deux fois).
+        String normalized = withOther.system().replaceAll("\\s+", " ");
+        assertTrue(normalized.contains("never write dialogue or actions for another present character"));
+    }
+
+    @Test
+    void absentTeammatesShareTheirPublicSheetButNeverTheirSecretAndAreNeverMadeToSpeak() {
+        Npc speaker = new Npc("elena", "Elena", "Elena's sheet.", "");
+        Npc absent  = new Npc("marcus", "Marcus", "Marcus's public sheet text.", "Marcus's secret sheet text.");
+        ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker, absent)), "premise", List.of());
+
+        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(absent), false), 0, "", List.of());
+
+        assertTrue(prompt.system().contains("NOT IN THE SCENE"));
+        assertTrue(prompt.system().contains("Marcus's public sheet text."),
+            "un coequipier absent reste connu, juste pas physiquement present");
+        assertFalse(prompt.system().contains("Marcus's secret sheet text."),
+            "le SECRET d'un PNJ absent ne doit pas plus fuiter que celui d'un PNJ present");
+        assertTrue(prompt.system().replaceAll("\\s+", " ").contains("never have them speak, act, or walk in"));
+    }
+
+    @Test
+    void notInTheSceneBlockIsOmittedWhenNobodyIsAbsent() {
+        Npc speaker = new Npc("elena", "Elena", "sheet", "");
+        ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker)), "premise", List.of());
+
+        ChatPrompt prompt = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(), false), 0, "", List.of());
+
+        assertFalse(prompt.system().contains("NOT IN THE SCENE"));
     }
 
     // ── Interjections ────────────────────────────────────────────────────────
@@ -200,8 +229,8 @@ class ChatPromptBuilderTest {
         Npc speaker = new Npc("marcus", "Marcus", "sheet", "");
         ChatScenario named = new ChatScenario("test", new Cast(List.of(speaker)), "premise", List.of());
 
-        ChatPrompt normal = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), false), 0, "", List.of());
-        ChatPrompt interjecting = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), true), 0, "", List.of());
+        ChatPrompt normal = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(), false), 0, "", List.of());
+        ChatPrompt interjecting = ChatPromptBuilder.build(named, new Scene(speaker, List.of(), List.of(), true), 0, "", List.of());
 
         assertFalse(normal.system().contains("This is an interjection"));
         assertTrue(interjecting.system().contains("This is an interjection"));

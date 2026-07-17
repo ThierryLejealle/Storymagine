@@ -447,6 +447,7 @@ function updateCastPanel(cast) {
     btn.className = 'npc-vignette' + (npc.present ? '' : ' absent');
     btn.textContent = (npc.present ? '🔊 ' : '🔇 ') + npc.label;
     btn.title = npc.present ? 'Cliquer pour rendre absent de la scène' : 'Cliquer pour rendre présent';
+    btn.disabled = generating; // pas de mute en plein round, voir setControlsDisabled
     btn.addEventListener('click', () => toggleNpcPresent(npc.id, !npc.present));
 
     const interjectBtn = document.createElement('button');
@@ -456,6 +457,7 @@ function updateCastPanel(cast) {
     interjectBtn.title = npc.interjecting
       ? 'Peut réagir même sans être visé (cliquer pour désactiver)'
       : 'Ne réagit que si visé par son nom (cliquer pour activer les interjections)';
+    interjectBtn.disabled = generating;
     interjectBtn.addEventListener('click', () => toggleNpcInterjecting(npc.id, !npc.interjecting));
 
     row.appendChild(btn);
@@ -465,12 +467,14 @@ function updateCastPanel(cast) {
 }
 
 async function toggleNpcPresent(id, present) {
+  if (generating) return; // defense en profondeur, le bouton desactive devrait deja bloquer le clic
   const res = await fetch('/set-present?id=' + encodeURIComponent(id) + '&present=' + present, { method: 'POST' });
   const data = await res.json();
   updateCastPanel(data.cast);
 }
 
 async function toggleNpcInterjecting(id, interjecting) {
+  if (generating) return;
   const res = await fetch('/set-interjecting?id=' + encodeURIComponent(id) + '&interjecting=' + interjecting, { method: 'POST' });
   const data = await res.json();
   updateCastPanel(data.cast);
@@ -905,6 +909,9 @@ function setControlsDisabled(disabled) {
   undoBtnEl.disabled = disabled;
   retryBtnEl.disabled = disabled;
   stopBtnEl.classList.toggle('visible', disabled);
+  // pas de mute/interjection pendant un round : voir le commentaire sur "generating" et le fix
+  // cote serveur qui saute desormais le tour d'un PNJ mute en cours de round (defense en profondeur).
+  castListEl.querySelectorAll('.npc-vignette, .npc-interject-btn').forEach(b => { b.disabled = disabled; });
 }
 
 function stopGeneration() {

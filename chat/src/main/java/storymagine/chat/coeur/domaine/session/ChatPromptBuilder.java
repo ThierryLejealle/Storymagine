@@ -94,16 +94,19 @@ public final class ChatPromptBuilder {
         Begin and stay in the scene.""";
 
     /**
-     * Appended after SYSTEM_FORMATTING only when Scene.otherPresent() is non-empty — a fresh
-     * failure mode this project hadn't needed to guard against before multiple Npcs could share a
-     * scene : a small model asked to play one character can drift into narrating another present
-     * character's own dialogue/actions. Same "same geste, deux issues" teaching technique already
-     * used elsewhere in this prompt (concrete wrong/right on the identical situation).
+     * Appended after SYSTEM_FORMATTING when Scene.otherPresent() or Scene.absentTeammates() is
+     * non-empty — a fresh failure mode this project hadn't needed to guard against before multiple
+     * Npcs could share a scene : a small model asked to play one character can drift into narrating
+     * another present (or worse, absent) character's own dialogue/actions. Same "same geste, deux
+     * issues" teaching technique already used elsewhere in this prompt (concrete wrong/right on the
+     * identical situation).
      */
     private static final String OTHER_NPCS_RULE = """
         Other characters may be present in the scene (named above, under ALSO PRESENT, with what
         you knew about them from the start) — the story may have taught you more since, but never
-        anything from a private note that isn't yours. Speak and act only for your own character;
+        anything from a private note that isn't yours. Others may be teammates who are simply not
+        here right now (under NOT IN THE SCENE) — never have them speak, act, or walk in; you may
+        only reference or wonder about them. Speak and act only for your own character;
         never write dialogue or actions for another present character, even briefly.
         Example — Marcus is present:
         Wrong: *Marcus nods and steps back.*
@@ -149,13 +152,15 @@ public final class ChatPromptBuilder {
     /**
      * currentAct is 1-based ; 0 means the scenario has no acts (or none is active), in which case
      * no CURRENT ACT section is added — existing act-less scenarios are unaffected. scene.speaker()
-     * gets their full sheet (public + secret, see Npc.fullSheet()) ; scene.otherPresent() are
-     * established companions (never the player — see ChatServiceImpl.sceneFor), so each gets their
-     * PUBLIC sheet only (see Npc.publicInfo()) : a secret never reaches another Npc's prompt, but
-     * their public traits do, since teammates who've adventured together already know that much
-     * about each other (see evols : replaces the earlier "names only, you know nothing about them",
-     * which read oddly for a party mid-campaign). scene.interjecting() adds INTERJECTION_RULE —
-     * this speaker is reacting unprompted, not the one the player addressed (see
+     * gets their full sheet (public + secret, see Npc.fullSheet()) ; scene.otherPresent() and
+     * scene.absentTeammates() are established companions (never the player — see
+     * ChatServiceImpl.sceneFor), so each gets their PUBLIC sheet only (see Npc.publicInfo()) : a
+     * secret never reaches another Npc's prompt, but their public traits do, since teammates who've
+     * adventured together already know that much about each other (see evols : replaces the earlier
+     * "names only, you know nothing about them", which read oddly for a party mid-campaign). An
+     * absent teammate hasn't left the story, just this scene — same public sheet as otherPresent,
+     * different rule (never speak/act for them). scene.interjecting() adds INTERJECTION_RULE — this
+     * speaker is reacting unprompted, not the one the player addressed (see
      * SpeakerSelector.rollInterjectors).
      */
     public static ChatPrompt build(ChatScenario scenario, Scene scene, int currentAct, String summary,
@@ -169,6 +174,14 @@ public final class ChatPromptBuilder {
                   .append("you more since):\n");
             for (Npc other : scene.otherPresent()) {
                 system.append("- ").append(other.label()).append(": ").append(other.publicInfo()).append('\n');
+            }
+            system.append('\n');
+        }
+        if (!scene.absentTeammates().isEmpty()) {
+            system.append("NOT IN THE SCENE RIGHT NOW — teammates, but not physically here (never speak\n")
+                  .append("or act for them; you may reference or wonder about them):\n");
+            for (Npc absent : scene.absentTeammates()) {
+                system.append("- ").append(absent.label()).append(": ").append(absent.publicInfo()).append('\n');
             }
             system.append('\n');
         }
@@ -196,7 +209,7 @@ public final class ChatPromptBuilder {
             system.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
         system.append(SYSTEM_FORMATTING);
-        if (!scene.otherPresent().isEmpty()) {
+        if (!scene.otherPresent().isEmpty() || !scene.absentTeammates().isEmpty()) {
             system.append("\n\n").append(OTHER_NPCS_RULE);
         }
         if (scene.interjecting()) {

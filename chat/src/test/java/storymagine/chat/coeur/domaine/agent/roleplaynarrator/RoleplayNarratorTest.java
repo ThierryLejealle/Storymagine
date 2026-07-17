@@ -20,7 +20,7 @@ class RoleplayNarratorTest {
     private static RoleplayNarratorInput input(GenerationSettings settings) {
         Cast cast = new Cast(List.of(new Npc("innkeeper", "", "A grumpy innkeeper.", "")));
         ChatScenario scenario = new ChatScenario("inn", cast, "A stormy night at the inn.", List.of());
-        Scene scene = new Scene(cast.npcs().get(0), List.of(), false);
+        Scene scene = new Scene(cast.npcs().get(0), List.of(), List.of(), false);
         return new RoleplayNarratorInput(scenario, scene, 0, "", List.of(), settings);
     }
 

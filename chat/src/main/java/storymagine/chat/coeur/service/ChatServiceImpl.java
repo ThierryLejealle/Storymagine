@@ -217,6 +217,11 @@ public class ChatServiceImpl implements ChatService {
      * just the player's line. Only the first [NEXT ACT] trigger in the round is honoured (a later
      * speaker's own trigger in the same round is ignored — a rare edge case, not worth a second act
      * advance mid-round). replacedTurnCount is threaded straight into the result — see ChatTurnResult.
+     * A speaker's presence is re-checked right before their own turn (not just once when the round
+     * was planned) : the player can mute an Npc mid-round (see ChatWebServer's /set-present, not
+     * gated behind generation in progress) while an earlier speaker in the same round is still being
+     * generated — without this check, that now-muted Npc would still speak, having already been
+     * queued before the mute happened.
      */
     /** One speaker's turn in a round : npc plus whether they're reacting unprompted (see SpeakerSelector). */
     private record RoundSpeaker(Npc npc, boolean interjecting) {}
@@ -229,8 +234,9 @@ public class ChatServiceImpl implements ChatService {
         List<ChatTurn> narratorTurnsFromAdvance = List.of();
 
         for (RoundSpeaker round : speakers) {
-            Scene scene = sceneFor(session, round.npc(), round.interjecting());
             String npcId = round.npc().id();
+            if (!session.presentNpcIds().contains(npcId)) continue; // mute en cours de round, voir javadoc
+            Scene scene = sceneFor(session, round.npc(), round.interjecting());
             RoleplayNarratorOutput reply = roleplayNarrator.call(new RoleplayNarratorInput(
                 session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
                 session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
@@ -299,13 +305,19 @@ public class ChatServiceImpl implements ChatService {
         return configured != null ? configured : RoleplayNarrator.INTERJECTION_CHANCE_DEFAULT;
     }
 
-    /** speaker gets every other present Npc, minus themselves — see Scene, ChatPromptBuilder. */
+    /**
+     * speaker gets every other present Npc (minus themselves) as otherPresent, and every present
+     * cast member as absentTeammates — see Scene, ChatPromptBuilder.
+     */
     private static Scene sceneFor(ChatSession session, Npc speaker, boolean interjecting) {
         var present = session.presentNpcIds();
         List<Npc> otherPresent = session.scenario().cast().npcs().stream()
             .filter(n -> present.contains(n.id()) && !n.id().equals(speaker.id()))
             .toList();
-        return new Scene(speaker, otherPresent, interjecting);
+        List<Npc> absentTeammates = session.scenario().cast().npcs().stream()
+            .filter(n -> !present.contains(n.id()))
+            .toList();
+        return new Scene(speaker, otherPresent, absentTeammates, interjecting);
     }
 
     /** The first present Npc, standing in for "who's speaking" when only a prompt SIZE estimate is needed. */
@@ -316,7 +328,10 @@ public class ChatServiceImpl implements ChatService {
         if (present.isEmpty()) {
             throw new IllegalStateException("Aucun personnage present dans ce scenario.");
         }
-        return new Scene(present.get(0), present.subList(1, present.size()), false);
+        List<Npc> absentTeammates = session.scenario().cast().npcs().stream()
+            .filter(n -> !session.presentNpcIds().contains(n.id()))
+            .toList();
+        return new Scene(present.get(0), present.subList(1, present.size()), absentTeammates, false);
     }
 
     /**

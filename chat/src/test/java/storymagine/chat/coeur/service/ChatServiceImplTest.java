@@ -322,7 +322,7 @@ class ChatServiceImplTest {
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
-        Scene scene = new Scene(scenario.cast().npcs().get(0), List.of(), false);
+        Scene scene = new Scene(scenario.cast().npcs().get(0), List.of(), List.of(), false);
         ChatPromptBuilder.ChatPrompt next = ChatPromptBuilder.build(scenario, scene, session.currentAct(),
             session.summary(), session.turns());
         int expected = ChatContextBudget.estimateTokens(next.system() + next.user());
@@ -637,6 +637,28 @@ class ChatServiceImplTest {
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
         assertEquals(1, result.replyTurns().size());
+        assertEquals("elena", result.replyTurns().get(0).npcId());
+    }
+
+    @Test
+    void mutingAnNpcMidRoundStillSkipsTheirAlreadyQueuedTurn(@TempDir Path root) throws IOException {
+        // les deux sont nommes explicitement : les deux sont "principaux", pas d'alea d'interjection
+        // a gerer dans ce test. On mute marcus juste apres la reponse d'elena (via le listener,
+        // qui simule ce qui se passe en vrai si le joueur clique 🔇 pendant qu'un round tourne).
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        ChatTurnResult result = service.sendMessage(root, session, "Elena and Marcus, look!",
+            new ExchangeProgressListener() {
+                @Override public void onPartialReply(String npcId, PartialGeneration partial) {}
+                @Override public void onTurnReady(ChatTurn turn) {
+                    if ("elena".equals(turn.npcId())) session.setPresent("marcus", false);
+                }
+            });
+
+        assertEquals(1, result.replyTurns().size(), "marcus a ete mute apres le tour d'elena, son tour deja programme doit etre saute");
         assertEquals("elena", result.replyTurns().get(0).npcId());
     }
 
