@@ -28,7 +28,7 @@ class RoleplayNarratorTest {
     void alwaysRequestsThinkingEvenWhenDisplayIsExplicitlyOff() {
         CapturingModelCallPort llm = new CapturingModelCallPort("*nods*");
         RoleplayNarrator narrator = new RoleplayNarrator(llm);
-        GenerationSettings hidden = new GenerationSettings(null, null, null, null, Boolean.FALSE, null, null, null);
+        GenerationSettings hidden = new GenerationSettings(null, null, null, null, Boolean.FALSE, null, null, null, null);
 
         narrator.call(input(hidden));
 
@@ -49,14 +49,67 @@ class RoleplayNarratorTest {
     void hidesThinkingWhenExplicitlyDisabled() {
         CapturingModelCallPort llm = new CapturingModelCallPort("*nods*", "some reasoning");
         RoleplayNarrator narrator = new RoleplayNarrator(llm);
-        GenerationSettings hidden = new GenerationSettings(null, null, null, null, Boolean.FALSE, null, null, null);
+        GenerationSettings hidden = new GenerationSettings(null, null, null, null, Boolean.FALSE, null, null, null, null);
 
         RoleplayNarratorOutput output = narrator.call(input(hidden));
 
         assertEquals("", output.thinking());
     }
 
-    // ── Reprise sur reponse vide (evols/2026-07-15-2318) ────────────────────
+    @Test
+    void passesTheSessionContextWindowOverrideThroughToGenerationOptions() {
+        CapturingModelCallPort llm = new CapturingModelCallPort("*nods*");
+        RoleplayNarrator narrator = new RoleplayNarrator(llm);
+        GenerationSettings fixedWindow = new GenerationSettings(null, null, null, null, null, null, null, null, 8192);
+
+        narrator.call(input(fixedWindow));
+
+        assertEquals(8192, llm.lastOptions.contextWindow());
+    }
+
+    @Test
+    void leavesContextWindowNullWhenSessionDoesNotOverrideIt() {
+        CapturingModelCallPort llm = new CapturingModelCallPort("*nods*");
+        RoleplayNarrator narrator = new RoleplayNarrator(llm);
+
+        narrator.call(input(GenerationSettings.DEFAULT));
+
+        assertEquals(null, llm.lastOptions.contextWindow());
+    }
+
+    // ── Marqueur [NEXT ACT] tolerant aux variantes d'ecriture (evols/2026-07-17) ──────
+
+    @Test
+    void recognizesTheNextActMarkerWrittenWithAnUnderscoreOrAHyphenInsteadOfASpace() {
+        RoleplayNarratorOutput underscore = new RoleplayNarrator(new CapturingModelCallPort("*nods.* [NEXT_ACT]"))
+            .call(input(GenerationSettings.DEFAULT));
+        assertEquals(true, underscore.triggeredNextAct());
+        assertEquals("*nods.*", underscore.replyText());
+
+        RoleplayNarratorOutput hyphen = new RoleplayNarrator(new CapturingModelCallPort("*nods.* [NEXT-ACT]"))
+            .call(input(GenerationSettings.DEFAULT));
+        assertEquals(true, hyphen.triggeredNextAct());
+        assertEquals("*nods.*", hyphen.replyText());
+    }
+
+    @Test
+    void recognizesTheNextActMarkerWithExtraSpacesBetweenTheWords() {
+        RoleplayNarratorOutput output = new RoleplayNarrator(new CapturingModelCallPort("*nods.* [NEXT  ACT]"))
+            .call(input(GenerationSettings.DEFAULT));
+
+        assertEquals(true, output.triggeredNextAct());
+        assertEquals("*nods.*", output.replyText());
+    }
+
+    @Test
+    void doesNotFalselyTriggerOnUnrelatedBracketedText() {
+        RoleplayNarratorOutput output = new RoleplayNarrator(new CapturingModelCallPort("*picks up the [strange] key.*"))
+            .call(input(GenerationSettings.DEFAULT));
+
+        assertEquals(false, output.triggeredNextAct());
+    }
+
+    // ── Reprise sur reponse vide (evols/2026-07-15) ────────────────────
 
     @Test
     void retriesOnceWhenTheFirstResponseComesBackBlank() {
@@ -120,6 +173,7 @@ class RoleplayNarratorTest {
         private final String responseText;
         private final String thinkingText;
         LlmCallContext lastCtx;
+        GenerationOptions lastOptions;
 
         CapturingModelCallPort(String responseText) {
             this(responseText, "");
@@ -139,6 +193,7 @@ class RoleplayNarratorTest {
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx,
                                    GenerationOptions options) {
+            this.lastOptions = options;
             return generate(systemPrompt, userPrompt, temperature, ctx);
         }
 

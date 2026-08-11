@@ -43,8 +43,10 @@ import java.util.Set;
  */
 public class ChatServiceImpl implements ChatService {
 
-    /** Turns kept verbatim after a compaction (2 exchanges) — the rest folds into the summary. */
-    private static final int KEEP_RECENT_TURNS = 4;
+    /** Absolute floor of turns kept verbatim after a compaction (1 exchange), whatever the window
+     *  size — see compactIfNeeded/keepTurnCount : the real amount is normally much higher, scaled
+     *  to ChatContextBudget.keepTokensTarget, this is only the last-resort minimum. */
+    private static final int MIN_KEEP_TURNS = 2;
 
     private final ChatStoragePort            storage;
     private final RoleplayNarrator           roleplayNarrator;
@@ -114,9 +116,11 @@ public class ChatServiceImpl implements ChatService {
             List<RoundSpeaker> speakers = resolveSpeakers(session, input.formattedLine());
             return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, 0, listener);
         } catch (GenerationCancelledException e) {
-            // Retire le tour joueur en attente : rien n'a ete montre cote serveur pour cet
-            // echange, le joueur doit pouvoir corriger et renvoyer son message sans qu'un tour
-            // orphelin ne traine dans l'historique (voir ChatWebServer.handleMessage).
+            // N'arrive que quand AUCUN PNJ n'a repondu ce tour (voir generateRepliesAndFinish : une
+            // replique deja aboutie survit desormais a un stop). Retire donc le tour joueur en
+            // attente : rien n'a ete montre cote serveur pour cet echange, le joueur doit pouvoir
+            // corriger et renvoyer son message sans qu'un tour orphelin ne traine dans l'historique
+            // (voir ChatWebServer.handleMessage).
             session.truncateFrom(playerTurnIndex);
             throw e;
         }
@@ -214,14 +218,29 @@ public class ChatServiceImpl implements ChatService {
      * Shared tail of sendMessage/retry : session already has the player's turn appended (and
      * nothing after it). Calls RoleplayNarrator once per speaker, in order — each call reads
      * session.turns() fresh, so speaker 2+ sees speaker 1's reply already in the transcript, not
-     * just the player's line. Only the first [NEXT ACT] trigger in the round is honoured (a later
-     * speaker's own trigger in the same round is ignored — a rare edge case, not worth a second act
-     * advance mid-round). replacedTurnCount is threaded straight into the result — see ChatTurnResult.
+     * just the player's line. Only a non-interjecting (primary) speaker's [NEXT ACT] trigger is ever
+     * honoured — an interjector reacts in one aside, never addressed by the player, and was never
+     * meant to have the authority to end a scene (see evols 2026-08-02) ; the marker is still
+     * stripped from their reply either way (see RoleplayNarrator), it just has no effect on the act.
+     * Among primary speakers, only the first trigger in the round is honoured (a later one in the
+     * same round is ignored — a rare edge case, not worth a second act advance mid-round).
+     * replacedTurnCount is threaded straight into the result — see ChatTurnResult.
      * A speaker's presence is re-checked right before their own turn (not just once when the round
      * was planned) : the player can mute an Npc mid-round (see ChatWebServer's /set-present, not
      * gated behind generation in progress) while an earlier speaker in the same round is still being
      * generated — without this check, that now-muted Npc would still speak, having already been
      * queued before the mute happened.
+     *
+     * Stop (see GenerationCancelledException) only ever throws out of here when NO speaker has
+     * replied yet this round — sendMessage/retry then roll back whatever they'd already committed
+     * (the player's turn, for sendMessage). Once at least one speaker HAS replied, a later
+     * cancellation (a slower 2nd+ speaker, or the background compaction call below, which only ever
+     * runs after every speaker already succeeded) just ends the round early instead of discarding
+     * work the player already saw finish : whatever's in replyTurns survives, gets saved, and is
+     * returned as a normal (shorter than requested) result — no exception, nothing for the caller to
+     * unwind. A stray compaction cancellation is treated exactly like ChatSummarizer returning a
+     * blank summary (see compactIfNeeded) : skipped this turn, retried whenever the next turn's
+     * budget check trips again.
      */
     /** One speaker's turn in a round : npc plus whether they're reacting unprompted (see SpeakerSelector). */
     private record RoundSpeaker(Npc npc, boolean interjecting) {}
@@ -237,16 +256,23 @@ public class ChatServiceImpl implements ChatService {
             String npcId = round.npc().id();
             if (!session.presentNpcIds().contains(npcId)) continue; // mute en cours de round, voir javadoc
             Scene scene = sceneFor(session, round.npc(), round.interjecting());
-            RoleplayNarratorOutput reply = roleplayNarrator.call(new RoleplayNarratorInput(
-                session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
-                session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
+            RoleplayNarratorOutput reply;
+            try {
+                reply = roleplayNarrator.call(new RoleplayNarratorInput(
+                    session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
+                    session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
+            } catch (GenerationCancelledException e) {
+                if (replyTurns.isEmpty()) throw e; // rien produit ce tour : voir javadoc, sendMessage/retry annulent
+                clearInterruptFlag(); // sinon les ecritures encore a venir (sauvegarde, reponse HTTP) echouent aussi
+                break; // au moins une replique a deja abouti : on s'arrete la, elle est gardee (voir javadoc)
+            }
 
             ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), npcId);
             session.append(replyTurn);
             replyTurns.add(replyTurn);
             listener.onTurnReady(replyTurn);
 
-            if (reply.triggeredNextAct() && !actAdvanced) {
+            if (reply.triggeredNextAct() && !round.interjecting() && !actAdvanced) {
                 int sizeBeforeAdvance = session.turns().size();
                 actAdvanced = session.advanceAct();
                 if (actAdvanced) {
@@ -256,10 +282,28 @@ public class ChatServiceImpl implements ChatService {
             }
         }
 
-        boolean compacted = compactIfNeeded(chatScenariosRoot, session);
+        boolean compacted;
+        try {
+            compacted = compactIfNeeded(chatScenariosRoot, session);
+        } catch (GenerationCancelledException e) {
+            clearInterruptFlag(); // meme raison que ci-dessus
+            compacted = false; // voir javadoc : traite comme un resume vide, jamais comme un echec du round
+        }
         storage.saveSession(chatScenariosRoot, session);
         return new ChatTurnResult(playerTurn, List.copyOf(replyTurns), compacted, currentPromptEstimate(session),
             actAdvanced, narratorTurnsFromAdvance, replacedTurnCount);
+    }
+
+    /**
+     * A appeler juste apres avoir attrape et absorbe un GenerationCancelledException (round garde,
+     * pas relance a l'appelant) — /stop a interrompu ce thread (voir ChatWebServer.handleStop) et
+     * le flag reste positionne tant que rien ne le consomme. storage.saveSession et l'ecriture de
+     * la reponse HTTP qui suivent sont adosses a des flux/canaux qui peuvent eux-memes echouer si le
+     * thread est encore marque interrompu a ce moment-la (constate en pratique, voir evols) — d'ou
+     * ce nettoyage systematique avant de continuer.
+     */
+    private static void clearInterruptFlag() {
+        Thread.interrupted();
     }
 
     /**
@@ -385,9 +429,14 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public NpcMindStateAnalystOutput analyzeMindState(Path chatScenariosRoot, ChatSession session) {
+    public NpcMindStateAnalystOutput analyzeMindState(Path chatScenariosRoot, ChatSession session, String npcId) {
+        if (!session.presentNpcIds().contains(npcId)) {
+            throw new IllegalStateException("PNJ absent de la scene : " + npcId);
+        }
+        Npc npc = session.scenario().cast().find(npcId)
+            .orElseThrow(() -> new IllegalStateException("PNJ inconnu : " + npcId));
         return npcMindStateAnalyst.call(new NpcMindStateAnalystInput(
-            session.scenario(), representativeScene(session).speaker(), session.currentAct(), session.summary(),
+            session.scenario(), npc, session.currentAct(), session.summary(),
             session.turns(), session.generationSettings()));
     }
 
@@ -463,15 +512,17 @@ public class ChatServiceImpl implements ChatService {
 
     private boolean compactIfNeeded(Path chatScenariosRoot, ChatSession session) {
         List<ChatTurn> turns = session.turns();
-        if (turns.size() <= KEEP_RECENT_TURNS) return false;
+        if (turns.size() <= MIN_KEEP_TURNS) return false;
 
         int threshold = ChatContextBudget.turnsBudget(roleplayNarrator.contextWindow(), fixedPartsEstimate(session));
         String playerName = session.scenario().playerName();
-        if (ChatContextBudget.estimateTokens(ChatPromptBuilder.transcript(turns, session.scenario().cast(), playerName))
-                <= threshold) return false;
+        int turnsTokens = ChatContextBudget.estimateTokens(
+            ChatPromptBuilder.transcript(turns, session.scenario().cast(), playerName));
+        if (turnsTokens <= threshold) return false;
 
-        List<ChatTurn> toFold = turns.subList(0, turns.size() - KEEP_RECENT_TURNS);
-        List<ChatTurn> toKeep = turns.subList(turns.size() - KEEP_RECENT_TURNS, turns.size());
+        int keepCount = keepTurnCount(turns.size(), turnsTokens, threshold);
+        List<ChatTurn> toFold = turns.subList(0, turns.size() - keepCount);
+        List<ChatTurn> toKeep = turns.subList(turns.size() - keepCount, turns.size());
 
         String newSummary = summarizer.call(new ChatSummarizerInput(session.summary(),
             ChatPromptBuilder.transcript(toFold, session.scenario().cast(), playerName))).summary();
@@ -482,6 +533,21 @@ public class ChatServiceImpl implements ChatService {
         storage.archiveFoldedTurns(chatScenariosRoot, session.scenario(), toFold);
         session.compactInto(newSummary, toKeep);
         return true;
+    }
+
+    /**
+     * How many of the most recent turns survive a compaction, raw — approximated from the average
+     * turn size observed in this window (turnsTokens / turnCount) rather than an exact per-turn
+     * accounting pass, same "rough estimate" spirit as ChatContextBudget itself : that average
+     * converts ChatContextBudget.keepTokensTarget's token budget back into a turn count. Always at
+     * least MIN_KEEP_TURNS, and always less than turnCount — a compaction that folds nothing would
+     * defeat its own purpose (and busy-loop retrying every subsequent turn).
+     */
+    private int keepTurnCount(int turnCount, int turnsTokens, int threshold) {
+        int avgTurnTokens = Math.max(1, turnsTokens / turnCount);
+        int keepTarget = ChatContextBudget.keepTokensTarget(roleplayNarrator.contextWindow(), threshold);
+        int keepCount = Math.max(MIN_KEEP_TURNS, keepTarget / avgTurnTokens);
+        return Math.min(keepCount, turnCount - 1);
     }
 
 }

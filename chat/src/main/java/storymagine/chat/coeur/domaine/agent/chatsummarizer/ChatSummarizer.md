@@ -3,9 +3,10 @@
 ## Role
 Folds turns that are about to fall out of the live window into the session's running summary,
 producing one updated summary. Called by `ChatServiceImpl` whenever the uncompacted transcript
-grows past `SummaryBudget.wordBudget(contextWindow)` (shared budget helper, see
-`commun/coeur/domaine/text/SummaryBudget.java` — same formula redacteur uses for its story
-summary, 1/8th of the context window).
+grows past `ChatContextBudget.turnsBudget(contextWindow, fixedPartsTokens)` (chat's own budget
+helper, see `ChatContextBudget.java` — deliberately separate from commun's `SummaryBudget`, which
+redacteur's `Writer` uses instead : chat's prompt is comparatively light, so raw turns can fill
+much more of the window before folding).
 
 ## Why fold instead of truncate
 A plain "drop the oldest turns" strategy loses established facts (names, promises, relationships)
@@ -13,11 +14,17 @@ the moment they scroll out of the window — the character would start contradic
 into a summary keeps the facts, at the cost of exact wording, which does not need to survive.
 
 ## Kept verbatim vs folded
-`ChatServiceImpl` keeps the last `KEEP_RECENT_TURNS` turns untouched (verbatim, for immediate
-continuity) and folds everything older into the summary. Only one compaction pass — no separate
-compression step like redacteur's `SummaryCompressor` : chat sessions are simple text, not a
-multi-chapter story, so a single running summary is expected to stay bounded on its own as older
-material keeps getting superseded turn after turn.
+`ChatServiceImpl.keepTurnCount` keeps roughly `ChatContextBudget.keepTokensTarget`'s worth of the
+most recent turns untouched (verbatim, for immediate continuity), never fewer than
+`MIN_KEEP_TURNS`, and folds everything older into the summary. Deliberately independent of the
+trigger threshold (see `ChatContextBudget`'s TRIGGER_PERCENT/KEEP_PERCENT, raised/lowered
+2026-07-22 after a 50%-to-~10% compaction felt like a cliff) : keeping meaningfully less than the
+trigger point still leaves headroom before the next compaction, and a smaller gap between the two
+means each individual fold handles less text — gentler on this summary's fidelity, at the cost of
+firing more often overall. Only one compaction pass — no separate compression step like
+redacteur's `SummaryCompressor` : chat sessions are simple text, not a multi-chapter story, so a
+single running summary is expected to stay bounded on its own as older material keeps getting
+superseded turn after turn.
 
 ## Prompt shape
 Uses `ModelCallPort` (`/api/chat`, system + user roles) — same port as the roleplay turn itself

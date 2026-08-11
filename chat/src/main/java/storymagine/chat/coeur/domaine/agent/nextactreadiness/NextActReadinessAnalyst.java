@@ -52,7 +52,8 @@ public class NextActReadinessAnalyst {
             settings.topK() != null ? settings.topK() : TOP_K_DEFAULT,
             settings.topP() != null ? settings.topP() : TOP_P_DEFAULT,
             settings.minP() != null ? settings.minP() : MIN_P_DEFAULT,
-            settings.repeatPenalty() != null ? settings.repeatPenalty() : REPEAT_PENALTY_DEFAULT);
+            settings.repeatPenalty() != null ? settings.repeatPenalty() : REPEAT_PENALTY_DEFAULT,
+            settings.contextWindow());
 
         // think=true meme si ce popup n'affiche pas la reflexion (voir RoleplayNarrator) : elle
         // ameliore la reponse elle-meme, pas seulement sa lisibilite pour le joueur.

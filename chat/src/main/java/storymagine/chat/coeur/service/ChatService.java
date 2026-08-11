@@ -82,10 +82,11 @@ public interface ChatService {
     NextActReadinessAnalystOutput analyzeNextActReadiness(Path chatScenariosRoot, ChatSession session);
 
     /**
-     * On-demand look at the character's current state of mind (situation/thoughts/plans) — read
-     * only, same guarantees as analyzeNextActReadiness. Always available, no precondition.
+     * On-demand look at npcId's current state of mind (situation/thoughts/plans) — read only, same
+     * guarantees as analyzeNextActReadiness. Always available, no precondition. Throws
+     * IllegalStateException if npcId isn't a known, present member of the cast.
      */
-    NpcMindStateAnalystOutput analyzeMindState(Path chatScenariosRoot, ChatSession session);
+    NpcMindStateAnalystOutput analyzeMindState(Path chatScenariosRoot, ChatSession session, String npcId);
 
     /**
      * Player-triggered snapshot of the session's current turns/summary/currentAct — distinct from

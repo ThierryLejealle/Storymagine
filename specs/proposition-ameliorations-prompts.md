@@ -36,7 +36,7 @@
 
 > **Résolu le 2026-07-08** — agent renommé `StoryCausalCritic` et entièrement reprompté
 > (format à 3 paliers avec exemples, plus de questions redondantes). Voir
-> `evols/2026-07-08-0020-story-critics-consigne-fidelity.md`. Section conservée à titre
+> `evols/2026-07-08-story-critics-consigne-fidelity.md`. Section conservée à titre
 > d'historique, ne reflète plus le prompt actuel.
 
 **Prompt system actuel (au 2026-06-25, obsolète) :**
@@ -82,7 +82,7 @@ SCORE: 6
 
 > **Résolu le 2026-07-08** — agent renommé `StoryNarrativeCritic` et entièrement reprompté,
 > en même temps que CausalAnalyzer. Voir
-> `evols/2026-07-08-0020-story-critics-consigne-fidelity.md`.
+> `evols/2026-07-08-story-critics-consigne-fidelity.md`.
 
 Mêmes problèmes que CausalAnalyzer (questions redondantes, manque d'exemple). Même suggestion applicable.
 

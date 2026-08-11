@@ -11,10 +11,10 @@
     - Jamais de métaphore filée sur plus d'une phrase. Une image forte vaut mieux que trois jolies.
 -->
 - Phrases courtes pendant l'action (5-8 mots). Evite les phrases trop longues c'est un récit léger
+- Tu peux alterner des phrases courtes et plus longues pour un style pas trop monotone et régulier
 - Evite les pensée intérieure explicite — montrer l'état par les gestes et les détails physiques.
 - Le temps est au passé simple pour l'action, imparfait pour l'atmosphère.
 - Jamais de métaphore filée sur plus d'une phrase. Une image forte vaut mieux que trois jolies.
-- évite tout style technique ou scolaire, c'est une histoire sensuelle
-- essaie d'etre subtil et naturel avec les intrigues et les personnages : ne colle pas littérale les consignes en comportement ou phrase
-- tu n'es pas obligé de décrire les personnages dans le détail
-- surtout n'utilises pas les détails physiques des personnes de manière direct ou littérale : ce sont des aides de rédaction
+- évite tout vocabulaire technique ou scolaire ou les phrases complexes c'est une histoire simple et douce. Il vaut mieux utiliser principalement du vocabulaire simple et courant et utiliser des termes très précis et rares de manière ciblée pour créer un peu de variété : choisi pour quoi tu veux faire l'effort d'utiliser des termes plus recherchés.
+- les humains peuvent parfois faire des digressions, hésiter, faire des erreurs quand ils parlent. Utilise avec parcimonie
+- les détails physiques des personnes sont seulement des aides de rédaction et ne doivent pas être plaqués littéralement dans le texte

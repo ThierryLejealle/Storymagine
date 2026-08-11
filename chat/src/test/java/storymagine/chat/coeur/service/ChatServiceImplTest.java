@@ -149,6 +149,51 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void cancellingAfterTheFirstNpcAlreadyRepliedKeepsThatReplyInsteadOfDiscardingTheRound(@TempDir Path root)
+            throws IOException {
+        // elena et marcus sont tous les deux nommes explicitement (round a 2 principaux, pas
+        // d'alea d'interjection a gerer) : elena repond, puis le stub annule l'appel de marcus —
+        // sa reponse a elle ne doit plus etre effacee juste parce que le round n'a pas fini.
+        writeTwoNpcScenarioFiles(root, "inn");
+        SucceedThenCancelModelCallPort roleplayLlm = new SucceedThenCancelModelCallPort(1, "grunts and nods slowly");
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED", 0)), new NextActReadinessAnalyst(roleplayLlm),
+            new NpcMindStateAnalyst(roleplayLlm));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        ChatTurnResult result = service.sendMessage(root, session, "Elena and Marcus, look at this!");
+
+        assertEquals(1, result.replyTurns().size(), "marcus annule en cours de round, seule la reponse d'elena survit");
+        assertEquals("elena", result.replyTurns().get(0).npcId());
+        assertEquals(2, session.turns().size(), "tour joueur + reponse d'elena, pas d'annulation du round entier");
+
+        // persiste : la reponse gardee n'est pas juste restee en memoire
+        ChatSession reloaded = newService(32_768).openSession(root, scenario, false);
+        assertEquals(2, reloaded.turns().size());
+    }
+
+    @Test
+    void cancellingDuringBackgroundCompactionKeepsTheRoundAndSkipsCompactionInstead(@TempDir Path root)
+            throws IOException {
+        writeScenarioFiles(root, "inn");
+        // fenetre minuscule -> budget dynamique clampe a 0, la compaction se declenche des le 3e tour
+        StubModelCallPort roleplayLlm = new StubModelCallPort(80, "grunts and nods slowly", 0);
+        CancellingModelCallPort summarizerLlm = new CancellingModelCallPort();
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(summarizerLlm), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        service.sendMessage(root, session, "one two three four five");
+        service.sendMessage(root, session, "six seven eight nine ten");
+        ChatTurnResult third = service.sendMessage(root, session, "eleven twelve thirteen");
+
+        assertFalse(third.compacted(), "la compaction a ete annulee, traitee comme un resume vide (voir compactIfNeeded)");
+        assertEquals(6, session.turns().size(), "aucun tour perdu : la reponse du 3e tour survit malgre l'annulation de la compaction");
+    }
+
+    @Test
     void doPrefixIsKeptInStoredTurnText(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
@@ -248,18 +293,17 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void noCompactionWhileAtOrBelowKeepRecentTurnsEvenIfContextIsTiny(@TempDir Path root) throws IOException {
+    void noCompactionWhileAtOrBelowMinKeepTurnsEvenIfContextIsTiny(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(80); // fenetre minuscule -> budget dynamique clampe a 0, depasse au moindre tour
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
 
-        // 2 echanges = 4 tours = KEEP_RECENT_TURNS : jamais compacte, quelle que soit la taille du texte
-        service.sendMessage(root, session, "one two three four five");
-        ChatTurnResult second = service.sendMessage(root, session, "six seven eight nine ten");
+        // 1 echange = 2 tours = MIN_KEEP_TURNS : jamais compacte, quelle que soit la taille du texte
+        ChatTurnResult result = service.sendMessage(root, session, "one two three four five");
 
-        assertFalse(second.compacted());
-        assertEquals(4, session.turns().size());
+        assertFalse(result.compacted());
+        assertEquals(2, session.turns().size());
         assertEquals("", session.summary());
     }
 
@@ -275,7 +319,7 @@ class ChatServiceImplTest {
         ChatTurnResult third = service.sendMessage(root, session, "eleven twelve thirteen");
 
         assertTrue(third.compacted());
-        assertEquals(4, session.turns().size(), "seuls les KEEP_RECENT_TURNS derniers tours restent");
+        assertEquals(2, session.turns().size(), "fenetre minuscule -> keepTokensTarget clampe a 0, MIN_KEEP_TURNS s'applique");
         assertEquals("FOLDED SUMMARY", session.summary());
 
         // les tours replies ne sont pas perdus : ils survivent verbatim dans l'archive append-only
@@ -543,12 +587,22 @@ class ChatServiceImplTest {
         ChatSession session = service.openSession(root, scenario, true);
         List<ChatTurn> turnsBefore = session.turns();
 
-        NpcMindStateAnalystOutput result = service.analyzeMindState(root, session);
+        NpcMindStateAnalystOutput result = service.analyzeMindState(root, session, "character");
 
         assertEquals("She is behind the bar, alone with the player.", result.situation());
         assertEquals("She does not trust him yet.", result.thoughts());
         assertEquals("Keep the conversation short.", result.plans());
         assertEquals(turnsBefore, session.turns(), "lecture seule : aucun tour ajoute");
+    }
+
+    @Test
+    void analyzeMindStateFailsForAnUnknownOrAbsentNpc(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        assertThrows(IllegalStateException.class, () -> service.analyzeMindState(root, session, "ghost"));
     }
 
     @Test
@@ -694,7 +748,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 0.0));
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 0.0, null));
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
@@ -710,7 +764,7 @@ class ChatServiceImplTest {
             new NpcMindStateAnalyst(roleplayLlm), LogPort.NOOP, new Random(1));
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0));
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
@@ -755,7 +809,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0));
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
@@ -765,12 +819,31 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void interjectorNextActTriggerIsIgnored(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        writeActs(root, "inn", "First act.", "Second act.");
+        SequencedModelCallPort roleplayLlm = new SequencedModelCallPort(32_768, List.of(
+            "*nods* Elena stays put.", "*grins* Marcus can't help himself. [NEXT ACT]"));
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED", 0)), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
+
+        ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
+
+        assertEquals(2, result.replyTurns().size(), "marcus interjecte en plus d'elena, chance certaine");
+        assertFalse(result.actAdvanced(), "le trigger [NEXT ACT] d'un interjecteur ne doit jamais avancer l'acte");
+        assertEquals(1, session.currentAct());
+    }
+
+    @Test
     void zeroInterjectionChanceNeverMakesOthersReact(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 0.0));
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 0.0, null));
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
@@ -784,7 +857,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0));
+        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
         service.setNpcInterjecting(root, session, "marcus", false);
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
@@ -864,6 +937,29 @@ class ChatServiceImplTest {
         public int contextWindow() { return contextWindow; }
     }
 
+    /** Returns responses.get(0), then .get(1), etc. in call order (last one repeats past the end) —
+     *  for tests where different speakers in the same round must get different replies. */
+    private static class SequencedModelCallPort implements ModelCallPort {
+        private final int          contextWindow;
+        private final List<String> responses;
+        private int                callIndex = 0;
+
+        SequencedModelCallPort(int contextWindow, List<String> responses) {
+            this.contextWindow = contextWindow;
+            this.responses     = responses;
+        }
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+            String text = responses.get(Math.min(callIndex, responses.size() - 1));
+            callIndex++;
+            return new LlmResult(text, 0, 0, 0, "");
+        }
+
+        @Override
+        public int contextWindow() { return contextWindow; }
+    }
+
     /** Reports each of partialFragments via onPartial before returning finalText — simulates a
      *  streaming Ollama call for ModelCallPort.generate(..., Consumer) (see OllamaAdapter). */
     private static class StreamingStubModelCallPort implements ModelCallPort {
@@ -897,6 +993,29 @@ class ChatServiceImplTest {
         @Override
         public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
             throw new GenerationCancelledException("stopped for test");
+        }
+
+        @Override
+        public int contextWindow() { return 32_768; }
+    }
+
+    /** Succeeds successesBeforeCancel times, then throws GenerationCancelledException on every call after — simulates
+     *  a Stop landing partway through a multi-speaker round. */
+    private static class SucceedThenCancelModelCallPort implements ModelCallPort {
+        private final int    successesBeforeCancel;
+        private final String replyText;
+        private int calls = 0;
+
+        SucceedThenCancelModelCallPort(int successesBeforeCancel, String replyText) {
+            this.successesBeforeCancel = successesBeforeCancel;
+            this.replyText             = replyText;
+        }
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+            calls++;
+            if (calls > successesBeforeCancel) throw new GenerationCancelledException("stopped for test");
+            return new LlmResult(replyText, 0, 0, 0, "");
         }
 
         @Override

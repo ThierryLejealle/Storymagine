@@ -138,6 +138,12 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     private LlmResult generateInternal(String systemPrompt, String userPrompt, double temperature,
                                         String agentLabel, Boolean thinkOverride, GenerationOptions options,
                                         Consumer<PartialGeneration> onPartial) {
+        // Adopte l'override comme nouvelle taille de base (voir GenerationOptions.contextWindow) —
+        // pas juste pour cet appel : les tentatives d'agrandissement sur ContextOverflowException
+        // ci-dessous partent de contextWindowSize, donc la faire pointer directement sur l'override
+        // suffit a la fois a l'envoyer a Ollama et a laisser l'agrandissement automatique continuer
+        // de fonctionner normalement au-dessus si jamais elle s'avere trop juste.
+        if (options.contextWindow() != null) contextWindowSize = options.contextWindow();
         while (true) {
             try {
                 return streamMode
@@ -303,7 +309,7 @@ public class OllamaAdapter implements ModelCallPort, ModelLifecyclePort, RawComp
     @Override
     public boolean supportsThinking() {
         // La famille gemma4 réfléchit nativement même quand /api/show ne déclare pas la capacité
-        // (import hf.co/ mal enregistré côté Ollama — voir evols/2026-07-09-2319-...). On la considère
+        // (import hf.co/ mal enregistré côté Ollama — voir evols/2026-07-09-...). On la considère
         // donc toujours "thinking" ici. resolveThink() reste basé sur le champ brut cachedModelInfo
         // .supportsThinking (pas sur cette méthode) : il continue de neutraliser un think=true explicite
         // quand Ollama le rejetterait techniquement, override ou pas.

@@ -12,17 +12,22 @@ import java.util.List;
  * topK/topP/repeatPenalty override the adapter's own sampling defaults for this call only. minP
  * is never defaulted by the adapter (omitted from the request, letting Ollama's own default
  * apply) unless a caller sets it here — only RoleplayNarrator does, see its own default there.
+ * contextWindow, unlike the sampling fields above, is not a lightweight per-call tweak : changing
+ * Ollama's num_ctx mid-conversation reloads the model, so an adapter that honors it (see
+ * OllamaAdapter) adopts it as its new running baseline rather than applying it to just this one
+ * request — later calls (including other agents sharing the same adapter) keep using it too,
+ * which is the wanted behaviour for a chat session's fixed context-size setting.
  */
 public record GenerationOptions(List<String> stopSequences, Integer maxTokens, Integer topK, Double topP,
-                                 Double minP, Double repeatPenalty) {
+                                 Double minP, Double repeatPenalty, Integer contextWindow) {
 
-    public static final GenerationOptions NONE = new GenerationOptions(List.of(), null, null, null, null, null);
+    public static final GenerationOptions NONE = new GenerationOptions(List.of(), null, null, null, null, null, null);
 
     public static GenerationOptions stopSequences(List<String> stopSequences) {
-        return new GenerationOptions(stopSequences, null, null, null, null, null);
+        return new GenerationOptions(stopSequences, null, null, null, null, null, null);
     }
 
     public static GenerationOptions maxTokens(int maxTokens) {
-        return new GenerationOptions(List.of(), maxTokens, null, null, null, null);
+        return new GenerationOptions(List.of(), maxTokens, null, null, null, null, null);
     }
 }

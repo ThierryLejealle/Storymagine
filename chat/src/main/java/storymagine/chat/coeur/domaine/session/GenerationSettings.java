@@ -17,9 +17,16 @@ package storymagine.chat.coeur.domaine.session;
  * tune both) : it only ever changes via a preset (see chat.html), never by direct user input.
  * interjectionChance is the independent per-Npc probability (0-1) used by
  * SpeakerSelector.rollInterjectors — null falls back to RoleplayNarrator.INTERJECTION_CHANCE_DEFAULT.
+ * contextWindow overrides Ollama's num_ctx (see GenerationOptions.contextWindow) — unlike the other
+ * fields here, this is not a lightweight per-call tweak : the adapter adopts it as its new running
+ * baseline the moment a call carries it, so it keeps applying to every later call on that same
+ * adapter (including other chat agents, e.g. NpcMindStateAnalyst/NextActReadinessAnalyst, sharing
+ * the session) until changed again or the app restarts, same "resets on restart" rule as the rest
+ * of this record.
  */
 public record GenerationSettings(Double temperature, Integer topK, Integer maxTokens, Double minP,
-                                  Boolean showThinking, Double topP, Double repeatPenalty, Double interjectionChance) {
+                                  Boolean showThinking, Double topP, Double repeatPenalty, Double interjectionChance,
+                                  Integer contextWindow) {
     public static final GenerationSettings DEFAULT =
-        new GenerationSettings(null, null, null, null, null, null, null, null);
+        new GenerationSettings(null, null, null, null, null, null, null, null, null);
 }

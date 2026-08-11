@@ -88,6 +88,13 @@ button:disabled{background:#9ca3af;cursor:default}
 .analysis-section p{font-size:.92rem;line-height:1.5;color:#111827;white-space:pre-wrap}
 .analysis-loading{color:#6b7280;font-style:italic}
 #analysisCloseBtn{margin-top:.5rem}
+.npc-picker{position:fixed;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:.3rem;
+            box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:2100;min-width:9rem}
+.npc-picker.hidden{display:none}
+.npc-picker button{display:block;width:100%;text-align:left;background:#fff;color:#374151;border:none;
+            border-radius:6px;padding:.4rem .6rem;font-size:.8rem;font-weight:400}
+.npc-picker button:hover{background:#eff6ff;color:#2563eb}
+.npc-picker .npc-picker-empty{padding:.4rem .6rem;font-size:.78rem;color:#9ca3af;font-style:italic}
 #gauge{position:fixed;top:0;right:0;bottom:0;width:22px;background:#e5e7eb;border-left:2px solid #9ca3af;
        display:flex;flex-direction:column;justify-content:flex-end;z-index:1000}
 #gaugeFill{width:100%;height:2px;min-height:2px;background:#22c55e;transition:height .3s ease,background-color .3s ease}
@@ -129,6 +136,7 @@ button:disabled{background:#9ca3af;cursor:default}
 .speaker-label{font-size:.72rem;font-weight:700;color:#6b7280;margin-bottom:.25rem}
 .speaker-row{display:flex;align-items:center;gap:.35rem}
 .speaker-row .speaker-label{margin-bottom:.25rem}
+.turn.player .speaker-row{justify-content:flex-end}
 .retry-bubble-btn{flex:none;width:1.3rem;height:1.3rem;padding:0;margin-bottom:.25rem;display:flex;
             align-items:center;justify-content:center;background:transparent;color:#c7cbd1;
             border:1px solid transparent;border-radius:5px;font-size:.78rem;cursor:pointer;opacity:0;
@@ -238,6 +246,9 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
     <label>Max tokens
       <input type="number" id="maxTokensInput" min="50" max="8000" step="50" placeholder="3250">
     </label>
+    <label>Taille de contexte (tokens)
+      <input type="number" id="contextWindowInput" min="1024" max="131072" step="1024" placeholder="65536" title="Change num_ctx pour toute la session (recharge le modèle) — pas juste ce tour, tant que non réinitialisé">
+    </label>
     <label>Min-P
       <input type="number" id="minPInput" min="0" max="1" step="0.01" placeholder="0.05">
     </label>
@@ -256,6 +267,7 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
     </div>
   </div>
 </footer>
+<div id="npcPicker" class="npc-picker hidden"></div>
 <div id="analysisOverlay" class="analysis-overlay hidden">
   <div class="analysis-box">
     <h2 id="analysisTitle">Où en est la condition de l'acte suivant ?</h2>
@@ -283,6 +295,7 @@ const nextActBtnEl = document.getElementById('nextActBtn');
 const prevActBtnEl = document.getElementById('prevActBtn');
 const analyzeNextActBtnEl = document.getElementById('analyzeNextActBtn');
 const analyzeMindStateBtnEl = document.getElementById('analyzeMindStateBtn');
+const npcPickerEl = document.getElementById('npcPicker');
 const analysisOverlayEl = document.getElementById('analysisOverlay');
 const analysisTitleEl = document.getElementById('analysisTitle');
 const analysisContentEl = document.getElementById('analysisContent');
@@ -298,6 +311,7 @@ const tempInput = document.getElementById('tempInput');
 const tempVal = document.getElementById('tempVal');
 const topKInput = document.getElementById('topKInput');
 const maxTokensInput = document.getElementById('maxTokensInput');
+const contextWindowInput = document.getElementById('contextWindowInput');
 const minPInput = document.getElementById('minPInput');
 const repeatPenaltyInput = document.getElementById('repeatPenaltyInput');
 const interjectionChanceInput = document.getElementById('interjectionChanceInput');
@@ -339,6 +353,7 @@ function fillSettingsPanel(settings) {
   tempVal.textContent = tempInput.value;
   topKInput.value = s.topK != null ? s.topK : '';
   maxTokensInput.value = s.maxTokens != null ? s.maxTokens : '';
+  contextWindowInput.value = s.contextWindow != null ? s.contextWindow : '';
   minPInput.value = s.minP != null ? s.minP : '';
   repeatPenaltyInput.value = s.repeatPenalty != null ? s.repeatPenalty : '';
   interjectionChanceInput.value = s.interjectionChance != null ? s.interjectionChance : '';
@@ -351,7 +366,7 @@ tempInput.addEventListener('input', () => { tempVal.textContent = tempInput.valu
 // n'affichent leur valeur que via le placeholder grise — mais un champ vide fait repartir les
 // fleches +/- natives du navigateur de 0, pas du placeholder. Au premier focus, on materialise le
 // placeholder en vraie valeur pour que +/- incremente depuis un nombre sense, pas depuis rien.
-[topKInput, maxTokensInput, minPInput, repeatPenaltyInput, interjectionChanceInput].forEach(input => {
+[topKInput, maxTokensInput, contextWindowInput, minPInput, repeatPenaltyInput, interjectionChanceInput].forEach(input => {
   input.addEventListener('focus', () => {
     if (!input.value && input.placeholder) input.value = input.placeholder;
   });
@@ -377,6 +392,7 @@ function applyPreset(name) {
   params.set('minP', p.minP);
   params.set('repeatPenalty', p.repeatPenalty);
   if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
+  if (contextWindowInput.value) params.set('contextWindow', contextWindowInput.value);
   if (interjectionChanceInput.value) params.set('interjectionChance', interjectionChanceInput.value);
   params.set('showThinking', showThinkingInput.checked);
   postSettings(params.toString());
@@ -392,6 +408,7 @@ function applySettings() {
   params.set('temperature', tempInput.value);
   if (topKInput.value) params.set('topK', topKInput.value);
   if (maxTokensInput.value) params.set('maxTokens', maxTokensInput.value);
+  if (contextWindowInput.value) params.set('contextWindow', contextWindowInput.value);
   if (minPInput.value) params.set('minP', minPInput.value);
   if (repeatPenaltyInput.value) params.set('repeatPenalty', repeatPenaltyInput.value);
   if (interjectionChanceInput.value) params.set('interjectionChance', interjectionChanceInput.value);
@@ -532,6 +549,20 @@ function appendTurn(speaker, text, thinking, npcId) {
     retryBtn.addEventListener('click', () => retryLast(npcId));
     labelRow.appendChild(retryBtn);
 
+    div.appendChild(labelRow);
+  } else if (speaker === 'PLAYER') {
+    // Revenir a CE message : retire ce tour et tout ce qui suit (voir rewindToHere, meme mecanique
+    // que le bouton "Annuler" global — /undo avec le nombre de tours joueur exact entre ce message
+    // et la fin), et remet son texte dans la zone de saisie pour le corriger avant de le renvoyer.
+    const labelRow = document.createElement('div');
+    labelRow.className = 'speaker-row';
+    const rewindBtn = document.createElement('button');
+    rewindBtn.type = 'button';
+    rewindBtn.className = 'retry-bubble-btn';
+    rewindBtn.textContent = '↺';
+    rewindBtn.title = 'Revenir à ce message pour le modifier';
+    rewindBtn.addEventListener('click', () => rewindToHere(div, text));
+    labelRow.appendChild(rewindBtn);
     div.appendChild(labelRow);
   }
   if (thinking) {
@@ -675,12 +706,41 @@ function analyzeNextAct() {
   ]);
 }
 
-function analyzeMindState() {
-  return runAnalysis("État d'esprit du personnage", '/analyze-mind-state', [
+function analyzeMindState(npcId, npcLabel) {
+  return runAnalysis("État d'esprit de " + npcLabel, '/analyze-mind-state?npcId=' + encodeURIComponent(npcId), [
     ['Situation', 'situation', '—'],
     ['Pensées', 'thoughts', '—'],
     ['Plans', 'plans', 'Rien de particulier pour l\'instant.'],
   ]);
+}
+
+// Le bouton 🧠 est global (un seul scenario peut avoir plusieurs PNJ presents) : il ouvre d'abord
+// ce petit menu pour choisir LEQUEL analyser, plutot que de deviner (voir ChatServiceImpl.analyzeMindState).
+function openNpcPicker() {
+  const present = Object.values(castById).filter(npc => npc.present);
+  npcPickerEl.innerHTML = '';
+  if (!present.length) {
+    npcPickerEl.innerHTML = '<p class="npc-picker-empty">Aucun personnage présent.</p>';
+  } else {
+    for (const npc of present) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = npc.label;
+      btn.addEventListener('click', () => {
+        closeNpcPicker();
+        analyzeMindState(npc.id, npc.label);
+      });
+      npcPickerEl.appendChild(btn);
+    }
+  }
+  const rect = analyzeMindStateBtnEl.getBoundingClientRect();
+  npcPickerEl.style.top = rect.bottom + 4 + 'px';
+  npcPickerEl.style.left = rect.left + 'px';
+  npcPickerEl.classList.remove('hidden');
+}
+
+function closeNpcPicker() {
+  npcPickerEl.classList.add('hidden');
 }
 
 // Chrome commun (nom, boutons d'actes, titre, jauge) — partage entre le rendu complet initial et
@@ -1042,6 +1102,37 @@ async function undoLast() {
   }
 }
 
+// Meme mecanique que undoLast(), mais le nombre de tours a annuler est deduit de la bulle cliquee
+// (combien de tours joueur separent ce message de la fin, elle comprise) plutot que lu dans le
+// champ "Annuler" — et le texte du message retire est remis dans la saisie pour etre corrige.
+async function rewindToHere(playerTurnEl, text) {
+  if (generating) return;
+  const idx = renderedTurnEls.indexOf(playerTurnEl);
+  if (idx === -1) return;
+  let steps = 0;
+  for (let i = idx; i < renderedTurnEls.length; i++) {
+    if (renderedTurnEls[i].classList.contains('player')) steps++;
+  }
+  if (!confirm('Revenir à ce message ? Tout ce qui suit sera retiré de la conversation affichée.')) return;
+  setControlsDisabled(true);
+  try {
+    const res = await fetch('/undo?steps=' + steps, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+    } else {
+      applyExchange(data);
+      inputEl.value = text;
+      statusEl.textContent = '';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+    inputEl.focus();
+  }
+}
+
 formEl.addEventListener('submit', (e) => {
   e.preventDefault();
   if (generating) return; // inputEl reste tapable pendant un round, mais pas soumissible
@@ -1064,7 +1155,11 @@ undoBtnEl.addEventListener('click', undoLast);
 nextActBtnEl.addEventListener('click', nextAct);
 prevActBtnEl.addEventListener('click', previousAct);
 analyzeNextActBtnEl.addEventListener('click', analyzeNextAct);
-analyzeMindStateBtnEl.addEventListener('click', analyzeMindState);
+analyzeMindStateBtnEl.addEventListener('click', openNpcPicker);
+document.addEventListener('click', (e) => {
+  if (!npcPickerEl.classList.contains('hidden') && e.target !== analyzeMindStateBtnEl
+      && !npcPickerEl.contains(e.target)) closeNpcPicker();
+});
 analysisCloseBtnEl.addEventListener('click', () => analysisOverlayEl.classList.add('hidden'));
 saveBtnEl.addEventListener('click', saveNow);
 restartBtnEl.addEventListener('click', restartSession);

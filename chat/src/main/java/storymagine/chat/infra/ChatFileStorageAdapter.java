@@ -25,11 +25,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * File-based ChatStoragePort : chatScenariosRoot/{name}/scenario.txt (single file : an optional
- * "Joueur : X" first line — see ChatScenario.playerName, stripped before the rest is parsed —
- * then the premise, optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown
- * outline of acts — see ScenarioOutlineParser) + one ".txt" file per Cast member (any name except
- * scenario.txt, act.txt, present.txt, interject.txt, AND whose first line is a "# Name" heading —
+ * File-based ChatStoragePort : chatScenariosRoot/{name}/scenario.txt (an optional "Joueur : X"
+ * first line — see ChatScenario.playerName, stripped before the rest is parsed — then the premise,
+ * optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown outline of acts —
+ * see ScenarioOutlineParser), optionally continued by scenario-1.txt, scenario-2.txt, ... (as many
+ * as exist, consecutive, stopping at the first missing number) — each appended verbatim after
+ * scenario.txt's own text before the combined blob is handed to ScenarioOutlineParser, which never
+ * needs to know the outline came from more than one file. Lets a long scenario be authored (and
+ * regenerated) chapter by chapter instead of as one giant file, purely a file-layout convenience —
+ * see loadContinuationFiles ; a scenario with no scenario-1.txt behaves exactly as before. Plus one
+ * ".txt" file per Cast member (any name except scenario.txt, scenario-N.txt, act.txt, present.txt,
+ * interject.txt, AND whose first line is a "# Name" heading —
  * see loadCast ; "character.txt" is just an ordinary Npc file under this rule, which is how a
  * legacy single-character scenario naturally becomes a one-Npc Cast with no special case) and
  * history.md + summary.md + act.txt + present.txt +
@@ -52,6 +58,15 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     /** Top-level ".txt" files that are session/scenario plumbing, never a Cast member's sheet. */
     private static final Set<String> RESERVED_TXT_FILES = Set.of(SCENARIO_FILE, ACT_FILE, PRESENT_FILE, INTERJECT_FILE);
+
+    /** scenario-1.txt, scenario-2.txt, ... — see loadContinuationFiles ; also plumbing, never a Cast member's sheet. */
+    private static final Pattern SCENARIO_CONTINUATION_FILE = Pattern.compile("scenario-(\\d+)\\.txt");
+    /** First line of a continuation file must open a NEW top-level "#" heading, never "##" or deeper
+     *  — see ScenarioOutlineParser.HEADING ; a continuation is only ever appended between two acts,
+     *  never mid-act, so its own first heading must be one ScenarioOutlineParser treats as a fresh
+     *  root, not a child folded under whatever heading scenario.txt (or the previous continuation)
+     *  happened to end on. */
+    private static final Pattern TOP_LEVEL_HEADING = Pattern.compile("^#(?:[^#]|$).*", Pattern.DOTALL);
 
     private static final String NAME_HEADING_PREFIX = "# ";
     private static final String SECRET_MARKER_LINE  = "# SECRET";
@@ -96,8 +111,32 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         Matcher m = PLAYER_NAME_LINE.matcher(lines[0].strip());
         String playerName = m.matches() ? m.group(1).strip() : null;
         String rest = m.matches() ? (lines.length > 1 ? lines[1] : "") : raw;
-        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(rest);
+        String combined = appendContinuationFiles(dir, rest);
+        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(combined);
         return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName);
+    }
+
+    /**
+     * Appends scenario-1.txt, scenario-2.txt, ... after rest (scenario.txt's own text, Joueur line
+     * already stripped) — consecutive numbers only, stopping at the first missing one. Each file's
+     * content is required to open on a fresh top-level "#" heading (see TOP_LEVEL_HEADING) : that's
+     * what lets a plain string concatenation be handed to ScenarioOutlineParser unchanged, instead
+     * of risking a continuation's first lines silently getting folded into the previous file's last
+     * heading as body text.
+     */
+    private static String appendContinuationFiles(Path dir, String rest) {
+        StringBuilder combined = new StringBuilder(rest);
+        for (int n = 1; ; n++) {
+            Path file = dir.resolve("scenario-" + n + TXT_EXTENSION);
+            if (!Files.isRegularFile(file)) break;
+            String continuation = readText(file);
+            if (!TOP_LEVEL_HEADING.matcher(firstLine(continuation)).matches()) {
+                throw new IllegalStateException(
+                    file.getFileName() + " doit commencer par un titre \"# ...\" de premier niveau, pas \"##\" ou du texte libre : " + file);
+            }
+            combined.append("\n\n").append(continuation);
+        }
+        return combined.toString();
     }
 
     /**
@@ -115,6 +154,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
                 .filter(f -> !RESERVED_TXT_FILES.contains(f.getFileName().toString()))
+                .filter(f -> !SCENARIO_CONTINUATION_FILE.matcher(f.getFileName().toString()).matches())
                 .filter(ChatFileStorageAdapter::hasNameHeading)
                 .sorted(Comparator.comparing(f -> f.getFileName().toString()))
                 .map(ChatFileStorageAdapter::parseNpcFile)

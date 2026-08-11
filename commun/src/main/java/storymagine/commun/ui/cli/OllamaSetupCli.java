@@ -8,6 +8,8 @@ import storymagine.commun.infra.OllamaConfig;
 import storymagine.commun.infra.OllamaLauncher;
 import storymagine.commun.infra.RetryPolicy;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -19,6 +21,8 @@ import java.util.Scanner;
  * and chat (and any future module) don't duplicate it.
  */
 public final class OllamaSetupCli {
+
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private OllamaSetupCli() {}
 
@@ -86,6 +90,7 @@ public final class OllamaSetupCli {
 
         switch (gpuChoice) {
             case 1 -> {
+                System.out.printf("[%s] [Ollama] verification connexion %s...%n", ts(), ollama.baseUrl());
                 if (!OllamaLauncher.isReachable(ollama.baseUrl())) {
                     System.err.println("ERREUR : Ollama non joignable. Lancez Ollama d'abord ou choisissez 2-4.");
                     System.exit(1);
@@ -116,6 +121,8 @@ public final class OllamaSetupCli {
     private static String chooseModel(OllamaConfig ollama, Properties props, Scanner scanner) {
         System.out.println("Connexion a Ollama (" + ollama.baseUrl() + ")...");
         OllamaAdapter probe = ollama.adapter("_probe");
+        System.out.printf("[%s] [Ollama] recuperation de la liste des modeles (/api/tags)...%n", ts());
+        long t0 = System.currentTimeMillis();
         List<ModelEntry> allModels;
         try {
             allModels = probe.listModels(Long.MAX_VALUE);
@@ -124,6 +131,8 @@ public final class OllamaSetupCli {
             System.exit(1);
             return null;
         }
+        System.out.printf("[%s] [Ollama] %d modele(s) recu(s) (%dms).%n",
+            ts(), allModels.size(), System.currentTimeMillis() - t0);
         if (allModels.isEmpty()) {
             System.err.println("ERREUR : aucun modele disponible dans Ollama.");
             System.exit(1);
@@ -178,6 +187,10 @@ public final class OllamaSetupCli {
                 .findFirst()
                 .map(g -> "GPU " + index + " - " + g.name())
                 .orElse("GPU " + index);
+    }
+
+    private static String ts() {
+        return LocalTime.now().format(TIME);
     }
 
     private static String formatSize(long bytes) {

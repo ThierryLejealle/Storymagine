@@ -21,11 +21,15 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
 
 public class ChatCli {
+
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public static void main(String[] args) throws IOException {
         System.out.println("=================================================");
@@ -81,21 +85,26 @@ public class ChatCli {
             : ">> Reprise (" + session.turns().size() + " tour(s) en memoire).");
 
         // 5. Chargement du modele + info materiel
-        System.out.print("Chargement du modele... ");
+        System.out.printf("[%s] Chargement du modele (probe /api/show + appel de test)...%n", ts());
+        long probeT0 = System.currentTimeMillis();
         try {
             ollama.probe();
-            System.out.println("OK");
+            System.out.printf("[%s] Modele charge (%dms).%n", ts(), System.currentTimeMillis() - probeT0);
         } catch (Exception e) {
-            System.out.println("(echec probe : " + e.getMessage() + ")");
+            System.out.printf("[%s] (echec probe apres %dms : %s)%n",
+                ts(), System.currentTimeMillis() - probeT0, e.getMessage());
         }
+        System.out.printf("[%s] Interrogation /api/ps...%n", ts());
         OllamaPsInfo ps = OllamaPsInfo.query(setup.ollamaConfig().baseUrl(), setup.modelName()).orElse(null);
         ModelHardwareDisplay.print("[chat] ", ps, NvidiaSmiSnapshot.capture());
 
         // 6. Serveur web
         int    port = Integer.parseInt(props.getProperty("chat.web.port", "8765"));
         String url  = "http://localhost:" + port;
+        System.out.printf("[%s] Demarrage du serveur web (port %d)...%n", ts(), port);
         ChatWebServer server = new ChatWebServer(service, root, session, port);
         server.start();
+        System.out.printf("[%s] Serveur web pret.%n", ts());
 
         System.out.println();
         System.out.println("=================================================");
@@ -107,6 +116,10 @@ public class ChatCli {
         System.out.println("=================================================");
 
         openBrowser(url);
+    }
+
+    private static String ts() {
+        return LocalTime.now().format(TIME);
     }
 
     private static Path chooseChatScenariosRoot(Properties props, Scanner scanner) {

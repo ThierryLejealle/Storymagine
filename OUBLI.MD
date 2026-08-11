@@ -6,7 +6,7 @@ forçant un `git revert`/reset et une perte de session). Sert à ne pas repartir
 État au moment de la rédaction : 2026-07-06. Dernier commit : `448b6e2 probleme BOM`.
 
 **MISE À JOUR 2026-07-06 23h52** : le chantier check/contrainte décrit en section 3 est
-terminé — voir `evols/2026-07-06-2352-fusion-check-contrainte-requirement.md` pour le détail
+terminé — voir `evols/2026-07-06-fusion-check-contrainte-requirement.md` pour le détail
 complet (concept `Requirement`, syntaxe `contrainte | check`, migration des 4 scénarios,
 compilation + tests OK). Ce fichier reste comme trace de l'incident et du raisonnement qui a
 mené à la décision — la section 3 ci-dessous est désormais un historique, pas un TODO.
@@ -32,7 +32,7 @@ revérifié : aucun BOM, tout est propre.
 ## 1. État actuel de l'arbre de travail (non commité, non fiché)
 
 Aucune fiche d'évolution dans `/evols` ne documente ce lot (dernière fiche :
-`2026-06-27-2030-refactor-agent-packages-writer-to-sequence.md`). Rien n'a été committé.
+`2026-06-27-refactor-agent-packages-writer-to-sequence-18.md`). Rien n'a été committé.
 
 ### `redacteur/.../agent/plan/chapterplanner/ChapterPlanner.java`
 - Reformulation du prompt `JSON_PLANNER_SYSTEM` : les 4 règles beats sont devenues 6 règles

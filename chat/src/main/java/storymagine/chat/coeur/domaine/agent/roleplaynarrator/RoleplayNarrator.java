@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.agent.roleplaynarrator;
 
+import storymagine.chat.coeur.domaine.scenario.NextActMarker;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder.ChatPrompt;
@@ -14,7 +15,6 @@ import storymagine.commun.coeur.ports.PartialGeneration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 /**
  * Plays the character for one turn : builds the roleplay prompt (see ChatPromptBuilder) and calls
@@ -48,8 +48,6 @@ public class RoleplayNarrator {
      * single constant here keeps the settings-panel placeholder and the actual fallback in sync.
      */
     public static final double INTERJECTION_CHANCE_DEFAULT = 0.5;
-
-    private static final Pattern NEXT_ACT_MARKER = Pattern.compile("\\s*\\[NEXT ACT\\]\\s*", Pattern.CASE_INSENSITIVE);
 
     /**
      * Cuts generation short the moment the model starts writing the next turn in someone else's
@@ -94,12 +92,13 @@ public class RoleplayNarrator {
             settings.topK() != null ? settings.topK() : TOP_K_DEFAULT,
             settings.topP() != null ? settings.topP() : TOP_P_DEFAULT,
             settings.minP() != null ? settings.minP() : MIN_P_DEFAULT,
-            settings.repeatPenalty() != null ? settings.repeatPenalty() : REPEAT_PENALTY_DEFAULT);
+            settings.repeatPenalty() != null ? settings.repeatPenalty() : REPEAT_PENALTY_DEFAULT,
+            settings.contextWindow());
         // Affichage actif par defaut (null = "montre") — seul un FALSE explicite le desactive,
         // voir GenerationSettings.showThinking.
         boolean            showThinking = !Boolean.FALSE.equals(settings.showThinking());
         // Toujours demande, meme si showThinking est faux : la reflexion ameliore la reponse elle-meme
-        // (voir evols/2026-07-10-2307), pas seulement son affichage — showThinking ne controle que si
+        // (voir evols/2026-07-10), pas seulement son affichage — showThinking ne controle que si
         // on la montre au joueur (ci-dessous), pas si on la demande au LLM (a charge de l'adaptateur
         // de s'en debrouiller, voir ModelCallPort).
         LlmCallContext     ctx = LlmCallContext.of(AGENT_NAME, input.scenario().name()).withThink(true);
@@ -108,7 +107,7 @@ public class RoleplayNarrator {
 
         LlmResult result = llm.generate(prompt.system(), prompt.user(), temperature, ctx, options, filteredOnPartial);
         if (result.text().isBlank()) {
-            // Observed in practice (evols/2026-07-15-2318) : a small model can burn its whole
+            // Observed in practice (evols/2026-07-15) : a small model can burn its whole
             // token budget reasoning in circles and return nothing at all. One retry, same prompt
             // — sampling is stochastic (no seed pinned), so a second attempt usually just works.
             // Give up after that : a loop here would risk masking a real, persistent problem.
@@ -116,8 +115,8 @@ public class RoleplayNarrator {
         }
 
         String rawReply = result.text().strip();
-        boolean triggeredNextAct = NEXT_ACT_MARKER.matcher(rawReply).find();
-        String replyText = NEXT_ACT_MARKER.matcher(rawReply).replaceAll(" ").strip();
+        boolean triggeredNextAct = NextActMarker.PATTERN.matcher(rawReply).find();
+        String replyText = NextActMarker.PATTERN.matcher(rawReply).replaceAll(" ").strip();
         String thinking = showThinking ? result.thinking().strip() : "";
 
         return new RoleplayNarratorOutput(replyText, triggeredNextAct, thinking);

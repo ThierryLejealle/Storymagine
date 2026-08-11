@@ -140,9 +140,12 @@ public class ChatWebServer {
                 lastPromptTokens = result.promptTokens();
                 out.write(currentView(List.of(), result.replacedTurnCount(), result.compacted(), result.actAdvanced()));
             } catch (GenerationCancelledException e) {
-                // sendMessage() a deja retire tout ce tour (y compris le tour joueur, voir
-                // ChatServiceImpl) — le client doit faire disparaitre exactement les tours deja
-                // recus via le flux (streamedCount), pas juste le tour joueur optimiste.
+                // N'arrive plus que quand RIEN n'a ete produit ce tour (voir
+                // ChatServiceImpl.generateRepliesAndFinish : une replique deja aboutie survit
+                // desormais a un stop, ce cas ne se propage plus jusqu'ici) — sendMessage() a donc
+                // retire tout ce tour, y compris le tour joueur ; le client doit faire disparaitre
+                // exactement les tours deja recus via le flux (streamedCount).
+                clearInterruptFlag(); // sinon l'ecriture juste en dessous echoue aussi, voir clearInterruptFlag()
                 out.write(new StoppedView(true, streamedCount[0]));
             } catch (Exception e) {
                 out.write(new ErrorView(e.getMessage()));
@@ -173,8 +176,11 @@ public class ChatWebServer {
         } catch (IllegalStateException e) {
             writeJson(ex, 409, new ErrorView(e.getMessage()));
         } catch (GenerationCancelledException e) {
-            // retry() avait deja retire l'ancienne reponse avant l'appel LLM — le client doit
-            // enlever la bulle correspondante, devenue obsolete cote serveur.
+            // N'arrive plus que si AUCUNE nouvelle replique n'a ete produite avant le stop (voir
+            // ChatServiceImpl.generateRepliesAndFinish : une replique deja aboutie survit
+            // desormais). retry() avait deja retire l'ancienne reponse avant l'appel LLM — le
+            // client doit enlever la bulle correspondante, devenue obsolete cote serveur.
+            clearInterruptFlag();
             writeJson(ex, 200, new StoppedView(true, 1));
         } catch (Exception e) {
             writeJson(ex, 500, new ErrorView(e.getMessage()));
@@ -198,6 +204,20 @@ public class ChatWebServer {
 
     private void endGeneration() {
         currentGenerationThread = null;
+    }
+
+    /**
+     * A appeler juste apres avoir attrape un GenerationCancelledException, avant toute autre
+     * operation sur ce thread — /stop l'a interrompu (voir handleStop) et le flag reste positionne
+     * tant que rien ne le consomme. Le flux de reponse de cet echange (ex.getResponseBody()) est
+     * adosse a un canal NIO interruptible cote JDK : ecrire dessus alors que le thread est encore
+     * marque interrompu peut faire echouer CETTE ecriture aussi (la connexion se ferme brutalement
+     * au lieu de transmettre l'accuse de reception "stopped" attendu par le client), constate en
+     * pratique (voir evols) — d'ou ce nettoyage systematique avant le moindre writeJson/out.write
+     * qui suit un stop.
+     */
+    private static void clearInterruptFlag() {
+        Thread.interrupted();
     }
 
     private void handleUndo(HttpExchange ex) throws IOException {
@@ -286,6 +306,7 @@ public class ChatWebServer {
         } catch (IllegalStateException e) {
             writeJson(ex, 409, new ErrorView(e.getMessage()));
         } catch (GenerationCancelledException e) {
+            clearInterruptFlag();
             writeJson(ex, 200, new StoppedView(true, 0));
         } catch (Exception e) {
             writeJson(ex, 500, new ErrorView(e.getMessage()));
@@ -297,14 +318,17 @@ public class ChatWebServer {
     /**
      * Pas de mutation de session ici non plus (voir NpcMindStateAnalyst.md) — toujours disponible,
      * pas de garde-fou d'etat comme handleAnalyzeNextAct (aucune precondition cote service).
+     * npcId : PNJ choisi par le joueur dans le selecteur (voir chat.html).
      */
     private void handleAnalyzeMindState(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        String npcId = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery())).get("npcId");
         beginGeneration();
         try {
-            NpcMindStateAnalystOutput result = service.analyzeMindState(chatScenariosRoot, session);
+            NpcMindStateAnalystOutput result = service.analyzeMindState(chatScenariosRoot, session, npcId);
             writeJson(ex, 200, result);
         } catch (GenerationCancelledException e) {
+            clearInterruptFlag();
             writeJson(ex, 200, new StoppedView(true, 0));
         } catch (Exception e) {
             writeJson(ex, 500, new ErrorView(e.getMessage()));
@@ -372,7 +396,7 @@ public class ChatWebServer {
             parseDouble(fields.get("temperature")), parseInt(fields.get("topK")), parseInt(fields.get("maxTokens")),
             parseDouble(fields.get("minP")), parseBoolean(fields.get("showThinking")),
             parseDouble(fields.get("topP")), parseDouble(fields.get("repeatPenalty")),
-            parseDouble(fields.get("interjectionChance")));
+            parseDouble(fields.get("interjectionChance")), parseInt(fields.get("contextWindow")));
         session.updateGenerationSettings(settings);
         writeJson(ex, 200, settings);
     }

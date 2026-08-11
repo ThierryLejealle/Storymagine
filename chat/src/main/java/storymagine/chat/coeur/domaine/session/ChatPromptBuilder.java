@@ -2,6 +2,7 @@ package storymagine.chat.coeur.domaine.session;
 
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.NextActMarker;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 
@@ -78,14 +79,17 @@ public final class ChatPromptBuilder {
           apply to you too — react as an outside observer, from your own character's point of
           view. Example: the player writes *a tear rolls down my cheek*. Wrong: "I feel a tear
           roll down my cheek too." Right: "I watch a tear roll down your cheek."
-        - "OOC: ..." means the player is stepping outside the story to talk to you directly — a
-          question, an instruction, or a request to change something. Answer as yourself, not as
-          your character, and stop there: don't move the scene forward in the same reply. Resume
-          the story only once the player sends their next in-character message.
-          Example:
-          OOC: be more suspicious of me from now on.
-          Wrong: "Got it, I'll have him distrust you now." *His eyes narrow and he takes a step
-          back, studying my hands.*
+        - "OOC: ..." is a direct instruction, not a line of dialogue — nobody in the story said it
+          or heard it. Treat it like a piece of the scenario that just changed: a technical
+          request (skip ahead, adjust something) or a shift in the story itself, as if an event
+          had just happened or your character had a sudden idea. Answer as yourself, not as your
+          character, and stop there: don't move the scene forward in the same reply. Resume the
+          story only once the player sends their next in-character message.
+          Example — the player writes OOC: be more suspicious of me from now on.
+          Wrong (treats it as part of the scene): *He frowns, puzzled by the strange remark.* "Why
+          are you saying that out loud?"
+          Wrong (answers correctly but still moves the story forward): "Got it, I'll have him
+          distrust you now." *His eyes narrow and he takes a step back, studying my hands.*
           Right: "Got it — I'll play him more guarded going forward."
         - "DO: ..." hands you the narrator's pen for one reply only: advance the scene, narrate
           events, act for other characters if needed. Next turn, return to playing only your
@@ -124,30 +128,67 @@ public final class ChatPromptBuilder {
     private static final String INTERJECTION_RULE = """
         This is an interjection, not your main turn: the player addressed someone else, and you are
         reacting from where you are to the exchange you just witnessed. Default to one short line or
-        gesture. Only if that exchange itself just turned serious — a threat, violence, a shocking
-        reveal — give your reaction the weight it deserves. Either way the scene still belongs to the
-        player and the character they addressed: react, then leave them the next move.
+        gesture — never a lesson, a speech, or advice, no matter how relevant the topic feels to your
+        character. Only if that exchange itself just turned serious — a threat, violence, a shocking
+        reveal — give your reaction the weight it deserves, and even then react to what just happened,
+        don't teach. Either way the scene still belongs to the player and the character they addressed:
+        react, then leave them the next move.
         Example — the player asked Elena a question and she just answered calmly:
         Wrong (turns it into a full turn): *I set down my mug and lean forward, launching into a long
         story of my own about the last time someone asked me that...*
         Right: *I grunt from my corner.* "Don't believe a word of it."
+        Example — the player and Elena are just discussing what supplies to bring, nothing urgent:
+        Wrong (turns a passing remark into a lesson): *I set my mug down, my voice taking on a
+        weightier tone.* "Your books are a tool, same as my hammer. Don't let them become an anchor
+        that drags you down. We'll make sure you have what you need — but the jungle demands a
+        discipline no classroom ever taught."
+        Right: *I grunt, not looking up from my blade.* "Pack light. That's all I'll say."
         Example — the player just drew a blade on Elena:
         Wrong (token remark, ignores the danger): *I raise an eyebrow.* "Trouble again?"
         Right (full weight, still only a reaction): *I am on my feet before the blade clears its
         sheath, hand on my dagger, watching you closely.* "Put it away. Now.\"""";
 
+    /** Appended to both NEXT_ACT_RULE_DEFAULT and NEXT_ACT_RULE_CONDITIONAL — see their javadoc. */
+    private static final String NEXT_ACT_NO_CHARACTER_INFLUENCE = """
+        This check belongs to your own reasoning, not your character's — it must have no influence
+        on your character's behavior or talking. Note it privately, then write "[NEXT ACT]" only as
+        a tag at the very end of your reply. It will be removed before the player sees it.""";
+
     /** Fallback used when the current act's text does not itself specify a "[NEXT ACT]" condition. */
     private static final String NEXT_ACT_RULE_DEFAULT = """
         If you feel this act's events have reached their natural conclusion and it's time to move
-        the story forward, include "[NEXT ACT]" anywhere in your reply — it will be removed before
-        the player sees it, and the story advances to the next act.""";
+        the story forward, include "[NEXT ACT]" anywhere in your reply.
+
+        """ + NEXT_ACT_NO_CHARACTER_INFLUENCE;
 
     /** Used when the current act's text already spells out its own "[NEXT ACT]" condition. */
     private static final String NEXT_ACT_RULE_CONDITIONAL = """
         This act's text above tells you exactly when to write "[NEXT ACT]" — only do it once that
         specific condition has actually happened in the story, never before and never just because
-        the scene feels like it could move on. It will be removed before the player sees it, and the
-        story advances to the next act.""";
+        the scene feels like it could move on. If the condition is an external fact (a place reached,
+        an object found), wait until it has actually happened. If it is an internal state of your
+        character (patience wearing out, anger building, growing trust), judge it from the player's
+        behavior: trigger it once their actions over several recent exchanges clearly push toward that
+        state — do not wait for the feeling to be spelled out in words, and do not count a single
+        moment or the emotions you played yourself as proof.
+
+        If wrapping up now would cut off an unrelated exchange still in progress (a conversation,
+        an action someone is mid-way through), finish it in this same reply, then write "[NEXT ACT]"
+        right after.
+
+        """ + NEXT_ACT_NO_CHARACTER_INFLUENCE;
+
+    /**
+     * Short recap of NEXT_ACT_RULE_CONDITIONAL, repeated as one more formatting convention right
+     * after SYSTEM_FORMATTING instead of only where the full rule sits (just after CURRENT ACT, far
+     * above STORY SO FAR and the formatting rules) — a small model weighs what's close to where it
+     * starts generating much more than an instruction buried earlier. Free (no extra LLM call),
+     * unlike an automated per-turn readiness check would be (considered and shelved, see
+     * evols/2026-07-17).
+     */
+    private static final String NEXT_ACT_FORMATTING_REMINDER = """
+        - If the current act's [NEXT ACT] condition is met, write "[NEXT ACT]" at the end of your
+          reply.""";
 
     /**
      * currentAct is 1-based ; 0 means the scenario has no acts (or none is active), in which case
@@ -194,21 +235,25 @@ public final class ChatPromptBuilder {
               .append("it):\n")
               .append(scenario.premise()).append("\n\n");
         List<ScenarioAct> acts = scenario.acts();
+        boolean remindNextActConditionInFormatting = false;
         if (currentAct > 0 && currentAct <= acts.size()) {
             ScenarioAct act = acts.get(currentAct - 1);
-            system.append("CURRENT ACT (").append(currentAct).append(" of ").append(acts.size())
-                  .append(") — same anti-spoiler rule as above applies here too:\n")
+            system.append("CURRENT SCENE — same anti-spoiler rule as above applies here too:\n")
                   .append(act.text()).append("\n\n");
             if (currentAct < acts.size()) {
-                boolean actSpecifiesCondition = act.text().toUpperCase().contains("[NEXT ACT]");
+                boolean actSpecifiesCondition = NextActMarker.isPresentIn(act.text());
                 system.append(actSpecifiesCondition ? NEXT_ACT_RULE_CONDITIONAL : NEXT_ACT_RULE_DEFAULT)
                       .append("\n\n");
+                remindNextActConditionInFormatting = actSpecifiesCondition;
             }
         }
         if (summary != null && !summary.isBlank()) {
             system.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
         system.append(SYSTEM_FORMATTING);
+        if (remindNextActConditionInFormatting) {
+            system.append("\n").append(NEXT_ACT_FORMATTING_REMINDER);
+        }
         if (!scene.otherPresent().isEmpty() || !scene.absentTeammates().isEmpty()) {
             system.append("\n\n").append(OTHER_NPCS_RULE);
         }

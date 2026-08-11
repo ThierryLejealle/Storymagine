@@ -78,7 +78,7 @@ corps de texte est simplement hérité par tous ses descendants (ancêtre de cha
 ## Scène B.1          <- acte jouable (numéro 2.1)
 ```
 
-**Piège vécu** (voir `evols/2026-07-15-2157-...`) : écrire `# Acte 1` suivi d'un SEUL `## Acte 2`
+**Piège vécu** (voir `evols/2026-07-15-...`) : écrire `# Acte 1` suivi d'un SEUL `## Acte 2`
 ne donne PAS deux actes séquentiels — ça donne un seul acte (2 fusionné avec le contexte hérité de
 1), parce que "Acte 1" n'est jamais une feuille. **Pour deux actes séquentiels indépendants, les
 mettre tous les deux au même niveau (`#`/`#`, jamais `#`/`##`).** N'utiliser l'imbrication `#`/`##`
@@ -114,7 +114,7 @@ dans le texte "so the LLM reads them too, in place"). Écrites à la 2e personne
 "vous venez de..."), elles contredisent l'assignation de personnage donnée à chaque PNJ dans son
 propre prompt — bug réel corrigé le 2026-07-16 sur les 5 scénarios existants.
 
-**Règle d'or (voir `evols/2026-07-15-2157-...`, audit d'introduction)** : le TOUT PREMIER acte du
+**Règle d'or (voir `evols/2026-07-15-...`, audit d'introduction)** : le TOUT PREMIER acte du
 scénario doit avoir des lignes `[...]` qui disent clairement au joueur : qui il/elle est, où il/elle
 se trouve, qui est présent (nommé), et quel est le but général. Une seule ligne purement
 atmosphérique ("le tonnerre gronde...") sans ces informations laisse le joueur perdu — c'est arrivé
@@ -124,7 +124,7 @@ Un chapitre parent (`#` non-feuille) peut aussi avoir ses propres lignes `[...]`
 s'affichent qu'une seule fois, la première fois qu'un de ses descendants devient courant — jamais
 répétées à chaque sous-scène suivante du même chapitre.
 
-**Deuxième piège vécu, multi-PNJ** (voir `evols/2026-07-15-2318-...`) : tous les PNJ sont présents
+**Deuxième piège vécu, multi-PNJ** (voir `evols/2026-07-15-...`) : tous les PNJ sont présents
 dès le tour 1 par défaut (§4.1) — même si le premier acte ne met en scène qu'un seul personnage
 narrativement. Si le joueur ne nomme personne, `SpeakerSelector` peut choisir au hasard un PNJ que
 l'acte 1 n'a pas encore "montré". Le modèle, ne sachant pas s'il est censé être dans la pièce, peut
@@ -208,7 +208,7 @@ dernier PNJ présent (garde-fou : quelqu'un doit toujours pouvoir répondre). Pe
    par son nom"). Si personne n'est éligible (tout le monde a désactivé son 💬), repli sur tous les
    PNJ présents quand même — quelqu'un doit répondre au joueur.
 
-**Reprise sur réponse vide** (voir `evols/2026-07-15-2318-...`) : un petit modèle peut parfois
+**Reprise sur réponse vide** (voir `evols/2026-07-15-...`) : un petit modèle peut parfois
 épuiser tout son budget de génération en réflexion et ne rien répondre du tout (`RoleplayNarrator`
 détecte une réponse vide et retente une fois, même prompt — abandonne après ce seul essai plutôt
 que de boucler). Si ça arrive régulièrement sur un scénario donné, c'est souvent le signe d'une
@@ -223,12 +223,12 @@ restriction sur le nombre de PNJ principaux : même si deux ont été nommés, u
 peut encore interjecter. Répond après le ou les PNJ principaux, voit déjà leur réponse ; si
 plusieurs interjectent, leur ordre entre eux est aléatoire (pas d'ordre stable). Réglage global
 "Chance d'interjection" dans le panneau (0 à 1, défaut 0.5) — pas de réglage par PNJ. Voir
-`evols/2026-07-15-2231-...` et `evols/2026-07-16-...` (refonte).
+`evols/2026-07-15-...` et `evols/2026-07-16-...` (refonte).
 
 ### 4.4 Réflexion / thinking (case "Afficher la réflexion", icône 🧠)
 
 La réflexion est **toujours demandée** au modèle à chaque appel, indépendamment de l'affichage
-(meilleure qualité de réponse, voir `evols/2026-07-15-1602-...`). L'affichage dans le chat est
+(meilleure qualité de réponse, voir `evols/2026-07-15-...`). L'affichage dans le chat est
 séparé, actif par défaut (case décochable). Certains modèles ne savent pas produire de réflexion
 séparée (dépend de comment ils sont enregistrés dans Ollama) — rien à faire côté scénario, c'est
 une capacité du modèle, pas du scénario.

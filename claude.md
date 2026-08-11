@@ -59,7 +59,7 @@ Ne jamais considérer un refactoring terminé si un seul module est cassé.
 
 # Règles spécifiques
 Claude ne doit JAMAIS modifier un prompt d'un agent sans explicitement demander à l'utilisateur.
-Toutes les séances de modification doivent faire l'objet d'une fiche d'évolution dans /evols qui contient 1. Le description de l'évolution demandée 2. Ce qui a été touché. 3. Le résultat. 4. La fiche d'évol est horodatée et contient un mini descript de l'évol dans son texte. Ex : 2026-03-25 14h23 12s - Construction de l'adapteur Ollama
+Toutes les séances de modification doivent faire l'objet d'une fiche d'évolution dans /evols qui contient 1. Le description de l'évolution demandée 2. Ce qui a été touché. 3. Le résultat. 4. La fiche d'évol est datée (jamais d'heure, voir CLAUDE.md global) et contient un mini descript de l'évol dans son texte. Ex : 2026-03-25 - Construction de l'adapteur Ollama
 Les spécifications, contenus dans /specs doivent toujours être mises à jour et facile à lire par un humain
 Claude ne doit JAMAIS avoir accès au disque en dehors du répertoire contenant le projet
 On ne lance jamais de test unitaire avec un vrai agent LLM

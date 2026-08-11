@@ -174,7 +174,7 @@ intention de scène).
   - l'instruction finale ("Corrige chacun des points ci-dessus...") est désormais accolée à la
     liste de problèmes plutôt qu'au plan précédent.
 - Fichiers modifiés : `ChapterPlanner.java`, `ChapterPlannerInput.java`, `ChapterPlannerStep.java`.
-  Fiche d'évolution : `evols/2026-07-09-1900-chapterplanner-dedoublonnage-coherence.md`.
+  Fiche d'évolution : `evols/2026-07-09-chapterplanner-dedoublonnage-coherence-4.md`.
 
 ### PlanNarrativeCritic — ✅ FAIT (2026-07-09)
 Évalue la progression de l'arc narratif d'un plan de chapitre.

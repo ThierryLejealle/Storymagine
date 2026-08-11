@@ -2,6 +2,8 @@ package storymagine.commun.infra;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,9 +14,13 @@ import java.util.List;
  */
 public class NvidiaSmiSnapshot {
 
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
+
     public record GpuStat(int index, String name, int usedMb, int freeMb, int totalMb, int utilPct) {}
 
     public static List<GpuStat> capture() {
+        System.out.printf("[%s] [GPU] interrogation nvidia-smi...%n", ts());
+        long t0 = System.currentTimeMillis();
         try {
             ProcessBuilder pb = new ProcessBuilder(
                 "nvidia-smi",
@@ -44,10 +50,18 @@ public class NvidiaSmiSnapshot {
                 }
             }
             proc.waitFor();
+            System.out.printf("[%s] [GPU] nvidia-smi termine (%dms, %d GPU detecte(s))%n",
+                ts(), System.currentTimeMillis() - t0, result.size());
             return result;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.out.printf("[%s] [GPU] nvidia-smi indisponible (%dms) : %s%n",
+                ts(), System.currentTimeMillis() - t0, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private static String ts() {
+        return LocalTime.now().format(TIME);
     }
 
     /** "GPU 0 RTX5070 : 4209/8151 Mo  |  GPU 1 RTX5060Ti : 3566/16311 Mo" */

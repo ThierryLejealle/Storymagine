@@ -241,7 +241,7 @@ class ChatPromptBuilderTest {
     @Test
     void currentActZeroOmitsCurrentActSection() {
         ChatPrompt prompt = ChatPromptBuilder.build(scenario, sceneFor(scenario), 0, "", List.of());
-        assertFalse(prompt.system().contains("CURRENT ACT"));
+        assertFalse(prompt.system().contains("CURRENT SCENE"));
     }
 
     @Test
@@ -258,7 +258,7 @@ class ChatPromptBuilderTest {
     @Test
     void currentActIncludesOnlyThatActsTextNotTheOthers() {
         ChatPrompt prompt = ChatPromptBuilder.build(scenarioWithActs, sceneFor(scenarioWithActs), 2, "", List.of());
-        assertTrue(prompt.system().contains("CURRENT ACT (2 of 3)"));
+        assertTrue(prompt.system().contains("CURRENT SCENE"));
         assertTrue(prompt.system().contains("Act two: a stranger arrives."));
         assertFalse(prompt.system().contains("Act one: the storm begins."));
         assertFalse(prompt.system().contains("Act three: the truth comes out."));
@@ -301,5 +301,18 @@ class ChatPromptBuilderTest {
 
         assertTrue(prompt.system().contains("tells you exactly when to write"));
         assertFalse(prompt.system().contains("you feel this act's events have reached their natural conclusion"));
+    }
+
+    @Test
+    void conditionalNextActRuleIsAlsoUsedWhenTheAuthorMisspelledTheMarkerWithAnUnderscore() {
+        // Coquille reelle observee : un auteur ecrit "[NEXT ACT]" une premiere fois puis
+        // "[NEXT_ACT]" (underscore) plus loin dans la meme condition — voir evols/2026-07-17.
+        ChatScenario scenario = scenarioWith("sheet", "premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Quand écrire [NEXT ACT] : ... alors tu vas écrire [NEXT_ACT]."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
+
+        ChatPrompt prompt = ChatPromptBuilder.build(scenario, sceneFor(scenario), 1, "", List.of());
+
+        assertTrue(prompt.system().contains("tells you exactly when to write"));
     }
 }

@@ -9,8 +9,7 @@ import java.util.List;
 
 /**
  * Same shape as RoleplayNarratorInput, minus the player's new line — there is none, this is a
- * read-only check. speaker is whichever Npc the caller picked to voice this analysis (see
- * ChatServiceImpl.representativeScene — the first present Npc, a simple default).
+ * read-only check. speaker is the Npc the player picked to inspect (see ChatServiceImpl.analyzeMindState).
  */
 public record NpcMindStateAnalystInput(ChatScenario scenario, Npc speaker, int currentAct, String summary,
                                         List<ChatTurn> recentTurns, GenerationSettings settings) {

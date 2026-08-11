@@ -344,6 +344,69 @@ class ChatFileStorageAdapterTest {
             () -> adapter.deleteSavePoint(root, scenario, "../../etc/passwd"));
     }
 
+    // ── Scenario multi-fichiers (scenario-N.txt) ────────────────────────────
+
+    @Test
+    void loadScenarioAppendsContinuationFilesInNumericOrder(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "First act.");
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "# Second\nSecond act.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario-2.txt"), "# Third\nThird act.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(3, scenario.acts().size());
+        assertEquals("First act.", scenario.acts().get(0).text());
+        assertEquals("Second act.", scenario.acts().get(1).text());
+        assertEquals("Third act.", scenario.acts().get(2).text());
+    }
+
+    @Test
+    void loadScenarioWithNoContinuationFilesBehavesExactlyAsBefore(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "Only act.");
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(1, scenario.acts().size());
+        assertEquals("Only act.", scenario.acts().get(0).text());
+    }
+
+    @Test
+    void loadScenarioStopsAtTheFirstMissingContinuationNumber(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "First act.");
+        // scenario-1.txt manquant : scenario-2.txt ne doit jamais etre pris en compte.
+        Files.writeString(root.resolve("inn/scenario-2.txt"), "# Orphan\nOrphan act.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(1, scenario.acts().size());
+        assertEquals("First act.", scenario.acts().get(0).text());
+    }
+
+    @Test
+    void loadScenarioRejectsAContinuationFileNotStartingOnATopLevelHeading(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "First act.");
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "## Not top-level\nBody.", StandardCharsets.UTF_8);
+
+        assertThrows(IllegalStateException.class, () -> adapter.loadScenario(root, "inn"));
+    }
+
+    @Test
+    void loadScenarioNeverTreatsAContinuationFileAsACastMember(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "First act.");
+        // "# Second" ressemble a un en-tete "# Nom" de fiche personnage — ne doit jamais devenir un PNJ.
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "# Second\nSecond act.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(1, scenario.cast().npcs().size());
+        assertTrue(scenario.cast().find("scenario-1").isEmpty());
+    }
+
     // ── Cast multi-fichiers ──────────────────────────────────────────────────
 
     @Test

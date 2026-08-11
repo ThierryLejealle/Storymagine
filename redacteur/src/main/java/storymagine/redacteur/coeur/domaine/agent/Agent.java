@@ -17,7 +17,7 @@ public interface Agent {
     /**
      * Whether this agent's LLM calls should request active reasoning (thinking). True by default —
      * override to false only for closed/mechanical tasks where reasoning doesn't improve judgment
-     * (see evols/2026-07-09-2319-derive-correcteurs-diagnostic-et-pistes.md, §6.4).
+     * (see evols/2026-07-09-derive-correcteurs-diagnostic-et-pistes-6.md, §6.4).
      */
     default boolean thinks() { return true; }
 }

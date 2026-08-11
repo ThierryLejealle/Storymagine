@@ -20,7 +20,7 @@ public enum QualityLevel {
      * Full pipeline: SIMPLE + global evaluation, 3 plan retries and 2 sequence/chapter retries.
      * Book-level critique (NarrativeArcAnalyzer + CausalAnalyzer) kept deliberately lenient
      * (bookAverageThreshold=1.0, bookEliminationThreshold=0.0) while these two agents are not
-     * yet well tested — see evols/2026-07-07-2149-story-plan-workflow.md.
+     * yet well tested — see evols/2026-07-07-story-plan-workflow-13.md.
      * Only level where a plan's very first draft is held to a stricter bar (see
      * planStrictFirstAttempt) — later retries fall back to the normal average/elimination rule.
      */
