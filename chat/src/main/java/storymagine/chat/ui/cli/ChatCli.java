@@ -12,6 +12,7 @@ import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.commun.infra.OllamaAdapter;
+import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.commun.ui.cli.OllamaSetupCli;
@@ -35,6 +36,7 @@ public class ChatCli {
         System.out.println("=================================================");
         System.out.println("  Storymagine Chat");
         System.out.println("=================================================");
+        OllamaEnvDisplay.print("  ");
         System.out.println();
 
         Properties props   = loadProperties();

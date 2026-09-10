@@ -13,6 +13,11 @@
     <artifactId>testllm</artifactId>
     <packaging>jar</packaging>
 
+    <properties>
+        <!-- Defaut de "mvn exec:java" — surchargeable en ligne de commande via -Dexec.mainClass=... -->
+        <exec.mainClass>storymagine.testllm.ui.cli.TestLlmCli</exec.mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>storymagine</groupId>
@@ -33,7 +38,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <configuration>
                     <skip>false</skip>
-                    <mainClass>storymagine.testllm.ui.cli.TestLlmCli</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                     <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>

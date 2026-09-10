@@ -41,9 +41,9 @@ public class BenchmarkRunner {
         record ProbeOk(ModelLifecyclePort info, int ctx, int maxCtx,
                        boolean isLarge, long sizeBytes, double elapsedSec) implements BenchEvent {}
         record ProbeFail(String model, double elapsedSec, String message) implements BenchEvent {}
-        record RunOk(String passe, int run, int total,
+        record RunOk(String passe, boolean think, int run, int total,
                      int chars, double tps, double elapsedSec) implements BenchEvent {}
-        record RunFail(String passe, int run, int total,
+        record RunFail(String passe, boolean think, int run, int total,
                        double elapsedSec, String message) implements BenchEvent {}
         record Divergence(String passe, String tokensResume) implements BenchEvent {}
         record PasseComplete(PasseBench passe, String model, boolean think,
@@ -76,20 +76,20 @@ public class BenchmarkRunner {
         this.maxModelSizeBytes = maxModelSizeBytes;
     }
 
-    public BenchRun run(List<ModelEntry> entries, List<PasseBench> passes, RunLogger log) {
+    public BenchRun run(List<ModelEntry> entries, List<PasseBench> passes, RunLogger log, ThinkMode thinkMode) {
         List<ModelEntry> modeles = filtrer(entries);
-        return execute(modeles, passes, log);
+        return execute(modeles, passes, log, thinkMode);
     }
 
     /** Exécute le benchmark sans appliquer le filtre de taille — pour les listes déjà choisies explicitement. */
-    public BenchRun runDirect(List<ModelEntry> entries, List<PasseBench> passes, RunLogger log) {
+    public BenchRun runDirect(List<ModelEntry> entries, List<PasseBench> passes, RunLogger log, ThinkMode thinkMode) {
         List<ModelEntry> modeles = maxModels > 0 && entries.size() > maxModels
                 ? entries.subList(0, maxModels)
                 : new ArrayList<>(entries);
-        return execute(modeles, passes, log);
+        return execute(modeles, passes, log, thinkMode);
     }
 
-    private BenchRun execute(List<ModelEntry> modeles, List<PasseBench> passes, RunLogger log) {
+    private BenchRun execute(List<ModelEntry> modeles, List<PasseBench> passes, RunLogger log, ThinkMode thinkMode) {
         for (int p = 0; p < passes.size(); p++) parPasse.put(p, new ArrayList<>());
 
         Map<String, Boolean> thinkSupport = new LinkedHashMap<>();
@@ -98,7 +98,7 @@ public class BenchmarkRunner {
         for (ModelEntry entry : modeles) {
             String        model     = entry.name();
             boolean       supThink  = thinkSupport.getOrDefault(model, false);
-            List<Boolean> thinkVars = supThink ? List.of(false, true) : List.of(false);
+            List<Boolean> thinkVars = thinkMode.versions(supThink);
 
             int maxCtx       = factory.detectContext(model);
             int effectiveCtx = Math.min(factory.configuredCtx(), maxCtx);
@@ -201,11 +201,11 @@ public class BenchmarkRunner {
                 toks.add(r.text().length());
                 tpsList.add(r.tokensPerSecond());
                 texts.add(r.text());
-                log.onEvent(new BenchEvent.RunOk(passe.nom(), i + 1, runs, r.text().length(), r.tokensPerSecond(), ms / 1000.0));
+                log.onEvent(new BenchEvent.RunOk(passe.nom(), think, i + 1, runs, r.text().length(), r.tokensPerSecond(), ms / 1000.0));
             } catch (Exception e) {
                 long ms = System.currentTimeMillis() - start;
                 texts.add("ERREUR : " + e.getMessage());
-                log.onEvent(new BenchEvent.RunFail(passe.nom(), i + 1, runs, ms / 1000.0, e.getMessage()));
+                log.onEvent(new BenchEvent.RunFail(passe.nom(), think, i + 1, runs, ms / 1000.0, e.getMessage()));
             }
         }
 

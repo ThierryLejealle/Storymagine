@@ -6,6 +6,7 @@ import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.commun.infra.OllamaAdapter;
+import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.commun.ui.cli.OllamaSetupCli;
@@ -36,6 +37,7 @@ public class RedacteurCli {
         System.out.println("=================================================");
         System.out.println("  Storymagine Redacteur");
         System.out.println("=================================================");
+        OllamaEnvDisplay.print("  ");
         System.out.println();
 
         Properties   props   = loadProperties();

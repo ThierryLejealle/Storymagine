@@ -15,7 +15,7 @@ public class HardwarePoller {
 
     public static Supplier<HardwareUsage> create() {
         return () -> {
-            List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
+            List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture(false);
             int gpu0 = gpus.stream().filter(g -> g.index() == 0)
                            .mapToInt(NvidiaSmiSnapshot.GpuStat::utilPct).findFirst().orElse(-1);
             int gpu1 = gpus.stream().filter(g -> g.index() == 1)

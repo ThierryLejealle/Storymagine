@@ -3,10 +3,12 @@ package storymagine.testllm.ui.cli;
 import storymagine.commun.coeur.ports.ModelEntry;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
 import storymagine.testllm.coeur.domaine.BenchRun;
+import storymagine.testllm.coeur.domaine.ThinkMode;
 import storymagine.testllm.coeur.service.TestLlmService;
 import storymagine.testllm.infra.BenchCsvWriter;
 import storymagine.testllm.infra.BenchSession;
 import storymagine.testllm.infra.BenchTextFormatter;
+import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.OllamaLauncher;
 import storymagine.testllm.infra.TestLlmAssembler;
 import storymagine.testllm.infra.TestLlmConfig;
@@ -30,6 +32,7 @@ public class TestLlmCli {
 
     public static void main(String[] args) throws Exception {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
+        OllamaEnvDisplay.print("[testllm] ");
 
         String mode = args.length > 0 ? args[0].toLowerCase() : "menu";
 
@@ -45,12 +48,13 @@ public class TestLlmCli {
         String benchDate  = ts.substring(0, 4) + "-" + ts.substring(4, 6) + "-" + ts.substring(6, 8);
         String benchHeure = ts.substring(9, 11) + ":" + ts.substring(11, 13);
         Path   csvFile    = rootDir.resolve("resultats.csv");
-        int    runs       = config.runs();
+        int    runs       = config.runs(); // valeur par defaut, surchargeable ci-dessous en interactif
+        ThinkMode thinkMode;
 
         System.out.printf("[testllm] Repertoire : %s%n", runDir.toAbsolutePath());
 
         // ── Detection GPU ──────────────────────────────────────────────────────────
-        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture();
+        List<NvidiaSmiSnapshot.GpuStat> gpus = NvidiaSmiSnapshot.capture(false);
 
         // Variables resolues dans le bloc interactif
         int           gpuChoice        = 0;
@@ -79,6 +83,12 @@ public class TestLlmCli {
                 if (gpuChoice < 1 || gpuChoice > 5) System.out.println("  Entree invalide, choisir 1-5.");
             }
             System.out.println();
+
+            // ── Nombre de boucles par test ────────────────────────────────────────
+            runs = demanderNombreBoucles(sc, runs);
+
+            // ── Thinking a tester ────────────────────────────────────────────────
+            thinkMode = demanderThinkMode(sc);
 
             // ── Preparation GPU ────────────────────────────────────────────────────
             if (gpuChoice == 5) {
@@ -204,7 +214,7 @@ public class TestLlmCli {
 
                     StringBuilder gpuResume = resumeByGpu.get(cuda);
                     BenchSession  session   = TestLlmAssembler.assemble(config, gpuDir, runs, gpuResume, label);
-                    BenchRun      benchRun  = session.service().benchModele(modele, gpuDir);
+                    BenchRun      benchRun  = session.service().benchModele(modele, gpuDir, thinkMode);
                     ecrireResultats(benchRun, formatter, gpuResume);
                     new BenchCsvWriter().appendResults(csvFile, benchDate, benchHeure, benchRun,
                             session.logger().getGpuStates());
@@ -225,7 +235,7 @@ public class TestLlmCli {
         } else {
             // Mode simple (GPU unique)
             System.out.printf("%n[testllm] Mode : %s%n", modeLabel(modeEffectif, choixModele));
-            BenchRun benchRun = lancerBench(modeEffectif, choixModele, interactiveSession.service(), interactiveDir);
+            BenchRun benchRun = lancerBench(modeEffectif, choixModele, interactiveSession.service(), interactiveDir, thinkMode);
             ecrireResultats(benchRun, formatter, interactiveResume);
 
             Path resumeFile = runDir.resolve("resume.txt");
@@ -279,11 +289,11 @@ public class TestLlmCli {
     }
 
     private static BenchRun lancerBench(String mode, String choixModele,
-                                        TestLlmService service, Path dir) {
+                                        TestLlmService service, Path dir, ThinkMode thinkMode) {
         return switch (mode) {
-            case "tout"    -> service.benchTous(dir);
-            case "favoris" -> service.benchFavoris(dir);
-            case "choisir" -> service.benchModele(choixModele, dir);
+            case "tout"    -> service.benchTous(dir, thinkMode);
+            case "favoris" -> service.benchFavoris(dir, thinkMode);
+            case "choisir" -> service.benchModele(choixModele, dir, thinkMode);
             default -> {
                 System.err.printf("[testllm] Mode inconnu : '%s'%n", mode);
                 System.exit(1);
@@ -311,6 +321,37 @@ public class TestLlmCli {
     private static void creerDossiersPasses(Path dir) throws Exception {
         for (String passe : new String[]{"haiku", "moyen", "grand"}) {
             Files.createDirectories(dir.resolve(passe));
+        }
+    }
+
+    private static int demanderNombreBoucles(Scanner sc, int defaut) {
+        while (true) {
+            System.out.printf("Nombre de boucles par test [%d] : ", defaut);
+            String line = sc.nextLine().trim();
+            if (line.isBlank()) return defaut;
+            try {
+                int n = Integer.parseInt(line);
+                if (n >= 1 && n <= 10) return n;
+            } catch (NumberFormatException ignored) {}
+            System.out.println("  Entree invalide, choisir un nombre entre 1 et 10 (ou Entree pour " + defaut + ").");
+        }
+    }
+
+    private static ThinkMode demanderThinkMode(Scanner sc) {
+        System.out.println("Thinking a tester :");
+        System.out.println("  1. Sans thinking");
+        System.out.println("  2. Avec thinking");
+        System.out.println("  3. Les deux (defaut)");
+        while (true) {
+            System.out.print("Choix [1-3] (Entree = 3) : ");
+            String line = sc.nextLine().trim();
+            if (line.isBlank()) return ThinkMode.LES_DEUX;
+            switch (line) {
+                case "1": return ThinkMode.SANS;
+                case "2": return ThinkMode.AVEC;
+                case "3": return ThinkMode.LES_DEUX;
+                default:  System.out.println("  Entree invalide, choisir 1-3.");
+            }
         }
     }
 

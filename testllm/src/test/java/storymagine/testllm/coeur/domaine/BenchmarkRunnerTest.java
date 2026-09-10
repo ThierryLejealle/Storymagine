@@ -71,7 +71,7 @@ class BenchmarkRunnerTest {
 
     private static List<BenchEvent> run(BenchmarkRunner runner) {
         List<BenchEvent> events = new ArrayList<>();
-        runner.run(List.of(new ModelEntry("m", 0L)), List.of(passeTest()), events::add);
+        runner.run(List.of(new ModelEntry("m", 0L)), List.of(passeTest()), events::add, ThinkMode.LES_DEUX);
         return events;
     }
 

@@ -19,7 +19,12 @@ public class NvidiaSmiSnapshot {
     public record GpuStat(int index, String name, int usedMb, int freeMb, int totalMb, int utilPct) {}
 
     public static List<GpuStat> capture() {
-        System.out.printf("[%s] [GPU] interrogation nvidia-smi...%n", ts());
+        return capture(true);
+    }
+
+    /** verbose=false : pas de log avant/après — pour les appels répétés (polling pendant une génération). */
+    public static List<GpuStat> capture(boolean verbose) {
+        if (verbose) System.out.printf("[%s] [GPU] interrogation nvidia-smi...%n", ts());
         long t0 = System.currentTimeMillis();
         try {
             ProcessBuilder pb = new ProcessBuilder(
@@ -50,11 +55,11 @@ public class NvidiaSmiSnapshot {
                 }
             }
             proc.waitFor();
-            System.out.printf("[%s] [GPU] nvidia-smi termine (%dms, %d GPU detecte(s))%n",
+            if (verbose) System.out.printf("[%s] [GPU] nvidia-smi termine (%dms, %d GPU detecte(s))%n",
                 ts(), System.currentTimeMillis() - t0, result.size());
             return result;
         } catch (Exception e) {
-            System.out.printf("[%s] [GPU] nvidia-smi indisponible (%dms) : %s%n",
+            if (verbose) System.out.printf("[%s] [GPU] nvidia-smi indisponible (%dms) : %s%n",
                 ts(), System.currentTimeMillis() - t0, e.getMessage());
             return Collections.emptyList();
         }

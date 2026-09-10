@@ -5,6 +5,7 @@ import storymagine.commun.coeur.ports.ModelLifecyclePort;
 import storymagine.testllm.coeur.domaine.BenchRun;
 import storymagine.testllm.coeur.domaine.BenchmarkRunner;
 import storymagine.testllm.coeur.domaine.Passes;
+import storymagine.testllm.coeur.domaine.ThinkMode;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -30,13 +31,13 @@ public class TestLlmServiceImpl implements TestLlmService {
     }
 
     @Override
-    public BenchRun benchTous(Path outputDir) {
+    public BenchRun benchTous(Path outputDir, ThinkMode thinkMode) {
         List<ModelEntry> modeles = lifecycle.listModels(0L);
-        return runner.run(modeles, Passes.TOUTES, logger);
+        return runner.run(modeles, Passes.TOUTES, logger, thinkMode);
     }
 
     @Override
-    public BenchRun benchFavoris(Path outputDir) {
+    public BenchRun benchFavoris(Path outputDir, ThinkMode thinkMode) {
         List<ModelEntry> tous = lifecycle.listModels(0L);
         List<ModelEntry> selectionnes = tous.stream()
                 .filter(e -> favoris.contains(e.name()))
@@ -49,17 +50,17 @@ public class TestLlmServiceImpl implements TestLlmService {
                 .toList();
         List<ModelEntry> complet = new java.util.ArrayList<>(selectionnes);
         complet.addAll(manquants);
-        return runner.runDirect(complet, Passes.TOUTES, logger);
+        return runner.runDirect(complet, Passes.TOUTES, logger, thinkMode);
     }
 
     @Override
-    public BenchRun benchModele(String modele, Path outputDir) {
+    public BenchRun benchModele(String modele, Path outputDir, ThinkMode thinkMode) {
         List<ModelEntry> tous = lifecycle.listModels(0L);
         ModelEntry entry = tous.stream()
                 .filter(e -> e.name().equals(modele))
                 .findFirst()
                 .orElse(new ModelEntry(modele, 0L));
-        return runner.run(List.of(entry), Passes.TOUTES, logger);
+        return runner.run(List.of(entry), Passes.TOUTES, logger, thinkMode);
     }
 
     @Override

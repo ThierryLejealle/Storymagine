@@ -1,0 +1,77 @@
+# Jour 1 — la route forestière et le premier camp
+Le premier jour de marche, encore proche du village, où le danger reste discret mais présent.
+
+## La route forestière
+[Le sentier serpente sous une canopée de plus en plus dense. Les bruits de la jungle remplacent
+peu à peu ceux du village.]
+
+Point de départ : premier jour de marche. L'ambiance est encore légère, l'occasion de banter entre
+les personnages et de mieux connaître le rythme du groupe en mouvement. Sheera part en éclaireuse
+régulièrement, revient avec des commentaires sur le terrain.
+
+Ce qui doit se passer : de la marche, du dialogue, de la découverte du fonctionnement du groupe en
+déplacement — et vers la fin, un premier signe inquiétant (traces au sol, marques taillées dans un
+tronc, silence anormal des animaux) que Sheera repère.
+
+Quand écrire [NEXT ACT] : un personnage a explicitement signalé, en jeu, le signe inquiétant, ET
+l'équipe a réagi concrètement (armes prêtes, formation resserrée, ton qui change) — pas seulement
+mentionné le signe en passant.
+
+## Le camp du premier soir
+[Les heures qui suivent se passent en marche tendue, armes toujours prêtes, sans que rien d'autre
+ne se montre. Le jour décline vite sous la canopée, et la vigilance ne retombe pas vraiment.
+L'équipe cherche un endroit dégagé pour la nuit, encore marquée par l'alerte du sentier.]
+
+Point de départ : l'équipe installe son premier campement en pleine jungle — feu, répartition des
+tâches, tour de garde décidé à cause du signe inquiétant repéré plus tôt. Sheera, la plus habituée
+à la vie sauvage, prend naturellement les choses en main pour ce premier soir.
+
+Ce qui doit se passer : le camp doit être physiquement établi et montré en train de se faire — feu
+allumé, couchages installés, un ordre de garde décidé et nommé — pas juste raconté comme acquis.
+Un moment de détente malgré la tension, où l'équipe se resserre après la première frayeur du jour.
+
+Quand écrire [NEXT ACT] : le feu est allumé, les couchages sont installés, ET un ordre de garde a
+été explicitement décidé et nommé par au moins un personnage.
+
+## La leçon de Laina
+[Le camp installé, Laina prend une lame d'entraînement et fait signe à Alex de la rejoindre.]
+["Debout, Alex. Leçon d'arme."]
+
+Point de départ : Laina donne à Alex sa première leçon : se défendre face à une arme. Elle ne
+retient pas ses coups.
+
+Ce qui doit se passer : Alex doit apprendre à lire une attaque, esquiver ou dévier, encaisser
+quelques touches bien réelles — jamais une vraie blessure, mais de quoi laisser des bleus et lui
+couper le souffle. Que le joueur décide de bien s'en sortir ou de se faire largement dominer, la
+leçon doit être jouée coup par coup, pas résumée après coup.
+
+Quand écrire [NEXT ACT] : au moins une touche ou une esquive réellement décrite en jeu a eu lieu,
+ET la leçon se termine (Laina arrête, satisfaite ou non du résultat).
+
+## Une nuit sous tension
+[La jungle change de voix la nuit. Le feu de camp projette des ombres longues, et quelqu'un veille
+toujours, à tour de rôle.]
+
+Point de départ : la première nuit sous la canopée, avec le tour de garde décidé plus tôt. Rien
+d'hostile ne se produit forcément, mais la vigilance reste réelle après le signe inquiétant du
+jour. Bon moment pour un échange plus intime entre deux personnages pendant une garde partagée.
+
+Ce qui doit se passer : au moins une conversation de garde, à voix basse, qui en dit plus sur un
+des personnages que ce qu'il montre en plein jour. La nuit doit être vécue, pas juste mentionnée.
+
+Quand écrire [NEXT ACT] : la nuit a été explicitement vécue en jeu (au moins un tour de garde
+joué), ET le petit matin commence à poindre.
+
+## Le réveil et la reprise de la marche
+[L'aube filtre entre les feuilles. Le camp se démonte dans le calme methodique d'une équipe qui a
+l'habitude du voyage.]
+
+Point de départ : le réveil du deuxième jour. L'équipe démonte le camp et se prépare à reprendre la
+route, en direction d'un terrain plus encaissé où le risque d'embuscade est réel.
+
+Ce qui doit se passer : un réveil concret (quelqu'un qui s'étire, le feu qu'on éteint, les sacs
+qu'on reboucle), et si quelqu'un est resté affaibli ou n'a pas assez dormi depuis la veille,
+l'équipe ne reprend la route que lorsque cette personne est explicitement jugée capable de
+continuer.
+
+Quand écrire [NEXT ACT] : le camp est explicitement démonté, ET l'équipe s'est remise en marche.

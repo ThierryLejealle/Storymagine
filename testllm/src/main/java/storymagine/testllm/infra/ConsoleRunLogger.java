@@ -66,13 +66,16 @@ public class ConsoleRunLogger implements BenchmarkRunner.RunLogger {
                             p.isEmpty() ? "-" : p, q.isEmpty() ? "-" : q, f.isEmpty() ? "-" : f);
                 }
                 System.out.printf("[bench] |  thinking : %s%n", e.info().supportsThinking() ? "oui" : "non");
+                System.out.printf("[bench] |  plan : %s%n", e.info().supportsThinking()
+                        ? "think:N puis think:O (modele thinking-capable, teste dans les deux modes)"
+                        : "think:N uniquement (modele sans support thinking)");
                 if (e.isLarge()) {
                     System.out.printf("[bench] |  *** GROS MODELE (%.1f Go) — timeout etendu ***%n",
                             e.sizeBytes() / 1_073_741_824.0);
                 }
 
                 // Capture GPU state
-                List<NvidiaSmiSnapshot.GpuStat> gpuStats = NvidiaSmiSnapshot.capture();
+                List<NvidiaSmiSnapshot.GpuStat> gpuStats = NvidiaSmiSnapshot.capture(false);
                 Optional<OllamaPsInfo>          ps       = OllamaPsInfo.query(baseUrl, currentModel);
                 GpuState state = new GpuState(gpuMode, ps.orElse(null), gpuStats);
                 if (currentModel != null) gpuStateByModel.put(currentModel, state);
@@ -84,12 +87,12 @@ public class ConsoleRunLogger implements BenchmarkRunner.RunLogger {
                 System.out.printf("[bench] |  probe -> FAIL (%.0fs) : %s%n", e.elapsedSec(), e.message());
 
             case BenchEvent.RunOk e ->
-                System.out.printf("[bench] |  %-6s  run %d/%d -> OK  %5d car | %5.1f t/s | %4.0fs%n",
-                        e.passe(), e.run(), e.total(), e.chars(), e.tps(), e.elapsedSec());
+                System.out.printf("[bench] |  %-6s [think:%s]  run %d/%d -> OK  %5d car | %5.1f t/s | %4.0fs%n",
+                        e.passe(), e.think() ? "O" : "N", e.run(), e.total(), e.chars(), e.tps(), e.elapsedSec());
 
             case BenchEvent.RunFail e ->
-                System.out.printf("[bench] |  %-6s  run %d/%d -> FAIL (%4.0fs) : %s%n",
-                        e.passe(), e.run(), e.total(), e.elapsedSec(), e.message());
+                System.out.printf("[bench] |  %-6s [think:%s]  run %d/%d -> FAIL (%4.0fs) : %s%n",
+                        e.passe(), e.think() ? "O" : "N", e.run(), e.total(), e.elapsedSec(), e.message());
 
             case BenchEvent.Divergence e ->
                 System.out.printf("[bench] |  %-6s  !! DIVERGENCE tok : %s%n", e.passe(), e.tokensResume());

@@ -11,6 +11,7 @@ import storymagine.commun.coeur.ports.LogPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.OllamaAdapter;
+import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.TeeLogAdapter;
 import storymagine.commun.ui.cli.OllamaSetupCli;
 
@@ -34,6 +35,7 @@ public class ScenarioTesterCli {
         System.out.println("=================================================");
         System.out.println("  Storymagine Chat - Testeur de scénario");
         System.out.println("=================================================");
+        OllamaEnvDisplay.print("  ");
         System.out.println();
 
         Properties props   = loadProperties();

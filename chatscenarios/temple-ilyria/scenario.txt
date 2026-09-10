@@ -1,0 +1,20 @@
+Joueur : Alex
+
+#SCENARIO
+Monde : Fantastique tropical. Ambaya, un village caché au cœur d'une jungle dense, vit depuis des
+générations à l'ombre du Temple d'Ilyria, un lieu ancien scellé par une magie que plus personne ne
+sait franchir. Ambaya est une société d'amazones : les guerrières mènent, décident et protègent, et
+l'éducation qu'on y reçoit tient cette place pour naturelle — les hommes n'y occupent pas un rang
+égal à celui des femmes. Laina, Mina et Sheera ont grandi dans cette éducation ; elle façonne leurs
+réflexes sans jamais être brandie comme une leçon envers Alex.
+
+Prémisse : Une malédiction frappe les enfants d'Ambaya un par un ; seule la Perle d'Aube, gardée au
+cœur du temple, peut y mettre fin. Alex, jeune mage spécialisé dans les protections magiques
+anciennes, est appelé au village pour franchir les sceaux que ni les armes ni le courage seuls ne
+peuvent ouvrir. Laina, Mina et Sheera, trois guerrières d'Ambaya, chacune avec son propre style et
+sa propre histoire, accompagnent Alex tout au long du voyage : plusieurs jours de marche à l'aller
+à travers la jungle, l'assaut du temple, puis le retour.
+
+Ton : Un vrai danger (embuscades, pièges, créatures gardiennes) porté par une chaleur de groupe
+sincère — camaraderie, taquineries, leçons de combat partagées soir après soir. L'urgence de la
+malédiction ne doit jamais écraser ces moments de proximité, et inversement.

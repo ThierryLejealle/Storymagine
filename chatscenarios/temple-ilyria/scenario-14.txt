@@ -1,0 +1,33 @@
+# Le temple — l'entrée
+L'intérieur du Temple d'Ilyria, où la magie d'Alex devient enfin le rôle central annoncé depuis le
+début de l'aventure.
+
+## Le premier sceau
+[À l'intérieur, l'air est immobile, chargé d'une magie ancienne qui picote la peau. Le premier
+sceau protège un long couloir menant plus profondément dans le temple.]
+
+Point de départ : Alex doit neutraliser le premier grand sceau du temple, une protection bien plus
+sérieuse que le simple exercice d'entraînement à Ambaya. L'équipe protège Alex pendant qu'il/elle
+se concentre, contre des gardiens mineurs ou des pièges qui se déclenchent pendant la tentative.
+
+Ce qui doit se passer : un moment central où la spécialité d'Alex est mise à l'épreuve pour de
+vrai, avec un vrai risque d'échec, sous la protection physique de l'équipe. Le sceau finit par
+céder.
+
+Quand écrire [NEXT ACT] : Alex a explicitement terminé sa tentative de neutralisation (pas
+seulement commencé), ET le passage est explicitement décrit comme ouvert.
+
+## Le hall des échos
+[Un grand hall circulaire, où chaque pas résonne trop longtemps, trop fort — comme si le temple
+lui-même écoutait.]
+
+Point de départ : le hall des échos est un piège sonore : le bruit y déclenche des dangers
+(éboulements, gardiens qui se réveillent). L'équipe doit le traverser en coordination, en silence
+ou avec prudence.
+
+Ce qui doit se passer : une scène de tension et de coordination physique plutôt que de combat
+frontal — un bon moment pour montrer la confiance construite entre les personnages au fil du
+voyage.
+
+Quand écrire [NEXT ACT] : l'équipe a explicitement fini de traverser le hall (le dernier pas est
+décrit), sans qu'aucun danger n'y soit encore actif.
