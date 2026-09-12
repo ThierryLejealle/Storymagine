@@ -11,9 +11,10 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Snapshot de l'API /api/ps d'Ollama : taille en RAM et répartition CPU/GPU d'un modèle chargé.
+ * Snapshot de l'API /api/ps d'Ollama : taille en RAM, répartition CPU/GPU et contexte
+ * effectivement charge (context_length) pour un modèle chargé.
  */
-public record OllamaPsInfo(long sizeBytes, long sizeVramBytes) {
+public record OllamaPsInfo(long sizeBytes, long sizeVramBytes, int contextLength) {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -45,7 +46,8 @@ public record OllamaPsInfo(long sizeBytes, long sizeVramBytes) {
                 if (model.equals(m.path("name").asText())) {
                     long size     = m.path("size").asLong(0);
                     long sizeVram = m.path("size_vram").asLong(0);
-                    return Optional.of(new OllamaPsInfo(size, sizeVram));
+                    int  ctxLen   = m.path("context_length").asInt(0);
+                    return Optional.of(new OllamaPsInfo(size, sizeVram, ctxLen));
                 }
             }
         } catch (Exception ignored) {}
