@@ -1,6 +1,8 @@
 package storymagine.chat.infra;
 
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
+import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
@@ -25,7 +27,8 @@ final class ScenarioOutlineParser {
 
     private ScenarioOutlineParser() {}
 
-    record Outline(String premise, List<ScenarioAct> acts) {}
+    /** premiseOpening : who speaks first when the story begins ("[NPC STARTS]" in the premise, already cut out of premise). */
+    record Outline(String premise, List<ScenarioAct> acts, NpcOpening premiseOpening) {}
 
     static Outline parse(String rawInput) {
         // Normalise CRLF/CR -> LF avant tout decoupage sur "\n" : sans ca, chaque ligne garde un
@@ -36,23 +39,27 @@ final class ScenarioOutlineParser {
         // ChatSession.fresh) deversait toute la premisse d'un coup — voir evols/2026-07-17-...
         String raw = rawInput.replace("\r\n", "\n").replace("\r", "\n");
         List<Heading> headings = splitHeadings(raw);
-        if (headings.isEmpty()) return new Outline(raw.strip(), List.of());
+        if (headings.isEmpty()) {
+            NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(raw);
+            return new Outline(premise.text().strip(), List.of(), premise.opening());
+        }
 
         Heading first = headings.get(0);
-        String premise;
+        String premiseText;
         List<Heading> actHeadings;
         if (first.depth == 1 && first.title.strip().equalsIgnoreCase(SCENARIO_MARKER)) {
-            premise = first.body.strip();
+            premiseText = first.body.strip();
             actHeadings = headings.subList(1, headings.size());
         } else {
-            premise = textBefore(raw, first).strip();
+            premiseText = textBefore(raw, first).strip();
             actHeadings = headings;
         }
+        NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(premiseText);
 
         List<Node> roots = buildTree(actHeadings);
         List<ScenarioAct> leaves = new ArrayList<>();
         for (Node root : roots) flatten(root, new ArrayList<>(), leaves, new ArrayList<>());
-        return new Outline(premise, leaves);
+        return new Outline(premise.text().strip(), leaves, premise.opening());
     }
 
     // -------------------------------------------------------------------------
@@ -97,7 +104,8 @@ final class ScenarioOutlineParser {
     private static final class Node {
         ActNumber  number;
         String     title;
-        String     body;
+        String     body;        // "[NPC STARTS]" line already cut out
+        NpcOpening opening = NpcOpening.NONE;
         List<Node> children = new ArrayList<>();
     }
 
@@ -108,7 +116,9 @@ final class ScenarioOutlineParser {
         for (Heading h : headings) {
             Node node = new Node();
             node.title = h.title;
-            node.body  = h.body.strip();
+            NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(h.body.strip());
+            node.body    = body.text().strip();
+            node.opening = body.opening();
 
             int depth = Math.min(h.depth, stack.size() + 1); // tolerate a heading level skip
             while (stack.size() >= depth) stack.remove(stack.size() - 1);
@@ -137,10 +147,12 @@ final class ScenarioOutlineParser {
             String resolvedText = path.stream().map(n -> n.body).filter(b -> !b.isBlank())
                 .reduce((a, b) -> a + "\n\n" + b).orElse("");
             List<String> beats = new ArrayList<>();
-            for (String own : newlyEntered(path, previousPath).stream().map(n -> n.body).toList()) {
-                beats.addAll(Teaser.extractAll(own));
+            NpcOpening opening = NpcOpening.NONE;
+            for (Node entered : newlyEntered(path, previousPath)) {
+                beats.addAll(Teaser.extractAll(entered.body));
+                if (opening.isNone()) opening = entered.opening; // le premier marqueur, de la racine a la feuille, decide
             }
-            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats));
+            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening));
             previousPath.clear();
             previousPath.addAll(path);
         } else {

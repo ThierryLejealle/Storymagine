@@ -12,6 +12,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChatSessionTest {
@@ -132,6 +133,165 @@ class ChatSessionTest {
         assertEquals(2, session.currentAct());
         assertEquals(Set.of("test-npc"), session.presentNpcIds());
         assertEquals(Set.of("test-npc"), session.interjectingNpcIds());
+    }
+
+    // ── Numerotation des tours ──────────────────────────────────────────────
+
+    private static ChatSession sessionWithSixTurns() {
+        ChatSession session = ChatSession.fresh(scenario("premise", List.of()));
+        for (int i = 1; i <= 6; i++) {
+            session.append(new ChatTurn(i % 2 == 1 ? ChatTurn.Speaker.PLAYER : ChatTurn.Speaker.LLM, "turn " + i));
+        }
+        return session;
+    }
+
+    @Test
+    void turnsAreNumberedFromOneAndEachCarriesTheActItWasWrittenIn() {
+        ChatScenario scenario = scenario("premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
+        ChatSession session = ChatSession.fresh(scenario);
+        session.append(new ChatTurn(ChatTurn.Speaker.PLAYER, "First."));
+        session.advanceAct();
+        session.append(new ChatTurn(ChatTurn.Speaker.PLAYER, "Second."));
+
+        List<NumberedTurn> numbered = session.numberedTurns();
+
+        assertEquals(List.of(TurnNumber.of(1), TurnNumber.of(2)), numbered.stream().map(NumberedTurn::number).toList());
+        assertEquals(List.of(1, 2), numbered.stream().map(NumberedTurn::act).toList());
+        assertEquals(TurnNumber.of(1), session.firstTurnNumber());
+        assertEquals(TurnNumber.of(2), session.lastTurnNumber());
+    }
+
+    @Test
+    void anEmptySessionHasNoLastTurn() {
+        ChatSession session = ChatSession.fresh(scenario("premise", List.of()));
+
+        assertEquals(TurnNumber.NONE, session.lastTurnNumber());
+    }
+
+    @Test
+    void narratorBeatsOfAnActAdvanceAreNumberedAndStampedWithTheNewAct() {
+        ChatScenario scenario = scenario("premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.\n[The storm breaks.]")));
+        ChatSession session = ChatSession.fresh(scenario);
+        session.append(new ChatTurn(ChatTurn.Speaker.LLM, "Time to go. [NEXT ACT]"));
+
+        session.advanceAct();
+
+        List<NumberedTurn> numbered = session.numberedTurns();
+        assertEquals(2, numbered.size());
+        assertEquals(1, numbered.get(0).act(), "la reponse qui declenche l'avance garde l'ancien acte");
+        assertEquals(2, numbered.get(1).act(), "les [...] du nouvel acte portent le nouvel acte");
+        assertEquals(ChatTurn.Speaker.NARRATOR, numbered.get(1).turn().speaker());
+    }
+
+    @Test
+    void truncateFromFreesTheNumbersOfTheDroppedTurns() {
+        ChatSession session = sessionWithSixTurns();
+
+        session.truncateFrom(2);
+        session.append(new ChatTurn(ChatTurn.Speaker.PLAYER, "again"));
+
+        assertEquals(TurnNumber.of(3), session.lastTurnNumber());
+        assertEquals("again", session.numberedTurns().get(2).turn().text());
+    }
+
+    @Test
+    void compactIntoDropsTheHeadKeepsNumbersStableAndReturnsTheCompaction() {
+        ChatSession session = sessionWithSixTurns();
+
+        Compaction compaction = session.compactInto("Folded.", session.turns().subList(4, 6));
+
+        assertEquals(new Compaction(TurnNumber.of(6), TurnNumber.of(4), "Folded."), compaction);
+        assertEquals("Folded.", session.summary());
+        assertEquals(TurnNumber.of(5), session.firstTurnNumber());
+        assertEquals(TurnNumber.of(6), session.lastTurnNumber());
+        assertEquals(List.of(TurnNumber.of(5), TurnNumber.of(6)),
+            session.numberedTurns().stream().map(NumberedTurn::number).toList(), "un tour garde son numero apres compaction");
+    }
+
+    @Test
+    void numbersKeepGrowingAfterACompaction() {
+        ChatSession session = sessionWithSixTurns();
+        session.compactInto("Folded.", session.turns().subList(4, 6));
+
+        session.append(new ChatTurn(ChatTurn.Speaker.PLAYER, "seven"));
+
+        assertEquals(TurnNumber.of(7), session.lastTurnNumber());
+    }
+
+    @Test
+    void aCompactionCanFoldEverythingLeavingAnEmptyWindowThatStillKnowsWhereItStands() {
+        ChatSession session = sessionWithSixTurns();
+
+        Compaction compaction = session.compactInto("All folded.", List.of());
+
+        assertEquals(new Compaction(TurnNumber.of(6), TurnNumber.of(6), "All folded."), compaction);
+        assertTrue(session.turns().isEmpty());
+        assertEquals(TurnNumber.of(6), session.lastTurnNumber());
+    }
+
+    @Test
+    void restoredRejectsTurnsThatDoNotStartAtTheGivenFirstNumber() {
+        ChatScenario scenario = scenario("premise", List.of());
+        List<NumberedTurn> turns = List.of(
+            new NumberedTurn(TurnNumber.of(5), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "a")),
+            new NumberedTurn(TurnNumber.of(7), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "gap")));
+
+        assertThrows(IllegalStateException.class, () -> ChatSession.restored(scenario, "", TurnNumber.of(5), turns, 0,
+            Set.of("test-npc"), Set.of("test-npc")));
+    }
+
+    @Test
+    void restoreConversationFromReplacesTurnsSummaryAndActButNeverPresence() {
+        ChatScenario scenario = scenario("premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
+        ChatSession live = new ChatSession(scenario, List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "now")), "new summary", 2,
+            Set.of("test-npc"), Set.of());
+        ChatSession earlier = ChatSession.restored(scenario, "old summary", TurnNumber.of(1),
+            List.of(new NumberedTurn(TurnNumber.of(1), 1, new ChatTurn(ChatTurn.Speaker.PLAYER, "then"))), 1,
+            Set.of("test-npc"), Set.of("test-npc"));
+
+        live.restoreConversationFrom(earlier);
+
+        assertEquals("old summary", live.summary());
+        assertEquals(1, live.currentAct());
+        assertEquals("then", live.turns().get(0).text());
+        assertEquals(Set.of(), live.interjectingNpcIds(), "les reglages du joueur ne sont pas rembobines");
+    }
+
+    @Test
+    void restoreConversationFromKeepsTheInMemoryTurnWhenItIsTheSameSoItsThinkingSurvives() {
+        ChatScenario scenario = scenario("premise", List.of());
+        ChatTurn withThinking = new ChatTurn(ChatTurn.Speaker.LLM, "reply", "my private reasoning", "test-npc");
+        ChatSession live = new ChatSession(scenario, List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "hi"), withThinking), "", 0);
+        ChatSession reloaded = ChatSession.restored(scenario, "", TurnNumber.of(1), List.of(
+            new NumberedTurn(TurnNumber.of(1), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "hi")),
+            new NumberedTurn(TurnNumber.of(2), 0, new ChatTurn(ChatTurn.Speaker.LLM, "reply", "", "test-npc"))), 0,
+            Set.of("test-npc"), Set.of("test-npc"));
+
+        live.restoreConversationFrom(reloaded);
+
+        assertEquals("my private reasoning", live.turns().get(1).thinking());
+    }
+
+    @Test
+    void restoreFromReplacesEverythingIncludingNumbersAndPresence() {
+        ChatScenario scenario = scenario("premise", List.of());
+        ChatSession live = sessionWithSixTurns();
+        ChatSession saved = ChatSession.restored(scenario, "saved summary", TurnNumber.of(9),
+            List.of(new NumberedTurn(TurnNumber.of(9), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "nine"))), 0,
+            Set.of("test-npc"), Set.of());
+
+        live.restoreFrom(saved);
+
+        assertEquals("saved summary", live.summary());
+        assertEquals(TurnNumber.of(9), live.firstTurnNumber());
+        assertEquals(TurnNumber.of(9), live.lastTurnNumber());
+        assertEquals(Set.of(), live.interjectingNpcIds());
     }
 
     @Test

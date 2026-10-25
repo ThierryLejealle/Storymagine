@@ -26,9 +26,16 @@ import java.util.List;
  * GenerationSettings) — null fields mean "using RoleplayNarrator's default" — used to pre-fill the
  * settings panel on page load. cast rides along on every response (not just a dedicated endpoint)
  * so the vignette column always reflects the latest presence state without an extra round-trip.
+ * lastTurnNumber is the TurnNumber of the run's last turn : the page numbers its bubbles by
+ * counting back from it (the displayed bubbles are always consecutive turns ending there), so
+ * individual turns never need to carry their number over the wire.
+ * npcOpeningPending is true when the story or the current act has just begun and its author asked
+ * for an Npc to speak first ("[NPC STARTS]", see NpcOpening) : the page then sends an empty "DO:"
+ * by itself, exactly as if the player had clicked DO.
  */
 public record ChatHistoryView(String scenarioName, List<ChatTurn> turns, List<ChatTurn> newTurns,
                                int removedTurnCount, boolean compacted, int promptTokens, int contextWindow,
                                int currentAct, int totalActs, boolean actAdvanced, String actTitle,
-                               GenerationSettings generationSettings, List<NpcView> cast) {
+                               GenerationSettings generationSettings, List<NpcView> cast, int lastTurnNumber,
+                               boolean npcOpeningPending) {
 }

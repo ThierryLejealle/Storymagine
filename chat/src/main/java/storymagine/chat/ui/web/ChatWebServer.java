@@ -8,6 +8,7 @@ import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutp
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
+import storymagine.chat.coeur.domaine.session.TurnNumber;
 import storymagine.chat.coeur.service.ChatService;
 import storymagine.chat.coeur.service.ChatTurnResult;
 import storymagine.chat.coeur.service.ExchangeProgressListener;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
@@ -40,6 +42,9 @@ public class ChatWebServer {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /** How many consecutive ports are tried from the preferred one before giving up. */
+    private static final int MAX_PORT_ATTEMPTS = 20;
+
     private final ChatService service;
     private final Path        chatScenariosRoot;
     private final ChatSession session;
@@ -60,10 +65,15 @@ public class ChatWebServer {
         this.contextWindow     = service.contextWindow();
     }
 
-    public void start() throws IOException {
+    /**
+     * Starts the server on the preferred port, or on the next free one (port+1, port+2...) when it
+     * is already taken — lets several chats run side by side. Returns the port actually bound.
+     */
+    public int start() throws IOException {
         // Loopback uniquement — une session RP est un contenu prive, elle ne doit pas etre servie
         // au reste du LAN sans authentification.
-        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
+        HttpServer server = bindFirstFreePort();
+        int boundPort = server.getAddress().getPort();
         server.createContext("/",         this::handlePage);
         server.createContext("/history",  this::handleHistory);
         server.createContext("/message",  this::handleMessage);
@@ -77,6 +87,7 @@ public class ChatWebServer {
         server.createContext("/delete-save", this::handleDeleteSave);
         server.createContext("/retry",    this::handleRetry);
         server.createContext("/undo",     this::handleUndo);
+        server.createContext("/rollback", this::handleRollback);
         server.createContext("/settings", this::handleSettings);
         server.createContext("/set-present", this::handleSetPresent);
         server.createContext("/set-interjecting", this::handleSetInterjecting);
@@ -85,6 +96,19 @@ public class ChatWebServer {
         server.createContext("/stop",     this::handleStop);
         server.setExecutor(Executors.newFixedThreadPool(2));
         server.start();
+        return boundPort;
+    }
+
+    private HttpServer bindFirstFreePort() throws IOException {
+        BindException last = null;
+        for (int candidate = port; candidate < port + MAX_PORT_ATTEMPTS; candidate++) {
+            try {
+                return HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), candidate), 0);
+            } catch (BindException e) {
+                last = e;
+            }
+        }
+        throw new IOException("Aucun port libre entre " + port + " et " + (port + MAX_PORT_ATTEMPTS - 1), last);
     }
 
     private void handlePage(HttpExchange ex) throws IOException {
@@ -225,6 +249,39 @@ public class ChatWebServer {
         Integer steps = parseInt(parseFormBody(nullToEmpty(ex.getRequestURI().getQuery())).get("steps"));
         int removed = service.undo(chatScenariosRoot, session, steps != null ? steps : 1);
         writeJson(ex, 200, currentView(List.of(), removed, false, false));
+    }
+
+    /**
+     * Bouton "revenir ici" d'une bulle (voir chat.html) : ramene la partie au tour `to`, de facon
+     * destructive (voir ChatService.rollbackTo). Remplacement complet de l'etat comme /load-save :
+     * la reponse a la meme forme que /history et le client repeint tout via render() — une
+     * restauration peut remettre dans la fenetre des tours que le client n'affichait plus. Le client
+     * a deja confirme avec le joueur et propose une sauvegarde avant d'appeler ce point d'entree.
+     * Passe par beginGeneration/endGeneration : une compaction (appel LLM) peut s'ensuivre, /stop
+     * doit pouvoir l'interrompre.
+     */
+    private void handleRollback(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        Integer to = parseInt(parseFormBody(nullToEmpty(ex.getRequestURI().getQuery())).get("to"));
+        if (to == null || to < 0) {
+            writeJson(ex, 400, new ErrorView("Numero de tour manquant ou invalide."));
+            return;
+        }
+        beginGeneration();
+        try {
+            service.rollbackTo(chatScenariosRoot, session, TurnNumber.of(to));
+            lastPromptTokens = 0;
+            writeJson(ex, 200, currentView(List.of(), 0, false, false));
+        } catch (IllegalArgumentException e) {
+            writeJson(ex, 400, new ErrorView(e.getMessage()));
+        } catch (GenerationCancelledException e) {
+            clearInterruptFlag();
+            writeJson(ex, 200, currentView(List.of(), 0, false, false));
+        } catch (Exception e) {
+            writeJson(ex, 500, new ErrorView(e.getMessage()));
+        } finally {
+            endGeneration();
+        }
     }
 
     private static String nullToEmpty(String s) { return s == null ? "" : s; }
@@ -431,7 +488,8 @@ public class ChatWebServer {
                                          boolean actAdvanced) {
         return new ChatHistoryView(session.scenario().name(), session.turns(), newTurns, removedTurnCount, compacted,
             lastPromptTokens, contextWindow, session.currentAct(), session.scenario().acts().size(), actAdvanced,
-            currentActTitle(), session.generationSettings(), castView());
+            currentActTitle(), session.generationSettings(), castView(), session.lastTurnNumber().value(),
+            !session.pendingNpcOpening().isNone());
     }
 
     private List<NpcView> castView() {

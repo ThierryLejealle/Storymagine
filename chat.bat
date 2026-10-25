@@ -7,7 +7,7 @@ set MAVEN_OPTS=--sun-misc-unsafe-memory-access=allow
 echo === Storymagine - Chat ===
 echo.
 
-mvn -pl chat -am compile exec:java
+mvn -pl chat -am compile exec:java -Dexec.args="%*"
 
 echo.
 pause

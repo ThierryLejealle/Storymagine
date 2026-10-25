@@ -1,7 +1,9 @@
 package storymagine.testllm.ui.cli;
 
 import storymagine.commun.coeur.ports.ModelEntry;
+import storymagine.commun.infra.LlamaServerConfig;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
+import storymagine.commun.infra.OllamaConfig;
 import storymagine.testllm.coeur.domaine.BenchRun;
 import storymagine.testllm.coeur.domaine.ThinkMode;
 import storymagine.testllm.coeur.service.TestLlmService;
@@ -29,6 +31,8 @@ import java.util.Scanner;
  * Usage : TestLlmCli [tout|favoris|choisir]
  */
 public class TestLlmCli {
+
+    private static final int CTX_DEFAUT_K = 32;
 
     public static void main(String[] args) throws Exception {
         System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
@@ -64,25 +68,32 @@ public class TestLlmCli {
         BenchSession  interactiveSession = null;
         Path          interactiveDir   = null;
         StringBuilder interactiveResume = null;
+        OllamaConfig  ollama           = null;
 
         try (Scanner sc = new Scanner(System.in)) {
 
-            // ── Menu GPU ───────────────────────────────────────────────────────────
-            System.out.println();
-            System.out.println("Configuration GPU Ollama :");
-            System.out.printf("  1. Utiliser Ollama deja demarre%n");
-            printGpuOption(2, gpus, 0);
-            printGpuOption(3, gpus, 1);
-            System.out.printf("  4. Relancer sur GPU 0+1 - split auto%n");
-            System.out.printf("  5. Complet : tester sur GPU 0, GPU 1 et GPU 0+1%n");
+            // ── Choix du serveur LLM ─────────────────────────────────────────────
+            boolean useLlamaServer = demanderProvider(sc);
 
-            while (gpuChoice < 1 || gpuChoice > 5) {
-                System.out.print("Choix GPU [1-5] : ");
-                String line = sc.nextLine().trim();
-                try { gpuChoice = Integer.parseInt(line); } catch (NumberFormatException ignored) {}
-                if (gpuChoice < 1 || gpuChoice > 5) System.out.println("  Entree invalide, choisir 1-5.");
+            if (!useLlamaServer) {
+                // ── Menu GPU (Ollama uniquement — llama-server ne gere aucun process, voir
+                // LlamaServerAdapter) ────────────────────────────────────────────────
+                System.out.println();
+                System.out.println("Configuration GPU Ollama :");
+                System.out.printf("  1. Utiliser Ollama deja demarre%n");
+                printGpuOption(2, gpus, 0);
+                printGpuOption(3, gpus, 1);
+                System.out.printf("  4. Relancer sur GPU 0+1 - split auto%n");
+                System.out.printf("  5. Complet : tester sur GPU 0, GPU 1 et GPU 0+1%n");
+
+                while (gpuChoice < 1 || gpuChoice > 5) {
+                    System.out.print("Choix GPU [1-5] : ");
+                    String line = sc.nextLine().trim();
+                    try { gpuChoice = Integer.parseInt(line); } catch (NumberFormatException ignored) {}
+                    if (gpuChoice < 1 || gpuChoice > 5) System.out.println("  Entree invalide, choisir 1-5.");
+                }
+                System.out.println();
             }
-            System.out.println();
 
             // ── Nombre de boucles par test ────────────────────────────────────────
             runs = demanderNombreBoucles(sc, runs);
@@ -90,75 +101,98 @@ public class TestLlmCli {
             // ── Thinking a tester ────────────────────────────────────────────────
             thinkMode = demanderThinkMode(sc);
 
-            // ── Preparation GPU ────────────────────────────────────────────────────
-            if (gpuChoice == 5) {
-                System.out.printf("[testllm] Mode complet (GPU 0 -> GPU 1 -> GPU 0+1)%n");
-                System.out.printf("[testllm] Lancement Ollama sur GPU 0 pour selection de modele...%n");
-                OllamaLauncher.killAll();
-                OllamaLauncher.launch("0", ollamaUrl);
-                System.out.printf("[testllm] Ollama pret.%n%n");
+            if (useLlamaServer) {
+                // ── llama-server : un seul modele deja charge par le process, pas de
+                // catalogue ni de contexte modifiable a chaud (voir LlamaServerAdapter) —
+                // pas de menu GPU, pas de tout/favoris, juste le modele configure. ──────
+                LlamaServerConfig llamaServer = config.llamaServerConfig();
+                System.out.printf("[testllm] Contexte llama-server (fixe au lancement du process) : %dk%n%n",
+                        llamaServer.contextWindowSize() / 1000);
 
-                interactiveDir    = runDir.resolve("gpu-0");
-                interactiveResume = new StringBuilder();
-                creerDossiersPasses(interactiveDir);
-                interactiveSession = TestLlmAssembler.assemble(config, interactiveDir, runs,
-                        interactiveResume, gpuLabel(gpus, 0));
-            } else {
-                resolvedGpuMode = resolveGpuMode(gpuChoice, gpus, ollamaUrl);
+                choixModele  = demanderNomModele(sc, config.llamaServerModelName());
+                modeEffectif = "choisir";
+
                 interactiveDir    = runDir;
                 interactiveResume = new StringBuilder();
                 creerDossiersPasses(runDir);
-                interactiveSession = TestLlmAssembler.assemble(config, runDir, runs,
-                        interactiveResume, resolvedGpuMode);
-            }
+                interactiveSession = TestLlmAssembler.assembleLlamaServer(config, llamaServer, runDir, runs,
+                        interactiveResume, "llama-server");
+            } else {
+                // ── Taille de contexte ───────────────────────────────────────────────
+                int ctxK = demanderContexte(sc, CTX_DEFAUT_K);
+                ollama   = config.ollamaConfig().withContextWindowSize(ctxK * 1000);
+                System.out.printf("[testllm] Contexte : %dk (%d tokens)%n%n", ctxK, ollama.contextWindowSize());
 
-            // ── Selection mode et modele ───────────────────────────────────────────
-            if ("menu".equals(mode) || "choisir".equals(mode)) {
-                if ("menu".equals(mode)) {
-                    System.out.println("Que voulez-vous tester ?");
-                    System.out.println("  1. Tous les modeles Ollama");
-                    System.out.println("  2. Favoris (configures dans testllm.properties)");
-                    System.out.println("  3. Choisir un modele specifique");
-                    while (true) {
-                        System.out.print("Choix [1-3] : ");
-                        String line = sc.nextLine().trim();
-                        if ("1".equals(line))      { modeEffectif = "tout";    break; }
-                        else if ("2".equals(line)) { modeEffectif = "favoris"; break; }
-                        else if ("3".equals(line)) { modeEffectif = "choisir"; break; }
-                        else System.out.println("  Entree invalide, choisir 1-3.");
-                    }
+                // ── Preparation GPU ────────────────────────────────────────────────────
+                if (gpuChoice == 5) {
+                    System.out.printf("[testllm] Mode complet (GPU 0 -> GPU 1 -> GPU 0+1)%n");
+                    System.out.printf("[testllm] Lancement Ollama sur GPU 0 pour selection de modele...%n");
+                    OllamaLauncher.killAll();
+                    OllamaLauncher.launch("0", ollamaUrl);
+                    System.out.printf("[testllm] Ollama pret.%n%n");
+
+                    interactiveDir    = runDir.resolve("gpu-0");
+                    interactiveResume = new StringBuilder();
+                    creerDossiersPasses(interactiveDir);
+                    interactiveSession = TestLlmAssembler.assemble(config, ollama, interactiveDir, runs,
+                            interactiveResume, gpuLabel(gpus, 0));
+                } else {
+                    resolvedGpuMode = resolveGpuMode(gpuChoice, gpus, ollamaUrl);
+                    interactiveDir    = runDir;
+                    interactiveResume = new StringBuilder();
+                    creerDossiersPasses(runDir);
+                    interactiveSession = TestLlmAssembler.assemble(config, ollama, runDir, runs,
+                            interactiveResume, resolvedGpuMode);
                 }
-                if ("choisir".equals(modeEffectif)) {
-                    List<ModelEntry> modeles = interactiveSession.service().listerModeles();
-                    if (modeles.isEmpty()) {
-                        System.err.printf("[testllm] Aucun modele trouve dans Ollama.%n");
-                        System.exit(1);
+
+                // ── Selection mode et modele ───────────────────────────────────────────
+                if ("menu".equals(mode) || "choisir".equals(mode)) {
+                    if ("menu".equals(mode)) {
+                        System.out.println("Que voulez-vous tester ?");
+                        System.out.println("  1. Tous les modeles Ollama");
+                        System.out.println("  2. Favoris (configures dans testllm.properties)");
+                        System.out.println("  3. Choisir un modele specifique");
+                        while (true) {
+                            System.out.print("Choix [1-3] : ");
+                            String line = sc.nextLine().trim();
+                            if ("1".equals(line))      { modeEffectif = "tout";    break; }
+                            else if ("2".equals(line)) { modeEffectif = "favoris"; break; }
+                            else if ("3".equals(line)) { modeEffectif = "choisir"; break; }
+                            else System.out.println("  Entree invalide, choisir 1-3.");
+                        }
                     }
-                    int w = modeles.stream().mapToInt(e -> e.name().length()).max().orElse(10);
-                    System.out.println("Modeles disponibles :");
-                    for (int i = 0; i < modeles.size(); i++) {
-                        ModelEntry e = modeles.get(i);
-                        System.out.printf("  %d. %-" + w + "s   %.1f Go%n",
-                                i + 1, e.name(), e.sizeBytes() / 1_073_741_824.0);
+                    if ("choisir".equals(modeEffectif)) {
+                        List<ModelEntry> modeles = interactiveSession.service().listerModeles();
+                        if (modeles.isEmpty()) {
+                            System.err.printf("[testllm] Aucun modele trouve dans Ollama.%n");
+                            System.exit(1);
+                        }
+                        int w = modeles.stream().mapToInt(e -> e.name().length()).max().orElse(10);
+                        System.out.println("Modeles disponibles :");
+                        for (int i = 0; i < modeles.size(); i++) {
+                            ModelEntry e = modeles.get(i);
+                            System.out.printf("  %d. %-" + w + "s   %.1f Go%n",
+                                    i + 1, e.name(), e.sizeBytes() / 1_073_741_824.0);
+                        }
+                        while (true) {
+                            System.out.printf("Modele [1-%d] : ", modeles.size());
+                            String line = sc.nextLine().trim();
+                            try {
+                                int n = Integer.parseInt(line);
+                                if (n >= 1 && n <= modeles.size()) { choixModele = modeles.get(n - 1).name(); break; }
+                            } catch (NumberFormatException ignored) {}
+                            System.out.printf("  Entree invalide, choisir 1-%d.%n", modeles.size());
+                        }
                     }
-                    while (true) {
-                        System.out.printf("Modele [1-%d] : ", modeles.size());
-                        String line = sc.nextLine().trim();
-                        try {
-                            int n = Integer.parseInt(line);
-                            if (n >= 1 && n <= modeles.size()) { choixModele = modeles.get(n - 1).name(); break; }
-                        } catch (NumberFormatException ignored) {}
-                        System.out.printf("  Entree invalide, choisir 1-%d.%n", modeles.size());
+                    if ("favoris".equals(modeEffectif)) {
+                        List<String> favoris = interactiveSession.service().listerFavoris();
+                        if (favoris.isEmpty()) {
+                            System.err.println("[testllm] Aucun favori configure dans testllm.properties");
+                            System.exit(1);
+                        }
+                        System.out.println("[testllm] Mode : FAVORIS");
+                        favoris.forEach(f -> System.out.printf("  - %s%n", f));
                     }
-                }
-                if ("favoris".equals(modeEffectif)) {
-                    List<String> favoris = interactiveSession.service().listerFavoris();
-                    if (favoris.isEmpty()) {
-                        System.err.println("[testllm] Aucun favori configure dans testllm.properties");
-                        System.exit(1);
-                    }
-                    System.out.println("[testllm] Mode : FAVORIS");
-                    favoris.forEach(f -> System.out.printf("  - %s%n", f));
                 }
             }
         } // Scanner ferme ici — toute la saisie est terminee
@@ -213,7 +247,7 @@ public class TestLlmCli {
                     }
 
                     StringBuilder gpuResume = resumeByGpu.get(cuda);
-                    BenchSession  session   = TestLlmAssembler.assemble(config, gpuDir, runs, gpuResume, label);
+                    BenchSession  session   = TestLlmAssembler.assemble(config, ollama, gpuDir, runs, gpuResume, label);
                     BenchRun      benchRun  = session.service().benchModele(modele, gpuDir, thinkMode);
                     ecrireResultats(benchRun, formatter, gpuResume);
                     new BenchCsvWriter().appendResults(csvFile, benchDate, benchHeure, benchRun,
@@ -334,6 +368,44 @@ public class TestLlmCli {
                 if (n >= 1 && n <= 10) return n;
             } catch (NumberFormatException ignored) {}
             System.out.println("  Entree invalide, choisir un nombre entre 1 et 10 (ou Entree pour " + defaut + ").");
+        }
+    }
+
+    private static boolean demanderProvider(Scanner sc) {
+        System.out.println();
+        System.out.println("Quel serveur LLM utiliser ?");
+        System.out.println("  1. Ollama");
+        System.out.println("  2. llama-server");
+        while (true) {
+            System.out.print("Choix [1-2] : ");
+            String line = sc.nextLine().trim();
+            if ("1".equals(line)) return false;
+            if ("2".equals(line)) return true;
+            System.out.println("  Entree invalide, choisir 1 ou 2.");
+        }
+    }
+
+    private static String demanderNomModele(Scanner sc, String defaut) {
+        while (true) {
+            System.out.printf("Nom du modele charge dans llama-server%s : ",
+                    defaut.isBlank() ? "" : " [" + defaut + "]");
+            String line = sc.nextLine().trim();
+            if (!line.isBlank()) return line;
+            if (!defaut.isBlank()) return defaut;
+            System.out.println("  Entree invalide, un nom de modele est requis.");
+        }
+    }
+
+    private static int demanderContexte(Scanner sc, int defautK) {
+        while (true) {
+            System.out.printf("Taille de contexte en k [%d] : ", defautK);
+            String line = sc.nextLine().trim();
+            if (line.isBlank()) return defautK;
+            try {
+                int k = Integer.parseInt(line);
+                if (k >= 1) return k;
+            } catch (NumberFormatException ignored) {}
+            System.out.println("  Entree invalide, choisir un nombre entier positif (ou Entree pour " + defautK + ").");
         }
     }
 

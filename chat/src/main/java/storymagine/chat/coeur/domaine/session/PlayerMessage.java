@@ -18,6 +18,11 @@ public record PlayerMessage(String text, Mode mode) {
         return new PlayerMessage(trimmed, Mode.DIALOGUE);
     }
 
+    /** "DO:" with nothing after it — the way an Npc is asked to open a story or act (see NpcOpening). */
+    public boolean isEmptyHandoff() {
+        return mode == Mode.NARRATOR_HANDOFF && text.isEmpty();
+    }
+
     /** The line as it should appear in the prompt / stored history : "DO: " prefix restored for a narrator handoff. */
     public String formattedLine() {
         return mode == Mode.NARRATOR_HANDOFF ? DO_PREFIX + " " + text : text;

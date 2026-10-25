@@ -13,15 +13,18 @@ import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarratorInp
 import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarratorOutput;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.session.ChatContextBudget;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder.ChatPrompt;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
+import storymagine.chat.coeur.domaine.session.Compaction;
 import storymagine.chat.coeur.domaine.session.PlayerMessage;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.Scene;
 import storymagine.chat.coeur.domaine.session.SpeakerSelector;
+import storymagine.chat.coeur.domaine.session.TurnNumber;
 import storymagine.chat.coeur.ports.ChatStoragePort;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
 import storymagine.commun.coeur.ports.LogPort;
@@ -91,6 +94,11 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public boolean hasSavedSession(Path chatScenariosRoot, ChatScenario scenario) {
+        return storage.hasPlayedTurns(chatScenariosRoot, scenario);
+    }
+
+    @Override
     public ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset) {
         if (reset) {
             storage.resetSession(chatScenariosRoot, scenario);
@@ -108,20 +116,25 @@ public class ChatServiceImpl implements ChatService {
     public ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput,
                                        ExchangeProgressListener listener) {
         PlayerMessage input = PlayerMessage.parse(rawPlayerInput);
+        int playerTurnIndex = session.turns().size();
+        // Un "DO:" vide au debut d'une histoire ou d'un acte ou l'auteur a ecrit [NPC STARTS] :
+        // c'est un PNJ qui ouvre (voir NpcOpening), le calcul doit preceder l'ajout du tour joueur.
+        NpcOpening opening = input.isEmptyHandoff() ? session.npcOpeningAt(playerTurnIndex) : NpcOpening.NONE;
         ChatTurn playerTurn = new ChatTurn(ChatTurn.Speaker.PLAYER, input.formattedLine());
         session.append(playerTurn);
+        storage.saveSession(chatScenariosRoot, session); // un tour est ecrit des qu'il existe
         listener.onTurnReady(playerTurn);
-        int playerTurnIndex = session.turns().size() - 1;
         try {
-            List<RoundSpeaker> speakers = resolveSpeakers(session, input.formattedLine());
+            List<RoundSpeaker> speakers = resolveSpeakers(session, input.formattedLine(), opening);
             return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, 0, listener);
         } catch (GenerationCancelledException e) {
             // N'arrive que quand AUCUN PNJ n'a repondu ce tour (voir generateRepliesAndFinish : une
             // replique deja aboutie survit desormais a un stop). Retire donc le tour joueur en
             // attente : rien n'a ete montre cote serveur pour cet echange, le joueur doit pouvoir
             // corriger et renvoyer son message sans qu'un tour orphelin ne traine dans l'historique
-            // (voir ChatWebServer.handleMessage).
+            // (voir ChatWebServer.handleMessage). Le fichier du tour, deja ecrit, est supprime aussi.
             session.truncateFrom(playerTurnIndex);
+            storage.saveSession(chatScenariosRoot, session);
             throw e;
         }
     }
@@ -159,8 +172,12 @@ public class ChatServiceImpl implements ChatService {
 
         if (fromNpcId == null) {
             int replacedCount = turns.size() - (lastPlayerIdx + 1);
-            session.truncateFrom(lastPlayerIdx + 1); // retire tout ce qui suit ce tour joueur, le garde lui
-            List<RoundSpeaker> speakers = resolveSpeakers(session, playerTurn.text());
+            // Calcule avant le rewind : un "DO:" vide d'ouverture doit retrouver son PNJ (voir NpcOpening).
+            NpcOpening opening = PlayerMessage.parse(playerTurn.text()).isEmptyHandoff()
+                ? session.npcOpeningAt(lastPlayerIdx) : NpcOpening.NONE;
+            // retire tout ce qui suit ce tour joueur, le garde lui
+            rewindTo(chatScenariosRoot, session, numberOfTurnAt(session, lastPlayerIdx));
+            List<RoundSpeaker> speakers = resolveSpeakers(session, playerTurn.text(), opening);
             return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, speakers, replacedCount,
                 ExchangeProgressListener.NOOP);
         }
@@ -184,7 +201,7 @@ public class ChatServiceImpl implements ChatService {
             throw new IllegalStateException("Ce PNJ n'a pas répondu dans ce tour.");
         }
         int replacedCount = turns.size() - fromIdx;
-        session.truncateFrom(fromIdx);
+        rewindTo(chatScenariosRoot, session, numberOfTurnAt(session, fromIdx - 1));
         return generateRepliesAndFinish(chatScenariosRoot, session, playerTurn, toRegenerate, replacedCount,
             ExchangeProgressListener.NOOP);
     }
@@ -209,9 +226,45 @@ public class ChatServiceImpl implements ChatService {
         }
         if (targetIdx < 0) return 0;
         int removedCount = turns.size() - targetIdx;
-        session.truncateFrom(targetIdx);
+        rewindTo(chatScenariosRoot, session, numberOfTurnAt(session, targetIdx - 1));
         storage.saveSession(chatScenariosRoot, session);
         return removedCount;
+    }
+
+    @Override
+    public int rollbackTo(Path chatScenariosRoot, ChatSession session, TurnNumber to) {
+        TurnNumber last = session.lastTurnNumber();
+        if (to.compareTo(last) > 0) {
+            throw new IllegalArgumentException("Tour #" + to.value() + " inexistant : le dernier tour est #" + last.value());
+        }
+        int removed = last.value() - to.value();
+        if (removed == 0) return 0;
+        rewindTo(chatScenariosRoot, session, to);
+        try {
+            compactIfNeeded(chatScenariosRoot, session);
+        } catch (GenerationCancelledException e) {
+            clearInterruptFlag(); // meme traitement qu'un resume vide : retente au prochain tour
+        }
+        storage.saveSession(chatScenariosRoot, session);
+        return removed;
+    }
+
+    /**
+     * The destructive core of every rollback (rollbackTo, undo, retry) : the state just after turn
+     * `to` is rebuilt from the persisted run (see ChatStoragePort.loadSessionAt — the right
+     * compaction, the verbatim turns after it, the act that turn was written in), everything after
+     * it is deleted from disk, and the session's conversation is replaced in place. Presence and
+     * interjection settings are the player's own and stay as they are.
+     */
+    private void rewindTo(Path chatScenariosRoot, ChatSession session, TurnNumber to) {
+        ChatSession atTurn = storage.loadSessionAt(chatScenariosRoot, session.scenario(), to);
+        storage.truncateAfter(chatScenariosRoot, session.scenario(), to);
+        session.restoreConversationFrom(atTurn);
+    }
+
+    /** The TurnNumber of the window's turn at index (index -1 is the turn just before the window). */
+    private static TurnNumber numberOfTurnAt(ChatSession session, int index) {
+        return TurnNumber.of(session.firstTurnNumber().value() + index);
     }
 
     /**
@@ -269,6 +322,7 @@ public class ChatServiceImpl implements ChatService {
 
             ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), npcId);
             session.append(replyTurn);
+            storage.saveSession(chatScenariosRoot, session); // un tour est ecrit des qu'il existe
             replyTurns.add(replyTurn);
             listener.onTurnReady(replyTurn);
 
@@ -313,7 +367,12 @@ public class ChatServiceImpl implements ChatService {
      * already in the transcript, matching the "react to what was just said" framing in
      * INTERJECTION_RULE.
      */
-    private List<RoundSpeaker> resolveSpeakers(ChatSession session, String playerMessage) {
+    private List<RoundSpeaker> resolveSpeakers(ChatSession session, String playerMessage, NpcOpening opening) {
+        if (!opening.isNone()) {
+            // Ouverture voulue par l'auteur : ce PNJ seul, sans interjection (voir NpcOpening).
+            return List.of(new RoundSpeaker(
+                SpeakerSelector.openingSpeaker(session.scenario().cast(), session.presentNpcIds(), opening, random), false));
+        }
         List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), session.presentNpcIds(),
             session.interjectingNpcIds(), playerMessage, previousRoundSpeakerIds(session), random);
         List<Npc> interjectors = SpeakerSelector.rollInterjectors(session.scenario().cast(), session.presentNpcIds(),
@@ -442,6 +501,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public SavePoint save(Path chatScenariosRoot, ChatSession session) {
+        storage.saveSession(chatScenariosRoot, session); // le zip prend la partie telle qu'elle est sur disque
         return storage.createSavePoint(chatScenariosRoot, session);
     }
 
@@ -457,8 +517,7 @@ public class ChatServiceImpl implements ChatService {
         // confirmation avant d'appeler ce point d'entree (voir chat.html) — l'ecrasement est donc
         // toujours un choix explicite du joueur, pas un accident a rattraper.
         ChatSession loaded = storage.loadSavePoint(chatScenariosRoot, session.scenario(), saveId);
-        session.restore(loaded.summary(), loaded.turns(), loaded.currentAct(), loaded.presentNpcIds(),
-            loaded.interjectingNpcIds());
+        session.restoreFrom(loaded);
         storage.saveSession(chatScenariosRoot, session);
     }
 
@@ -530,8 +589,10 @@ public class ChatServiceImpl implements ChatService {
             log.warn("ChatSummarizer a renvoyé un résumé vide — compactage ignoré ce tour-ci, historique conservé");
             return false;
         }
-        storage.archiveFoldedTurns(chatScenariosRoot, session.scenario(), toFold);
-        session.compactInto(newSummary, toKeep);
+        // Les tours replies ne sont pas supprimes du disque : ils restent dans la suite des tours, la
+        // compaction n'est qu'un fichier de plus (voir ChatStoragePort.writeCompaction).
+        Compaction compaction = session.compactInto(newSummary, toKeep);
+        storage.writeCompaction(chatScenariosRoot, session.scenario(), compaction);
         return true;
     }
 

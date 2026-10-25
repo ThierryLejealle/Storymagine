@@ -2,6 +2,7 @@ package storymagine.chat.coeur.domaine.session;
 
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -64,6 +65,21 @@ public final class SpeakerSelector {
         List<Npc> shuffled = new ArrayList<>(pool);
         Collections.shuffle(shuffled, random);
         return List.of(shuffled.get(0));
+    }
+
+    /**
+     * The Npc who opens a story or act (see NpcOpening) : the one the author named, if present,
+     * otherwise one present Npc picked at random (a named Npc muted by the player is not dragged
+     * back into the scene). Unlike select(), mentions, continuation and interjection eligibility play
+     * no role : the author's marker is the only input. presentIds must not be empty.
+     */
+    public static Npc openingSpeaker(Cast cast, Set<String> presentIds, NpcOpening opening, Random random) {
+        List<Npc> present = presentSorted(cast, presentIds);
+        if (opening.isNamed()) {
+            Optional<Npc> named = cast.findByName(opening.npcName()).filter(n -> presentIds.contains(n.id()));
+            if (named.isPresent()) return named.get();
+        }
+        return present.get(random.nextInt(present.size()));
     }
 
     /**

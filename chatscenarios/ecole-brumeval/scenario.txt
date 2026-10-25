@@ -1,0 +1,25 @@
+Joueur : Mila
+
+#SCENARIO
+Monde : L'Académie de Brumeval forme de jeunes sorciers et sorcières dans un vieux château perché au-dessus des nuages, entre cours de métamorphose, duels amicaux et couloirs mouvants. La magie y est enseignée avec sérieux, mais les élèves trouvent toujours un moyen de semer le chaos.
+Prémisse : Mila et Odile viennent toutes les deux du même petit village de Vallenoire et sont amies depuis l'enfance. Elles commencent leur troisième année à Brumeval. Un colis envoyé par la grand-mère de Mila va rapidement transformer une journée banale en course-poursuite à travers le château.
+Ton : Léger, complice, plein d'humour, avec une pointe de tendresse pour cette amitié de longue date.
+
+# Le colis suspect
+[Mila, une élève de troisième année à l'Académie de Brumeval, vient de recevoir un colis de sa grand-mère pendant le petit-déjeuner dans la Grande Salle.]
+[À côté d'elle, Odile, son amie d'enfance venue comme elle du village de Vallenoire, observe le paquet d'un air intrigué : il vibre légèrement et sent le soufre.]
+Point de départ : Mila vient d'ouvrir, ou s'apprête à ouvrir, le colis de sa grand-mère sous les yeux d'Odile, dans la Grande Salle bondée au petit-déjeuner.
+Ce qui doit se passer : Le colis contient un bocal cabossé censé renfermer "un porte-bonheur de famille" ; en réalité, un minuscule esprit de tempête s'en échappe dès l'ouverture, provoquant de petits phénomènes amusants autour de la table (couverts qui s'envolent, nappe qui claque comme une voile, cheveux hérissés). Odile réagit avec humour et complicité, et propose d'attraper la créature avant qu'un professeur ne remarque quoi que ce soit.
+Quand écrire [NEXT ACT] : Dès que la créature s'est échappée de la table et qu'il devient clair qu'il faut la poursuivre ailleurs que dans la Grande Salle.
+
+# La poursuite dans les couloirs
+[L'esprit de tempête miniature file à travers les couloirs animés du château, semant une traînée de petits désordres sur son passage.]
+[Mila et Odile se lancent à sa poursuite, slalomant entre escaliers mouvants et tableaux indignés.]
+Point de départ : La créature vient de quitter la Grande Salle ; Mila et Odile se précipitent à sa poursuite dans les couloirs du château.
+Ce qui doit se passer : Les deux amies improvisent des sortilèges mal maîtrisés pour tenter de piéger la créature, provoquant des quiproquos comiques (un escalier qui change de destination au pire moment, un tableau qui donne de faux conseils, un professeur presque surpris en flagrant délit). Leur complicité de longue date transparaît : private jokes, souvenirs du village, taquineries affectueuses.
+Quand écrire [NEXT ACT] : Dès que la créature se réfugie dans un endroit clos, comme la volière ou une salle de classe vide, où elle peut être coincée.
+
+# Le pacte avec l'esprit de tempête
+[Acculé dans une pièce du château, l'esprit de tempête miniature cesse de fuir et se met à négocier, dans un langage fait de sifflements et de bourrasques.]
+Point de départ : La créature est coincée, mais refuse de se laisser attraper simplement.
+Ce qui doit se passer : Il s'avère que l'esprit ne veut pas repartir dans son bocal : il réclame juste un peu de liberté et d'attention. Mila et Odile trouvent un compromis drôle et touchant, par exemple en l'adoptant comme "esprit porte-bonheur officieux" de leur dortoir. La scène se boucle sur la complicité des deux amies, dans la bonne humeur.

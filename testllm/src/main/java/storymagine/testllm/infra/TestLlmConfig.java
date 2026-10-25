@@ -1,5 +1,6 @@
 package storymagine.testllm.infra;
 
+import storymagine.commun.infra.LlamaServerConfig;
 import storymagine.commun.infra.OllamaConfig;
 import storymagine.commun.infra.RetryPolicy;
 
@@ -80,6 +81,34 @@ public class TestLlmConfig {
             retry,
             intProp("ollama.largeModelRamFractionPct",            60),
             intProp("ollama.largeModelTimeoutMultiplier",         2)
+        );
+    }
+
+    /** Nom du modele configure pour llama-server — vide si a demander interactivement. */
+    public String llamaServerModelName() {
+        return props.getProperty("llamaserver.model-name", "");
+    }
+
+    public LlamaServerConfig llamaServerConfig() {
+        RetryPolicy retry = new RetryPolicy(
+            intProp("llamaserver.retryCount",      2),
+            intProp("llamaserver.retryDelay1",     15),
+            intProp("llamaserver.retryDelay2",     30),
+            intProp("llamaserver.retryDelay3Plus", 60)
+        );
+        boolean streamMode = !"sync".equalsIgnoreCase(props.getProperty("llamaserver.mode", "stream"));
+        return new LlamaServerConfig(
+            props.getProperty("llamaserver.url",                  "http://localhost:8100"),
+            intProp("llamaserver.contextWindow",                   32768),
+            intProp("llamaserver.topK",                            40),
+            doubleProp("llamaserver.topP",                         0.9),
+            doubleProp("llamaserver.repeatPenalty",                1.1),
+            intProp("llamaserver.numPredict",                      -1),
+            streamMode,
+            intProp("llamaserver.timeoutMs",                       1200000),
+            intProp("llamaserver.stream.firstTokenTimeoutMs",      300000),
+            intProp("llamaserver.stream.interTokenTimeoutMs",      30000),
+            retry
         );
     }
 

@@ -5,61 +5,52 @@ import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
+import storymagine.chat.coeur.domaine.session.Compaction;
+import storymagine.chat.coeur.domaine.session.NumberedTurn;
 import storymagine.chat.coeur.domaine.session.SavePoint;
+import storymagine.chat.coeur.domaine.session.TurnNumber;
 import storymagine.chat.coeur.ports.ChatStoragePort;
+import storymagine.chat.infra.RunLayout.SequenceFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * File-based ChatStoragePort : chatScenariosRoot/{name}/scenario.txt (an optional "Joueur : X"
- * first line — see ChatScenario.playerName, stripped before the rest is parsed — then the premise,
- * optionally preceded by a "#SCENARIO" heading, followed by a nested Markdown outline of acts —
- * see ScenarioOutlineParser), optionally continued by scenario-1.txt, scenario-2.txt, ... (as many
- * as exist, consecutive, stopping at the first missing number) — each appended verbatim after
- * scenario.txt's own text before the combined blob is handed to ScenarioOutlineParser, which never
- * needs to know the outline came from more than one file. Lets a long scenario be authored (and
- * regenerated) chapter by chapter instead of as one giant file, purely a file-layout convenience —
- * see loadContinuationFiles ; a scenario with no scenario-1.txt behaves exactly as before. Plus one
- * ".txt" file per Cast member (any name except scenario.txt, scenario-N.txt, act.txt, present.txt,
- * interject.txt, AND whose first line is a "# Name" heading —
- * see loadCast ; "character.txt" is just an ordinary Npc file under this rule, which is how a
- * legacy single-character scenario naturally becomes a one-Npc Cast with no special case) and
- * history.md + summary.md + act.txt + present.txt +
- * interject.txt (persisted session, rewritten after every turn and on reset) + full-history.md
- * (append-only archive of every turn ever folded into the summary — never rewritten, never
- * truncated). saves/{stamp}/ holds the same five session files per player-triggered save point
- * (see createSavePoint), never touched by the automatic save/reset flow above. See ChatStoragePort
- * for the directory convention.
+ * File-based ChatStoragePort. The scenario itself, written by hand :
+ * chatScenariosRoot/{name}/scenario.txt (an optional "Joueur : X" first line — see
+ * ChatScenario.playerName, stripped before the rest is parsed — then the premise, optionally
+ * preceded by a "#SCENARIO" heading, followed by a nested Markdown outline of acts — see
+ * ScenarioOutlineParser), optionally continued by scenario-1.txt, scenario-2.txt, ... (consecutive,
+ * stopping at the first missing number, each appended verbatim after scenario.txt's own text — see
+ * loadContinuationFiles), plus one ".txt" file per Cast member in characters/ (first line a
+ * "# Name" heading — see loadCast). Everything the app generates while playing lives under
+ * {name}/run/ and is never part of the scenario : run/current/turns/ (one file per turn, one per
+ * compaction — see RunLayout, TurnFileCodec), run/current/state.txt (see RunState), run/saves/ and
+ * run/archive/ (zips of current/, see RunArchiver). A scenario directory still in the old layout is
+ * refused with a message pointing to migration.bat (see LegacyLayout). See specs/chat.md, "Le run".
  */
 public class ChatFileStorageAdapter implements ChatStoragePort {
 
-    private static final String SCENARIO_FILE  = "scenario.txt";
-    private static final String HISTORY_FILE      = "history.md";
-    private static final String SUMMARY_FILE      = "summary.md";
-    private static final String ACT_FILE          = "act.txt";
-    private static final String PRESENT_FILE      = "present.txt";
-    private static final String INTERJECT_FILE    = "interject.txt";
-    private static final String FULL_HISTORY_FILE = "full-history.md";
-    private static final String TXT_EXTENSION = ".txt";
+    private static final String SCENARIO_FILE   = "scenario.txt";
+    private static final String CHARACTERS_DIR  = "characters";
+    private static final String TXT_EXTENSION   = ".txt";
+    private static final String ZIP_EXTENSION   = ".zip";
 
-    /** Top-level ".txt" files that are session/scenario plumbing, never a Cast member's sheet. */
-    private static final Set<String> RESERVED_TXT_FILES = Set.of(SCENARIO_FILE, ACT_FILE, PRESENT_FILE, INTERJECT_FILE);
-
-    /** scenario-1.txt, scenario-2.txt, ... — see loadContinuationFiles ; also plumbing, never a Cast member's sheet. */
+    /** scenario-1.txt, scenario-2.txt, ... — see loadContinuationFiles. */
     private static final Pattern SCENARIO_CONTINUATION_FILE = Pattern.compile("scenario-(\\d+)\\.txt");
     /** First line of a continuation file must open a NEW top-level "#" heading, never "##" or deeper
      *  — see ScenarioOutlineParser.HEADING ; a continuation is only ever appended between two acts,
@@ -73,18 +64,8 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     /** Optional "Joueur : X" as the very first line of scenario.txt — see ChatScenario.playerName. */
     private static final Pattern PLAYER_NAME_LINE = Pattern.compile("^Joueur\\s*:\\s*(.+)$", Pattern.CASE_INSENSITIVE);
 
-    private static final String PLAYER_HEADER   = "### PLAYER";
-    private static final String LLM_HEADER      = "### LLM";
-    private static final String NARRATOR_HEADER = "### NARRATOR";
-
-    private static final String ARCHIVE_DIR   = "archive";
-    private static final DateTimeFormatter ARCHIVE_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss");
-
-    /** Millisecond precision (unlike ARCHIVE_STAMP) : createSavePoint can be called twice in quick
-     *  succession (the safety-net save just before loadSavePoint overwrites the live session), and
-     *  two saves landing in the same directory would silently overwrite one another. */
-    private static final String SAVES_DIR = "saves";
-    private static final DateTimeFormatter SAVE_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss-SSS");
+    /** Millisecond precision : two save points or archives made in quick succession must never share a name. */
+    private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss-SSS");
     private static final Pattern SAVE_ID_PATTERN = Pattern.compile("[0-9-]+");
 
     @Override
@@ -93,7 +74,9 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         try (var entries = Files.list(chatScenariosRoot)) {
             return entries
                 .filter(Files::isDirectory)
-                .filter(dir -> Files.exists(dir.resolve(SCENARIO_FILE)) && !loadCast(dir).npcs().isEmpty())
+                // un scenario a l'ancien format reste liste : le choisir donne le message "lancer migration.bat"
+                .filter(dir -> Files.exists(dir.resolve(SCENARIO_FILE))
+                    && (!loadCast(dir).npcs().isEmpty() || LegacyLayout.isLegacy(dir)))
                 .map(dir -> dir.getFileName().toString())
                 .sorted()
                 .toList();
@@ -105,6 +88,10 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     @Override
     public ChatScenario loadScenario(Path chatScenariosRoot, String name) {
         Path dir = chatScenariosRoot.resolve(name);
+        if (LegacyLayout.isLegacy(dir)) {
+            throw new IllegalStateException("Ancien format de scenario detecte dans " + dir
+                + " (fichiers de session ou fiches personnage a la racine) : lancer migration.bat.");
+        }
         Cast cast = loadCast(dir);
         String raw = readText(dir.resolve(SCENARIO_FILE));
         String[] lines = raw.split("\n", 2);
@@ -113,7 +100,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         String rest = m.matches() ? (lines.length > 1 ? lines[1] : "") : raw;
         String combined = appendContinuationFiles(dir, rest);
         ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(combined);
-        return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName);
+        return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName, outline.premiseOpening());
     }
 
     /**
@@ -140,21 +127,18 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     }
 
     /**
-     * Every ".txt" file in dir except the reserved ones (see RESERVED_TXT_FILES) AND whose first
-     * line is a "# Name" heading, alphabetical by filename. The heading requirement means a stray
-     * ".txt" dropped into a scenario directory (an old draft, a note, a misnamed backup) is quietly
-     * ignored instead of silently becoming a bogus Cast member — every real character file already
-     * starts with "# Name" by convention (see §3 of chatscenarios/rules.md), so this costs nothing
-     * for well-formed scenarios and only protects against the accidental case.
+     * Every ".txt" file of the scenario's characters/ directory whose first line is a "# Name"
+     * heading, alphabetical by filename. Only characters/ is read, so a stray file at the scenario
+     * root can never become a Cast member ; the heading requirement still quietly ignores a draft or
+     * a note dropped into characters/ instead of turning it into a nameless Npc.
      */
-    private static Cast loadCast(Path dir) {
+    private static Cast loadCast(Path scenarioDir) {
+        Path dir = scenarioDir.resolve(CHARACTERS_DIR);
         if (!Files.isDirectory(dir)) return new Cast(List.of());
         try (var entries = Files.list(dir)) {
             List<Npc> npcs = entries
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
-                .filter(f -> !RESERVED_TXT_FILES.contains(f.getFileName().toString()))
-                .filter(f -> !SCENARIO_CONTINUATION_FILE.matcher(f.getFileName().toString()).matches())
                 .filter(ChatFileStorageAdapter::hasNameHeading)
                 .sorted(Comparator.comparing(f -> f.getFileName().toString()))
                 .map(ChatFileStorageAdapter::parseNpcFile)
@@ -176,10 +160,10 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     /**
      * id = filename without ".txt". name = optional "# Name" first line (kept verbatim in
-     * publicInfo, not stripped — the character should still read it there, same convention as the
-     * old single-character.txt). An optional "# SECRET" line (on its own, case-insensitive) splits
-     * the rest : everything before is publicInfo, everything after is secretInfo — see Npc. No
-     * such line : the whole file is publicInfo, secretInfo is "" (a purely public character).
+     * publicInfo, not stripped — the character should still read it there). An optional "# SECRET"
+     * line (on its own, case-insensitive) splits the rest : everything before is publicInfo,
+     * everything after is secretInfo — see Npc. No such line : the whole file is publicInfo,
+     * secretInfo is "" (a purely public character).
      */
     private static Npc parseNpcFile(Path file) {
         String fileName = file.getFileName().toString();
@@ -204,123 +188,176 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         return new Npc(id, name, publicInfo, secretInfo);
     }
 
-    /**
-     * "# Name" first line of an Npc file — kept in publicInfo, not stripped. Always present by the
-     * time this runs : loadCast already filtered out any ".txt" file without one (see
-     * hasNameHeading), so the empty-string fallback here only matters for direct callers/tests that
-     * bypass that filter.
-     */
     private static String extractCharacterName(String content) {
         String firstLine = firstLine(content);
         return firstLine.startsWith(NAME_HEADING_PREFIX) ? firstLine.substring(NAME_HEADING_PREFIX.length()).strip() : "";
     }
 
+    // ── Le run : etat courant ───────────────────────────────────────────────
+
     @Override
     public ChatSession loadSession(Path chatScenariosRoot, ChatScenario scenario) {
-        return readSessionFiles(chatScenariosRoot.resolve(scenario.name()), scenario);
+        return readCurrentRun(chatScenariosRoot, scenario);
+    }
+
+    @Override
+    public boolean hasPlayedTurns(Path chatScenariosRoot, ChatScenario scenario) {
+        for (SequenceFile file : RunLayout.listSequence(RunLayout.turnsDir(chatScenariosRoot, scenario.name()))) {
+            if (file.kind() != SequenceFile.Kind.TURN) continue;
+            if (TurnFileCodec.parse(readText(file.path()), file.path()).turn().speaker() != ChatTurn.Speaker.NARRATOR) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Rebuilds the current run just after its last persisted turn. Neither a turn file nor a
+     * state.txt means the run was never written (a scenario played for the very first time,
+     * "continuer" chosen out of habit on something brand new) : a hollow ChatSession here would
+     * silently drop the opening act's "[...]" beats, so this delegates to fresh() for the same
+     * opening every other reset path gets. The act comes from state.txt when present — it can
+     * differ from the last turn's act after a manual "previous act".
+     */
+    private static ChatSession readCurrentRun(Path root, ChatScenario scenario) {
+        Path turnsDir = RunLayout.turnsDir(root, scenario.name());
+        Path stateFile = RunLayout.stateFile(root, scenario.name());
+        int last = lastTurnNumber(RunLayout.listSequence(turnsDir));
+        if (last == 0 && !Files.isRegularFile(stateFile)) return ChatSession.fresh(scenario);
+        ChatSession atLast = rebuildAt(root, scenario, last);
+        RunState state = readState(stateFile);
+        if (state.act() == null) return atLast;
+        return ChatSession.restored(scenario, atLast.summary(), atLast.firstTurnNumber(), atLast.numberedTurns(),
+            state.act(), atLast.presentNpcIds(), atLast.interjectingNpcIds());
+    }
+
+    @Override
+    public ChatSession loadSessionAt(Path chatScenariosRoot, ChatScenario scenario, TurnNumber at) {
+        int last = lastTurnNumber(RunLayout.listSequence(RunLayout.turnsDir(chatScenariosRoot, scenario.name())));
+        if (at.value() > last) {
+            throw new IllegalArgumentException("Tour #" + at.value() + " inexistant : le dernier tour est #" + last);
+        }
+        return rebuildAt(chatScenariosRoot, scenario, at.value());
+    }
+
+    /**
+     * The state just after turn n (specs/chat.md, algorithm C) : the most recent compaction made at
+     * or before n gives the summary and where the verbatim window starts (foldedUpTo + 1, or turn 1
+     * without any compaction) ; only the turn files of that window are read. The act is the one
+     * written on turn n itself ; presence/interjection come from state.txt, defaulting to everyone.
+     */
+    private static ChatSession rebuildAt(Path root, ChatScenario scenario, int n) {
+        Path turnsDir = RunLayout.turnsDir(root, scenario.name());
+        SequenceFile compaction = RunLayout.listSequence(turnsDir).stream()
+            .filter(f -> f.kind() == SequenceFile.Kind.COMPACTION && f.number() <= n)
+            .reduce((first, second) -> second)
+            .orElse(null);
+        String summary = compaction == null ? "" : readText(compaction.path());
+        int windowStart = compaction == null ? 1 : compaction.foldedUpTo() + 1;
+
+        List<NumberedTurn> window = new ArrayList<>();
+        for (int i = windowStart; i <= n; i++) window.add(readTurn(turnsDir, i));
+        int act = n == 0
+            ? (scenario.acts().isEmpty() ? 0 : 1)
+            : (window.isEmpty() ? readTurn(turnsDir, n) : window.get(window.size() - 1)).act();
+
+        RunState state = readState(RunLayout.stateFile(root, scenario.name()));
+        Set<String> present = state.present() != null ? state.present() : ChatSession.allPresent(scenario);
+        Set<String> interjecting = state.interjecting() != null ? state.interjecting() : ChatSession.allPresent(scenario);
+        return ChatSession.restored(scenario, summary, TurnNumber.of(windowStart), window, act, present, interjecting);
+    }
+
+    private static NumberedTurn readTurn(Path turnsDir, int number) {
+        Path file = turnsDir.resolve(RunLayout.turnFileName(number));
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalStateException("Fichier de tour manquant : " + file);
+        }
+        NumberedTurn turn = TurnFileCodec.parse(readText(file), file);
+        if (turn.number().value() != number) {
+            throw new IllegalStateException("Le fichier " + file.getFileName() + " contient le tour #" + turn.number().value());
+        }
+        return turn;
+    }
+
+    private static int lastTurnNumber(List<SequenceFile> sequence) {
+        return sequence.stream()
+            .filter(f -> f.kind() == SequenceFile.Kind.TURN)
+            .mapToInt(SequenceFile::number)
+            .max()
+            .orElse(0);
+    }
+
+    private static RunState readState(Path stateFile) {
+        return Files.isRegularFile(stateFile) ? RunState.parse(readText(stateFile)) : new RunState(null, null, null);
     }
 
     @Override
     public void saveSession(Path chatScenariosRoot, ChatSession session) {
-        writeSessionFiles(chatScenariosRoot.resolve(session.scenario().name()), session);
-    }
-
-    /**
-     * Shared by loadSession and loadSavePoint — same five files, different directory. No
-     * history.md at all means this directory was never written by writeSessionFiles (a scenario
-     * played for the very first time, "continuer" chosen out of habit on something brand new) —
-     * building a hollow ChatSession here used to silently drop the opening act's "[...]" beats
-     * (only ChatSession.fresh() produced them), leaving the player with no introduction at all.
-     * Delegating to fresh() instead gives the same opening every other "reset" path already gets.
-     */
-    private static ChatSession readSessionFiles(Path dir, ChatScenario scenario) {
-        if (!existsAndReadable(dir.resolve(HISTORY_FILE))) {
-            return ChatSession.fresh(scenario);
+        String name = session.scenario().name();
+        Path turnsDir = RunLayout.turnsDir(chatScenariosRoot, name);
+        createDirectories(turnsDir);
+        int last = session.lastTurnNumber().value();
+        for (SequenceFile file : RunLayout.listSequence(turnsDir)) {
+            if (file.number() > last) deleteFile(file.path());
         }
-        String summary = existsAndReadable(dir.resolve(SUMMARY_FILE)) ? readText(dir.resolve(SUMMARY_FILE)) : "";
-        List<ChatTurn> turns = existsAndReadable(dir.resolve(HISTORY_FILE))
-            ? parseHistory(readText(dir.resolve(HISTORY_FILE)))
-            : List.of();
-        int currentAct = existsAndReadable(dir.resolve(ACT_FILE))
-            ? Integer.parseInt(readText(dir.resolve(ACT_FILE)).strip())
-            : (scenario.acts().isEmpty() ? 0 : 1);
-        Set<String> presentNpcIds = existsAndReadable(dir.resolve(PRESENT_FILE))
-            ? parseIdList(readText(dir.resolve(PRESENT_FILE)))
-            : ChatSession.allPresent(scenario);
-        Set<String> interjectingNpcIds = existsAndReadable(dir.resolve(INTERJECT_FILE))
-            ? parseIdList(readText(dir.resolve(INTERJECT_FILE)))
-            : ChatSession.allPresent(scenario); // meme defaut "tout le monde" qu'une session neuve
-        return new ChatSession(scenario, turns, summary, currentAct, presentNpcIds, interjectingNpcIds);
-    }
-
-    private static Set<String> parseIdList(String content) {
-        Set<String> ids = new LinkedHashSet<>();
-        for (String line : content.split("\n")) {
-            String id = line.strip();
-            if (!id.isEmpty()) ids.add(id);
+        for (NumberedTurn numbered : session.numberedTurns()) {
+            writeIfChanged(turnsDir.resolve(RunLayout.turnFileName(numbered.number().value())),
+                TurnFileCodec.format(numbered));
         }
-        return ids;
+        writeAtomically(RunLayout.stateFile(chatScenariosRoot, name),
+            new RunState(session.currentAct(), session.presentNpcIds(), session.interjectingNpcIds()).format());
     }
 
-    /** Shared by saveSession and createSavePoint — same five files, different directory. */
-    private static void writeSessionFiles(Path dir, ChatSession session) {
-        writeText(dir.resolve(HISTORY_FILE), formatHistory(session.turns()));
-        writeText(dir.resolve(SUMMARY_FILE), session.summary());
-        writeText(dir.resolve(ACT_FILE), String.valueOf(session.currentAct()));
-        writeText(dir.resolve(PRESENT_FILE), String.join("\n", session.presentNpcIds()));
-        writeText(dir.resolve(INTERJECT_FILE), String.join("\n", session.interjectingNpcIds()));
+    @Override
+    public void writeCompaction(Path chatScenariosRoot, ChatScenario scenario, Compaction compaction) {
+        Path turnsDir = RunLayout.turnsDir(chatScenariosRoot, scenario.name());
+        createDirectories(turnsDir);
+        int createdAfter = compaction.createdAfter().value();
+        // createdAfter est unique dans une histoire lineaire : une ancienne compaction au meme
+        // endroit (autre foldedUpTo) est remplacee, jamais gardee a cote.
+        for (SequenceFile file : RunLayout.listSequence(turnsDir)) {
+            if (file.kind() == SequenceFile.Kind.COMPACTION && file.number() == createdAfter) deleteFile(file.path());
+        }
+        writeAtomically(turnsDir.resolve(RunLayout.compactionFileName(createdAfter, compaction.foldedUpTo().value())),
+            compaction.summary());
     }
 
-    /**
-     * Archives (never deletes) the previous session on reset — a long conversation is too costly
-     * to lose to an accidental "n" at the "Continuer ?" prompt. Moved into archive/, timestamped.
-     */
+    @Override
+    public void truncateAfter(Path chatScenariosRoot, ChatScenario scenario, TurnNumber after) {
+        for (SequenceFile file : RunLayout.listSequence(RunLayout.turnsDir(chatScenariosRoot, scenario.name()))) {
+            if (file.number() > after.value()) deleteFile(file.path());
+        }
+    }
+
+    /** Archives (never deletes) the current run on reset — a zip of current/, then current/ is cleared. */
     @Override
     public void resetSession(Path chatScenariosRoot, ChatScenario scenario) {
-        Path dir = chatScenariosRoot.resolve(scenario.name());
-        String stamp = LocalDateTime.now().format(ARCHIVE_STAMP);
-        archiveIfExists(dir.resolve(HISTORY_FILE), dir, stamp);
-        archiveIfExists(dir.resolve(SUMMARY_FILE), dir, stamp);
-        archiveIfExists(dir.resolve(ACT_FILE), dir, stamp);
-        archiveIfExists(dir.resolve(PRESENT_FILE), dir, stamp);
-        archiveIfExists(dir.resolve(INTERJECT_FILE), dir, stamp);
+        Path current = RunLayout.currentDir(chatScenariosRoot, scenario.name());
+        if (!Files.isDirectory(current)) return;
+        RunArchiver.zip(current, RunLayout.archiveDir(chatScenariosRoot, scenario.name())
+            .resolve(LocalDateTime.now().format(STAMP) + ZIP_EXTENSION));
+        RunArchiver.deleteRecursively(current);
     }
 
-    /**
-     * Appends to full-history.md — never truncated, unlike history.md which is rewritten short
-     * after every compaction. This is the only place the raw wording of folded-away turns survives.
-     */
-    @Override
-    public void archiveFoldedTurns(Path chatScenariosRoot, ChatScenario scenario, List<ChatTurn> foldedTurns) {
-        if (foldedTurns.isEmpty()) return;
-        Path file = chatScenariosRoot.resolve(scenario.name()).resolve(FULL_HISTORY_FILE);
-        try {
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, formatHistory(foldedTurns), StandardCharsets.UTF_8,
-                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Archivage historique complet impossible : " + file, e);
-        }
-    }
+    // ── Sauvegardes manuelles ───────────────────────────────────────────────
 
     @Override
     public SavePoint createSavePoint(Path chatScenariosRoot, ChatSession session) {
-        String stamp = LocalDateTime.now().format(SAVE_STAMP);
-        Path saveDir = chatScenariosRoot.resolve(session.scenario().name()).resolve(SAVES_DIR).resolve(stamp);
-        writeSessionFiles(saveDir, session);
-        return new SavePoint(stamp);
+        String name = session.scenario().name();
+        String stamp = LocalDateTime.now().format(STAMP);
+        RunArchiver.zip(RunLayout.currentDir(chatScenariosRoot, name),
+            RunLayout.savesDir(chatScenariosRoot, name).resolve(stamp + ZIP_EXTENSION));
+        return new SavePoint(stamp, session.lastTurnNumber().value());
     }
 
     @Override
     public List<SavePoint> listSavePoints(Path chatScenariosRoot, ChatScenario scenario) {
-        Path savesDir = chatScenariosRoot.resolve(scenario.name()).resolve(SAVES_DIR);
+        Path savesDir = RunLayout.savesDir(chatScenariosRoot, scenario.name());
         if (!Files.isDirectory(savesDir)) return List.of();
         try (var entries = Files.list(savesDir)) {
             return entries
-                .filter(Files::isDirectory)
-                .map(dir -> dir.getFileName().toString())
-                .sorted(Comparator.reverseOrder())
-                .map(SavePoint::new)
+                .filter(Files::isRegularFile)
+                .filter(f -> f.getFileName().toString().endsWith(ZIP_EXTENSION))
+                .sorted(Comparator.comparing((Path f) -> f.getFileName().toString()).reversed())
+                .map(f -> new SavePoint(saveIdOf(f), RunArchiver.lastTurnNumber(f)))
                 .toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -329,99 +366,32 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     @Override
     public ChatSession loadSavePoint(Path chatScenariosRoot, ChatScenario scenario, String saveId) {
-        return readSessionFiles(saveDir(chatScenariosRoot, scenario, saveId), scenario);
+        Path zip = saveZip(chatScenariosRoot, scenario, saveId);
+        if (!Files.isRegularFile(zip)) {
+            throw new IllegalArgumentException("Sauvegarde inconnue : " + saveId);
+        }
+        RunArchiver.extractInto(zip, RunLayout.currentDir(chatScenariosRoot, scenario.name()));
+        return readCurrentRun(chatScenariosRoot, scenario);
     }
 
     @Override
     public void deleteSavePoint(Path chatScenariosRoot, ChatScenario scenario, String saveId) {
-        Path dir = saveDir(chatScenariosRoot, scenario, saveId);
-        if (!Files.isDirectory(dir)) return;
-        // Toujours a plat (history.md/summary.md/act.txt/present.txt, jamais de sous-dossier) :
-        // pas besoin d'une suppression recursive arborescente.
-        try (var entries = Files.list(dir)) {
-            for (Path file : (Iterable<Path>) entries::iterator) {
-                Files.delete(file);
-            }
-            Files.delete(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Suppression impossible : " + dir, e);
-        }
+        deleteFile(saveZip(chatScenariosRoot, scenario, saveId));
     }
 
-    private static Path saveDir(Path chatScenariosRoot, ChatScenario scenario, String saveId) {
+    private static Path saveZip(Path chatScenariosRoot, ChatScenario scenario, String saveId) {
         if (!SAVE_ID_PATTERN.matcher(saveId).matches()) {
             throw new IllegalArgumentException("Identifiant de sauvegarde invalide : " + saveId);
         }
-        return chatScenariosRoot.resolve(scenario.name()).resolve(SAVES_DIR).resolve(saveId);
+        return RunLayout.savesDir(chatScenariosRoot, scenario.name()).resolve(saveId + ZIP_EXTENSION);
     }
 
-    private static void archiveIfExists(Path file, Path dir, String stamp) {
-        if (!Files.isRegularFile(file)) return;
-        try {
-            Path archiveDir = dir.resolve(ARCHIVE_DIR);
-            Files.createDirectories(archiveDir);
-            Files.move(file, archiveDir.resolve(stamp + "-" + file.getFileName()));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Archivage impossible : " + file, e);
-        }
+    private static String saveIdOf(Path zip) {
+        String fileName = zip.getFileName().toString();
+        return fileName.substring(0, fileName.length() - ZIP_EXTENSION.length());
     }
 
-    private static String formatHistory(List<ChatTurn> turns) {
-        StringBuilder sb = new StringBuilder();
-        for (ChatTurn turn : turns) {
-            sb.append(headerFor(turn)).append('\n').append(turn.text()).append("\n\n");
-        }
-        return sb.toString();
-    }
-
-    /** LLM turns carry their npcId as "### LLM: {id}" ; PLAYER/NARRATOR never have one to carry. */
-    private static String headerFor(ChatTurn turn) {
-        return switch (turn.speaker()) {
-            case PLAYER   -> PLAYER_HEADER;
-            case LLM      -> turn.npcId() != null ? LLM_HEADER + ": " + turn.npcId() : LLM_HEADER;
-            case NARRATOR -> NARRATOR_HEADER;
-        };
-    }
-
-    private static List<ChatTurn> parseHistory(String content) {
-        List<ChatTurn> turns = new ArrayList<>();
-        ChatTurn.Speaker current = null;
-        String currentNpcId = null;
-        StringBuilder buf = new StringBuilder();
-        for (String line : content.split("\n", -1)) {
-            if (line.equals(PLAYER_HEADER) || line.equals(NARRATOR_HEADER) || isLlmHeader(line)) {
-                flush(turns, current, currentNpcId, buf);
-                if (line.equals(PLAYER_HEADER))        { current = ChatTurn.Speaker.PLAYER;   currentNpcId = null; }
-                else if (line.equals(NARRATOR_HEADER)) { current = ChatTurn.Speaker.NARRATOR;  currentNpcId = null; }
-                else                                    { current = ChatTurn.Speaker.LLM;       currentNpcId = llmHeaderNpcId(line); }
-                buf.setLength(0);
-            } else {
-                if (!buf.isEmpty()) buf.append('\n');
-                buf.append(line);
-            }
-        }
-        flush(turns, current, currentNpcId, buf);
-        return turns;
-    }
-
-    private static boolean isLlmHeader(String line) {
-        return line.equals(LLM_HEADER) || line.startsWith(LLM_HEADER + ": ");
-    }
-
-    /** null for a bare "### LLM" (pre-multi-NPC history — see ChatTurn.npcId). */
-    private static String llmHeaderNpcId(String line) {
-        return line.equals(LLM_HEADER) ? null : line.substring((LLM_HEADER + ": ").length());
-    }
-
-    private static void flush(List<ChatTurn> turns, ChatTurn.Speaker speaker, String npcId, StringBuilder buf) {
-        if (speaker == null) return;
-        String text = buf.toString().strip();
-        if (!text.isEmpty()) turns.add(new ChatTurn(speaker, text, "", npcId));
-    }
-
-    private static boolean existsAndReadable(Path file) {
-        return Files.isRegularFile(file);
-    }
+    // ── Fichiers ────────────────────────────────────────────────────────────
 
     private static String readText(Path file) {
         try {
@@ -431,10 +401,39 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         }
     }
 
-    private static void writeText(Path file, String content) {
+    private static void createDirectories(Path dir) {
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Creation impossible : " + dir, e);
+        }
+    }
+
+    private static void deleteFile(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Suppression impossible : " + file, e);
+        }
+    }
+
+    /** A turn is rewritten only if its file is missing or different — a window of a few dozen turns is re-checked after every turn. */
+    private static void writeIfChanged(Path file, String content) {
+        if (Files.isRegularFile(file) && readText(file).equals(content)) return;
+        writeAtomically(file, content);
+    }
+
+    /** Written under a temporary name then moved into place : a crash never leaves a half-written file. */
+    private static void writeAtomically(Path file, String content) {
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file, content, StandardCharsets.UTF_8);
+            Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.writeString(tmp, content, StandardCharsets.UTF_8);
+            try {
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new UncheckedIOException("Écriture impossible : " + file, e);
         }

@@ -24,6 +24,13 @@ public record OllamaConfig(
     int         largeModelTimeoutMultiplier // mode sync uniquement
 ) {
 
+    /** Copie cette config avec une autre taille de fenêtre de contexte, le reste inchangé. */
+    public OllamaConfig withContextWindowSize(int contextWindowSize) {
+        return new OllamaConfig(baseUrl, contextWindowSize, maxContextWindowSize, topK, topP, repeatPenalty,
+            numPredict, streamMode, timeoutMs, firstTokenTimeoutMs, interTokenTimeoutMs,
+            retryPolicy, largeModelRamFractionPct, largeModelTimeoutMultiplier);
+    }
+
     public OllamaAdapter adapter(String model) {
         return adapter(model, false, LogPort.NOOP);
     }

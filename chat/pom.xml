@@ -12,6 +12,11 @@
 
     <artifactId>chat</artifactId>
 
+    <properties>
+        <!-- Classe lancee par exec:java ; les .bat la remplacent par -Dexec.mainClass=... (testeur de scenario, migration) -->
+        <exec.mainClass>storymagine.chat.ui.cli.ChatCli</exec.mainClass>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -19,7 +24,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <configuration>
                     <skip>false</skip>
-                    <mainClass>storymagine.chat.ui.cli.ChatCli</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                     <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>

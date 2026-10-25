@@ -8,18 +8,18 @@ import storymagine.chat.coeur.service.ScenarioTesterService;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.chat.infra.ScenarioTestFileExportAdapter;
 import storymagine.commun.coeur.ports.LogPort;
+import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
-import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.TeeLogAdapter;
-import storymagine.commun.ui.cli.OllamaSetupCli;
+import storymagine.commun.ui.cli.LlmSetupCli;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
@@ -31,6 +31,12 @@ import java.util.Scanner;
  */
 public class ScenarioTesterCli {
 
+    /** Opt-in : also write master-log.txt and one file per LLM call next to the report. */
+    private static final String LOGS_OPTION = "--logs";
+
+    /** Same shape as FileLogAdapter's timestamped run directory, so report and logs share one folder name. */
+    private static final DateTimeFormatter REPORT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH'h'mm");
+
     public static void main(String[] args) throws IOException {
         System.out.println("=================================================");
         System.out.println("  Storymagine Chat - Testeur de scénario");
@@ -38,15 +44,16 @@ public class ScenarioTesterCli {
         OllamaEnvDisplay.print("  ");
         System.out.println();
 
-        Properties props   = loadProperties();
+        boolean    logsEnabled = Arrays.asList(args).contains(LOGS_OPTION);
+        Properties props   = ChatCliSupport.loadProperties();
         Scanner    scanner = new Scanner(System.in);
-        Path       root    = chooseChatScenariosRoot(props, scanner);
+        Path       root    = ChatCliSupport.chooseChatScenariosRoot(props, scanner);
 
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
 
-        OllamaSetupCli.Selection setup  = OllamaSetupCli.run(props, scanner, log, "chat");
-        OllamaAdapter            ollama = setup.llm();
+        LlmSetupCli.Selection setup = LlmSetupCli.run(props, scanner, log, "chat");
+        ModelCallPort         llm   = setup.llm();
 
         ChatFileStorageAdapter storage = new ChatFileStorageAdapter();
         List<String> names = storage.listScenarioNames(root);
@@ -68,7 +75,14 @@ public class ScenarioTesterCli {
             System.exit(1);
             return;
         }
-        ChatScenario scenario = storage.loadScenario(root, names.get(idx));
+        ChatScenario scenario;
+        try {
+            scenario = storage.loadScenario(root, names.get(idx));
+        } catch (IllegalStateException e) {
+            System.err.println("ERREUR : " + e.getMessage());
+            System.exit(1);
+            return;
+        }
         System.out.println(">> Chatscenario : " + scenario.name());
         if (scenario.acts().isEmpty()) {
             System.err.println("ERREUR : ce chatscenario n'a pas d'actes — rien à tester acte par acte.");
@@ -76,14 +90,20 @@ public class ScenarioTesterCli {
             return;
         }
 
-        fileLog.setOutputDir(root.resolve(scenario.name()).resolve("tests"));
+        // Le rapport est le produit du testeur : toujours ecrit, dans run/tests/{horodatage}/. Les
+        // logs detailles des appels LLM, eux, n'existent que sous --logs (meme dossier horodate).
+        Path testsDir = root.resolve(scenario.name()).resolve("run").resolve("tests");
+        if (logsEnabled) fileLog.setOutputDir(testsDir);
 
         System.out.println();
         System.out.println(">> Test de " + scenario.acts().size() + " acte(s)...");
-        ScenarioTesterService tester = ChatModule.assembleTester(ollama, log);
+        ScenarioTesterService tester = ChatModule.assembleTester(llm, log);
         ScenarioTestReport    report = tester.testScenario(scenario);
 
-        Path reportFile = new ScenarioTestFileExportAdapter().export(report, fileLog.runDir());
+        Path reportDir = logsEnabled && fileLog.runDir() != null
+            ? fileLog.runDir()
+            : testsDir.resolve(LocalDateTime.now().format(REPORT_STAMP));
+        Path reportFile = new ScenarioTestFileExportAdapter().export(report, reportDir);
 
         System.out.println();
         System.out.println("=================================================");
@@ -105,55 +125,6 @@ public class ScenarioTesterCli {
             report.actResults().size(), continuity, clarity, suggestions);
     }
 
-    private static Path chooseChatScenariosRoot(Properties props, Scanner scanner) {
-        String defaultDir = props.getProperty("chatscenarios.root.default", "");
-        String projectDir = Paths.get("chatscenarios").toAbsolutePath().toString();
-
-        System.out.println("Ou se trouvent les chatscenarios ?");
-        System.out.println("  ENTREE - Repertoire par defaut : " + (defaultDir.isBlank() ? projectDir : defaultDir));
-        System.out.println("  1      - Repertoire du projet  : " + projectDir);
-        System.out.println("  2      - Autre repertoire...");
-        System.out.println();
-
-        while (true) {
-            System.out.print("Choix [ENTREE/1/2] : ");
-            String choice = scanner.nextLine().trim();
-            Path root = switch (choice) {
-                case ""  -> Paths.get(defaultDir.isBlank() ? projectDir : defaultDir);
-                case "1" -> Paths.get(projectDir);
-                case "2" -> {
-                    System.out.print("Chemin du repertoire : ");
-                    yield Paths.get(scanner.nextLine().trim());
-                }
-                default -> null;
-            };
-            if (root == null) {
-                System.out.println("  --> Entree invalide, choisir ENTREE, 1 ou 2.");
-                continue;
-            }
-            try {
-                Files.createDirectories(root);
-            } catch (IOException e) {
-                System.err.println("ERREUR : impossible de creer '" + root + "' : " + e.getMessage());
-                System.exit(1);
-            }
-            System.out.println();
-            return root;
-        }
-    }
-
-    private static Properties loadProperties() {
-        Properties props = new Properties();
-        Path global = Paths.get("storymagine.properties");
-        if (Files.exists(global)) {
-            try (InputStream is = Files.newInputStream(global)) { props.load(is); }
-            catch (IOException ignored) {}
-        }
-        try (InputStream is = ScenarioTesterCli.class.getResourceAsStream("/chat.properties")) {
-            if (is != null) props.load(is);
-        } catch (IOException ignored) {}
-        return props;
-    }
 
     private static void openBrowser(String url) {
         try {

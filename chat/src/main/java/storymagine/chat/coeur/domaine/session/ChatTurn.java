@@ -7,8 +7,8 @@ package storymagine.chat.coeur.domaine.session;
  * persist in the transcript and later the summary even after the fiche they came from is dropped
  * from the prompt. thinking is the model's reasoning text for an LLM turn — empty for every other
  * turn, and empty even for an LLM turn unless the session had GenerationSettings.showThinking on
- * for that call. Never persisted to disk (ChatFileStorageAdapter never writes it) — reconstructed
- * turns from history.md always get "" back, since it's ephemeral debug info for the current run.
+ * for that call. Never persisted to disk (ChatFileStorageAdapter never writes it) — turns read back
+ * from their turn file always get "" back, since it's ephemeral debug info for the current run.
  * npcId is which Cast member spoke this LLM turn (see Npc) — null for PLAYER/NARRATOR turns, and
  * for LLM turns predating the multi-NPC Cast (a single-Npc scenario's history read from before
  * this field existed) : ChatPromptBuilder.transcript() falls back to a generic "Character" label

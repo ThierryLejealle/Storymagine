@@ -13,9 +13,15 @@ import java.util.List;
  * when this leaf becomes current : this leaf's own beats plus those of any ancestor entered for
  * the first time by this transition (an ancestor already active before this transition does not
  * repeat its beats) — this is why beats can't simply be re-derived from text via Teaser.extractAll
- * at the point of use, unlike before.
+ * at the point of use, unlike before. opening is who speaks first when this leaf becomes current
+ * (see NpcOpening) : like beats, it comes from the leaf's own body or from an ancestor entered for
+ * the first time by this transition ; the marker line itself is already cut out of text.
  */
-public record ScenarioAct(ActNumber number, String title, String text, List<String> beats) {
+public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening) {
+
+    public ScenarioAct(ActNumber number, String title, String text, List<String> beats) {
+        this(number, title, text, beats, NpcOpening.NONE);
+    }
 
     /** Convenience for flat, single-level acts (tests, simple scenarios) : beats = Teaser.extractAll(text). */
     public static ScenarioAct leaf(ActNumber number, String title, String text) {

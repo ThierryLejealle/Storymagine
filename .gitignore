@@ -15,18 +15,9 @@ bench/
 # Generated story outputs
 generated/
 
-# Sessions de chat (etat de jeu, pas du contenu auteur) : history.md, summary.md, act.txt,
-# present.txt, interject.txt, full-history.md, saves/, archive/, logs/ sous chatscenarios/{scenario}/
-chatscenarios/*/history.md
-chatscenarios/*/summary.md
-chatscenarios/*/act.txt
-chatscenarios/*/present.txt
-chatscenarios/*/interject.txt
-chatscenarios/*/full-history.md
-chatscenarios/*/saves/
-chatscenarios/*/archive/
-chatscenarios/*/logs/
-chatscenarios/*/tests/
+# Parties de chat (etat de jeu, sauvegardes, archives, logs, rapports : rien de tout cela n'est du
+# contenu auteur) : tout vit dans chatscenarios/{scenario}/run/
+chatscenarios/*/run/
 
 # OS
 Thumbs.db

@@ -141,8 +141,12 @@ button:disabled{background:#9ca3af;cursor:default}
             align-items:center;justify-content:center;background:transparent;color:#c7cbd1;
             border:1px solid transparent;border-radius:5px;font-size:.78rem;cursor:pointer;opacity:0;
             transition:opacity .12s}
-.turn:hover .retry-bubble-btn{opacity:1}
+.turn:hover .retry-bubble-btn,.narrator-note:hover .retry-bubble-btn{opacity:1}
 .retry-bubble-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
+/* Numero du tour (#N) : discret, sur chaque bulle, pour pouvoir "revenir ici" (voir rollbackToHere) */
+.turn-number{flex:none;font-size:.68rem;font-style:normal;font-weight:400;color:#9ca3af;margin-bottom:.25rem}
+.narrator-note .turn-number{margin:0 .4rem 0 0}
+.narrator-note .retry-bubble-btn{display:inline-flex;vertical-align:middle;margin:0 0 0 .4rem}
 
 /* ===== Mode Immersif — large et aere, labels de locuteur au lieu de bulles colorees ===== */
 body.style-immersif{
@@ -517,12 +521,47 @@ function isNearBottom() {
   return turnsEl.scrollHeight - turnsEl.scrollTop - turnsEl.clientHeight < 80;
 }
 
+// Bouton ↩ "revenir ici" present sur chaque tour : ramene la partie a l'etat exact apres CE tour
+// (voir rollbackToHere). Le numero du tour n'est connu qu'une fois la reponse du serveur recue
+// (voir renumberTurns) — avant, le clic ne fait rien.
+function rollbackButton(turnEl) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'retry-bubble-btn';
+  btn.textContent = '↩';
+  btn.title = 'Revenir ici : la partie est ramenée à l\'état juste après ce tour';
+  btn.addEventListener('click', () => rollbackToHere(turnEl));
+  return btn;
+}
+
+// Numerote les tours affiches a partir du numero du dernier tour (history.lastTurnNumber) : les
+// bulles suivies dans renderedTurnEls sont toujours des tours consecutifs qui s'arretent la.
+// Chaque tour garde son numero dans dataset.number et l'affiche en discret (#N).
+function renumberTurns(lastTurnNumber) {
+  if (!lastTurnNumber) return;
+  const count = renderedTurnEls.length;
+  renderedTurnEls.forEach((el, i) => {
+    const number = lastTurnNumber - (count - 1 - i);
+    el.dataset.number = number;
+    let tag = el.querySelector('.turn-number');
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'turn-number';
+      const row = el.querySelector('.speaker-row');
+      if (row) row.insertBefore(tag, row.firstChild);
+      else el.insertBefore(tag, el.firstChild);
+    }
+    tag.textContent = '#' + number;
+  });
+}
+
 function appendTurn(speaker, text, thinking, npcId) {
   const stick = isNearBottom();
   if (speaker === 'NARRATOR') {
     const div = document.createElement('div');
     div.className = 'narrator-note';
     div.textContent = text;
+    div.appendChild(rollbackButton(div));
     turnsEl.appendChild(div);
     renderedTurnEls.push(div);
     if (stick) turnsEl.scrollTop = turnsEl.scrollHeight;
@@ -548,6 +587,7 @@ function appendTurn(speaker, text, thinking, npcId) {
     retryBtn.title = 'Régénérer à partir de cette réplique';
     retryBtn.addEventListener('click', () => retryLast(npcId));
     labelRow.appendChild(retryBtn);
+    labelRow.appendChild(rollbackButton(div));
 
     div.appendChild(labelRow);
   } else if (speaker === 'PLAYER') {
@@ -563,6 +603,7 @@ function appendTurn(speaker, text, thinking, npcId) {
     rewindBtn.title = 'Revenir à ce message pour le modifier';
     rewindBtn.addEventListener('click', () => rewindToHere(div, text));
     labelRow.appendChild(rewindBtn);
+    labelRow.appendChild(rollbackButton(div));
     div.appendChild(labelRow);
   }
   if (thinking) {
@@ -666,6 +707,7 @@ function updateGauge(promptTokens, contextWindow) {
 async function nextAct() {
   const res = await fetch('/next-act', { method: 'POST' });
   applyExchange(await res.json());
+  maybeStartNpcOpening();
 }
 
 async function previousAct() {
@@ -756,6 +798,21 @@ function updateChrome(history) {
   prevActBtnEl.disabled = !history.totalActs || history.currentAct <= 1;
   analyzeNextActBtnEl.disabled = nextActBtnEl.disabled;
   updateGauge(history.promptTokens, history.contextWindow);
+  npcOpeningPending = history.npcOpeningPending;
+}
+
+// Vrai quand l'histoire ou l'acte courant vient de commencer et que l'auteur a ecrit [NPC STARTS]
+// dans le scenario : un PNJ doit parler en premier (voir ChatSession.pendingNpcOpening).
+let npcOpeningPending = false;
+
+// Fait ce que ferait le joueur en cliquant DO sans rien ecrire : le serveur reconnait ce "DO:" vide
+// et donne la parole au PNJ voulu par l'auteur (voir ChatServiceImpl.sendMessage). Appele seulement
+// apres un chargement, un redemarrage ou un changement d'acte — jamais apres un undo, un rollback ou
+// une sauvegarde chargee, ni apres un arret ou une erreur (sinon on relancerait en boucle).
+function maybeStartNpcOpening() {
+  if (!npcOpeningPending || generating) return;
+  npcOpeningPending = false;
+  sendMessage('DO:');
 }
 
 // Rendu complet depuis zero : uniquement au chargement/rechargement de la page, a partir de
@@ -769,6 +826,7 @@ function render(history) {
   }
   fillSettingsPanel(history.generationSettings);
   updateChrome(history);
+  renumberTurns(history.lastTurnNumber);
 }
 
 // Mise a jour incrementale apres un echange : retire d'abord history.removedTurnCount tours deja
@@ -794,6 +852,7 @@ function applyExchange(history) {
     turnsEl.appendChild(note);
   }
   updateChrome(history);
+  renumberTurns(history.lastTurnNumber);
 }
 
 function actSuffix(actTitle) {
@@ -803,6 +862,7 @@ function actSuffix(actTitle) {
 async function loadHistory() {
   const res = await fetch('/history');
   render(await res.json());
+  maybeStartNpcOpening();
 }
 
 // Lit une reponse NDJSON (une ligne = un objet JSON) au fil de l'eau, appelant onLine des qu'une
@@ -851,7 +911,7 @@ async function loadSaves() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'save-btn';
-    btn.textContent = formatSaveLabel(save.id);
+    btn.textContent = formatSaveLabel(save.id) + (save.lastTurnNumber ? ' · #' + save.lastTurnNumber : '');
     btn.title = 'Charger cette sauvegarde';
     btn.addEventListener('click', () => loadSave(save.id));
     const delBtn = document.createElement('button');
@@ -953,6 +1013,7 @@ async function restartSession() {
   } finally {
     setControlsDisabled(false);
   }
+  maybeStartNpcOpening();
 }
 
 // generating suit setControlsDisabled — sendEl/doBtnEl desactives bloquent bien le clic, mais pas
@@ -993,6 +1054,7 @@ async function sendMessage(text) {
   let errorMessage = null;
   let streamingEl = null;
   let streamingNpcId = null;
+  let completed = false;
   try {
     const res = await fetch('/message', { method: 'POST', body: text });
     await readNdjsonStream(res, (data) => {
@@ -1041,6 +1103,7 @@ async function sendMessage(text) {
       statusEl.textContent = 'Erreur : ' + errorMessage + ' — corrige et renvoie.';
     } else {
       statusEl.textContent = '';
+      completed = true;
     }
   } catch (err) {
     if (typingTurn) typingTurn.remove();
@@ -1051,6 +1114,8 @@ async function sendMessage(text) {
     setControlsDisabled(false);
     inputEl.focus();
   }
+  // Une reponse qui vient de faire changer d'acte peut demander un PNJ en ouverture du nouvel acte.
+  if (completed) maybeStartNpcOpening();
 }
 
 // npcId absent : regenere tout le tour (bouton global). npcId present : ne regenere qu'a partir
@@ -1125,6 +1190,39 @@ async function rewindToHere(playerTurnEl, text) {
       inputEl.value = text;
       statusEl.textContent = '';
     }
+  } catch (err) {
+    statusEl.textContent = 'Erreur réseau : ' + err;
+  } finally {
+    setControlsDisabled(false);
+    inputEl.focus();
+  }
+}
+
+// Retour en arriere au tour de la bulle cliquee (voir ChatService.rollbackTo) : DESTRUCTIF, tout ce
+// qui suit est supprime du disque. Deux garde-fous explicites, jamais de sauvegarde silencieuse :
+// une confirmation, puis la proposition de sauvegarder la partie telle qu'elle est avant de revenir.
+// Remplacement complet de l'etat : on repeint tout via render(), comme loadSave.
+async function rollbackToHere(turnEl) {
+  if (generating) return;
+  const to = parseInt(turnEl.dataset.number, 10);
+  if (!to) return;
+  if (!confirm('Revenir au tour #' + to + ' ? Tout ce qui suit sera supprimé définitivement.')) return;
+  setControlsDisabled(true);
+  try {
+    if (confirm('Sauvegarder la partie telle qu\'elle est avant de revenir en arrière ?\n(OK = sauvegarder d\'abord, Annuler = revenir sans sauvegarder)')) {
+      statusEl.textContent = 'Sauvegarde en cours…';
+      await fetch('/save', { method: 'POST' });
+    }
+    statusEl.textContent = 'Retour au tour #' + to + '…';
+    const res = await fetch('/rollback?to=' + to, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Erreur : ' + data.error;
+      return;
+    }
+    render(data);
+    await loadSaves();
+    statusEl.textContent = 'Retour au tour #' + to + ' effectué.';
   } catch (err) {
     statusEl.textContent = 'Erreur réseau : ' + err;
   } finally {

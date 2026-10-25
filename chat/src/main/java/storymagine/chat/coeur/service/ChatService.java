@@ -5,6 +5,7 @@ import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutp
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.SavePoint;
+import storymagine.chat.coeur.domaine.session.TurnNumber;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -15,6 +16,13 @@ public interface ChatService {
     List<String> listScenarios(Path chatScenariosRoot);
 
     ChatScenario loadScenario(Path chatScenariosRoot, String name);
+
+    /**
+     * True if this scenario has a game on disk to resume (at least one persisted turn spoken by the
+     * player or a character). False for a scenario never played, or just restarted : opening it is
+     * then a fresh start, nothing to resume — callers should not offer "continue" in that case.
+     */
+    boolean hasSavedSession(Path chatScenariosRoot, ChatScenario scenario);
 
     /** Loads the persisted session for this scenario, or a fresh one if reset was asked / none exists. */
     ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset);
@@ -59,10 +67,22 @@ public interface ChatService {
      * produced) — steps=1 is a normal single-step undo ; asking for more than the session actually
      * has clamps to everything available, back to the very first player turn. Returns how many
      * turns were removed (0 = no-op, nothing left to undo) — the UI uses the count to remove that
-     * many trailing bubbles from what it already shows. Does not revert an act advance that
-     * already happened — the visible turns are removed, but currentAct stays put.
+     * many trailing bubbles from what it already shows. A rollback in disguise (see rollbackTo) :
+     * the act and the summary go back to what they were just before that player turn.
      */
     int undo(Path chatScenariosRoot, ChatSession session, int steps);
+
+    /**
+     * Rolls the run back to the exact state it was in just after turn `to` — destructive : every
+     * later turn (and every compaction made after it) is deleted from disk. Conversation, summary
+     * (the compaction that was in force then) and act are restored ; presence, interjection and
+     * generation settings are NOT (they are the player's own, not part of the story). If the
+     * restored window is over the context budget (a rollback to before the first compaction), a
+     * compaction runs right away. Callers (the chat UI) confirm with the player first and offer a
+     * save beforehand. Returns how many turns were removed (0 if `to` is already the last turn) ;
+     * IllegalArgumentException if `to` is beyond the last turn.
+     */
+    int rollbackTo(Path chatScenariosRoot, ChatSession session, TurnNumber to);
 
     /** Manual "next act" button — advances one act. Returns false (no-op) if there is no next act. */
     boolean advanceAct(Path chatScenariosRoot, ChatSession session);
@@ -129,8 +149,8 @@ public interface ChatService {
 
     /**
      * Wipes the conversation back to a fresh start on the same scenario, in place (see
-     * ChatSession.restore) — archives the old history/summary/act/present (see
-     * ChatStoragePort.resetSession, same mechanism as the CLI's reset prompt), not a silent discard.
+     * ChatSession.restore) — archives the whole old run as a zip (see ChatStoragePort.resetSession,
+     * same mechanism as the CLI's reset prompt), not a silent discard.
      * Callers (the chat UI) confirm with the player first, same guarantee as loadSavePoint.
      */
     void restartSession(Path chatScenariosRoot, ChatSession session);

@@ -8,7 +8,7 @@ echo.
 echo Seront supprimes :
 echo   - bench\ (logs testLLM et testMTP)
 echo   - scenarios\*\generated\^<horodatage^>\ (logs de generation - fichiers exportes conserves)
-echo   - chatscenarios\*\logs\ (logs de session chat)
+echo   - chatscenarios\*\run\logs\ et chatscenarios\*\run\tests\ (logs et rapports du chat)
 echo.
 set /p CONFIRM=Continuer ? (o/n) : 
 if /i not "%CONFIRM%"=="o" (
@@ -37,11 +37,15 @@ for /d %%S in ("%~dp0scenarios\*") do (
 )
 
 echo.
-echo Nettoyage des logs chat...
+echo Nettoyage des logs et rapports chat...
 for /d %%S in ("%~dp0chatscenarios\*") do (
-    if exist "%%S\logs" (
-        echo   Suppression %%S\logs
-        rd /q /s "%%S\logs"
+    if exist "%%S\run\logs" (
+        echo   Suppression %%S\run\logs
+        rd /q /s "%%S\run\logs"
+    )
+    if exist "%%S\run\tests" (
+        echo   Suppression %%S\run\tests
+        rd /q /s "%%S\run\tests"
     )
 )
 

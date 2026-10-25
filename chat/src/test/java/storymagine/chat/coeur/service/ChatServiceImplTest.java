@@ -16,6 +16,7 @@ import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.Scene;
+import storymagine.chat.coeur.domaine.session.TurnNumber;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
 import storymagine.commun.coeur.ports.GenerationOptions;
@@ -45,18 +46,27 @@ class ChatServiceImplTest {
 
     private static void writeScenarioFiles(Path root, String name) throws IOException {
         Path dir = root.resolve(name);
-        Files.createDirectories(dir);
-        Files.writeString(dir.resolve("character.txt"), "# Character\nA grumpy innkeeper.", StandardCharsets.UTF_8);
+        Files.createDirectories(dir.resolve("characters"));
+        Files.writeString(dir.resolve("characters/character.txt"), "# Character\nA grumpy innkeeper.", StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("scenario.txt"), "A stormy night at the inn.", StandardCharsets.UTF_8);
     }
 
-    /** elena.txt + marcus.txt (pas de character.txt) — scenario multi-PNJ pour SpeakerSelector. */
+    /** characters/elena.txt + characters/marcus.txt (pas de character.txt) — scenario multi-PNJ pour SpeakerSelector. */
     private static void writeTwoNpcScenarioFiles(Path root, String name) throws IOException {
         Path dir = root.resolve(name);
-        Files.createDirectories(dir);
-        Files.writeString(dir.resolve("elena.txt"), "# Elena\nA sharp-tongued merchant.", StandardCharsets.UTF_8);
-        Files.writeString(dir.resolve("marcus.txt"), "# Marcus\nA retired soldier.", StandardCharsets.UTF_8);
+        Files.createDirectories(dir.resolve("characters"));
+        Files.writeString(dir.resolve("characters/elena.txt"), "# Elena\nA sharp-tongued merchant.", StandardCharsets.UTF_8);
+        Files.writeString(dir.resolve("characters/marcus.txt"), "# Marcus\nA retired soldier.", StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("scenario.txt"), "A stormy night at the inn.", StandardCharsets.UTF_8);
+    }
+
+    /** Names of the files of a scenario's run/current/turns/ directory, sorted. */
+    private static List<String> turnFileNames(Path root, String scenarioName) throws IOException {
+        Path turns = root.resolve(scenarioName).resolve("run/current/turns");
+        if (!Files.isDirectory(turns)) return List.of();
+        try (var files = Files.list(turns)) {
+            return files.map(p -> p.getFileName().toString()).sorted().toList();
+        }
     }
 
     private ChatServiceImpl newService(int contextWindow) {
@@ -322,9 +332,13 @@ class ChatServiceImplTest {
         assertEquals(2, session.turns().size(), "fenetre minuscule -> keepTokensTarget clampe a 0, MIN_KEEP_TURNS s'applique");
         assertEquals("FOLDED SUMMARY", session.summary());
 
-        // les tours replies ne sont pas perdus : ils survivent verbatim dans l'archive append-only
-        String archived = Files.readString(root.resolve("inn/full-history.md"), StandardCharsets.UTF_8);
-        assertTrue(archived.contains("one two three four five"), "premier tour replie, doit etre archive");
+        // les tours replies ne sont pas perdus : ils restent verbatim dans leur fichier, et la
+        // compaction est un fichier de la meme suite (apres le tour 6, repliant jusqu'au tour 4)
+        String firstTurn = Files.readString(root.resolve("inn/run/current/turns/000001.md"), StandardCharsets.UTF_8);
+        assertTrue(firstTurn.contains("one two three four five"), "premier tour replie, doit rester sur disque");
+        assertTrue(turnFileNames(root, "inn").contains("000006-compaction-f000004.md"));
+        assertEquals("FOLDED SUMMARY",
+            Files.readString(root.resolve("inn/run/current/turns/000006-compaction-f000004.md"), StandardCharsets.UTF_8));
     }
 
     @Test
@@ -344,8 +358,8 @@ class ChatServiceImplTest {
         assertFalse(third.compacted(), "un resume vide ne doit jamais declencher un compactage");
         assertEquals(6, session.turns().size(), "aucun tour perdu : l'historique complet reste dans la session");
         assertEquals("", session.summary());
-        assertFalse(Files.exists(root.resolve("inn/full-history.md")),
-            "rien n'a ete replie, donc rien ne doit etre archive");
+        assertTrue(turnFileNames(root, "inn").stream().noneMatch(n -> n.contains("compaction")),
+            "rien n'a ete replie, donc aucun fichier de compaction");
     }
 
     @Test
@@ -372,6 +386,190 @@ class ChatServiceImplTest {
         int expected = ChatContextBudget.estimateTokens(next.system() + next.user());
         assertEquals(expected, result.promptTokens());
         assertTrue(result.promptTokens() > 0);
+    }
+
+    // ── Partie a reprendre ? ────────────────────────────────────────────────
+
+    @Test
+    void hasSavedSessionIsFalseUntilTheFirstExchangeAndAgainAfterARestart(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        writeActs(root, "inn", "[The door creaks open.]\n\nFirst act.");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, false);
+        assertFalse(service.hasSavedSession(root, scenario), "jamais joue : rien a reprendre");
+        assertEquals(1, session.turns().size(), "seule l'introduction du narrateur");
+
+        service.sendMessage(root, session, "Hello there.");
+        assertTrue(service.hasSavedSession(root, scenario));
+
+        service.restartSession(root, session);
+        assertFalse(service.hasSavedSession(root, scenario), "apres Recommencer il ne reste que l'introduction");
+    }
+
+    // ── Retour en arriere (rollbackTo) ──────────────────────────────────────
+
+    @Test
+    void rollbackToRestoresTheStateJustAfterThatTurnDeletesWhatFollowedAndReusesItsNumbers(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "First.");
+        service.sendMessage(root, session, "Second.");
+        service.sendMessage(root, session, "Third.");
+        assertEquals(6, session.turns().size());
+
+        int removed = service.rollbackTo(root, session, TurnNumber.of(2));
+
+        assertEquals(4, removed);
+        assertEquals(2, session.turns().size());
+        assertEquals(List.of("000001.md", "000002.md"), turnFileNames(root, "inn"), "destructif : les autres tours sont supprimes du disque");
+
+        service.sendMessage(root, session, "A different second.");
+
+        assertEquals(TurnNumber.of(4), session.lastTurnNumber(), "le tour suivant reprend le numero N+1");
+        assertEquals(List.of("000001.md", "000002.md", "000003.md", "000004.md"), turnFileNames(root, "inn"));
+        assertEquals("A different second.", session.turns().get(2).text());
+    }
+
+    @Test
+    void rollbackToTheLastTurnIsANoOp(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "Hello.");
+
+        assertEquals(0, service.rollbackTo(root, session, TurnNumber.of(2)));
+        assertEquals(2, session.turns().size());
+    }
+
+    @Test
+    void rollbackToATurnBeyondTheLastOneIsRejected(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "Hello.");
+
+        assertThrows(IllegalArgumentException.class, () -> service.rollbackTo(root, session, TurnNumber.of(3)));
+        assertEquals(2, session.turns().size());
+    }
+
+    @Test
+    void rollbackToBeforeACompactionBringsBackTheOlderSummaryStateAndDeletesTheLaterCompactions(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl tiny = newService(80); // fenetre minuscule : compacte des le 2e echange
+        ChatScenario scenario = tiny.loadScenario(root, "inn");
+        ChatSession built = tiny.openSession(root, scenario, true);
+        tiny.sendMessage(root, built, "one two three four five");
+        tiny.sendMessage(root, built, "six seven eight nine ten");
+        tiny.sendMessage(root, built, "eleven twelve thirteen");
+        // compactions apres les tours 4 (repliant jusqu'au 2) puis 6 (repliant jusqu'au 4)
+        assertTrue(turnFileNames(root, "inn").containsAll(List.of("000004-compaction-f000002.md", "000006-compaction-f000004.md")));
+
+        // une grande fenetre pour la suite : aucune nouvelle compaction ne doit etre declenchee par le retour
+        ChatServiceImpl roomy = newService(32_768);
+        ChatSession session = roomy.openSession(root, scenario, false);
+        assertEquals(TurnNumber.of(5), session.firstTurnNumber());
+
+        roomy.rollbackTo(root, session, TurnNumber.of(4));
+        assertEquals("FOLDED SUMMARY", session.summary(), "la compaction faite apres le tour 4 s'applique deja au tour 4");
+        assertEquals(TurnNumber.of(3), session.firstTurnNumber());
+        assertEquals(2, session.turns().size());
+        assertFalse(turnFileNames(root, "inn").contains("000006-compaction-f000004.md"));
+
+        roomy.rollbackTo(root, session, TurnNumber.of(3));
+        assertEquals("", session.summary(), "avant la premiere compaction : pas de resume");
+        assertEquals(TurnNumber.of(1), session.firstTurnNumber());
+        assertEquals(3, session.turns().size());
+        assertTrue(turnFileNames(root, "inn").stream().noneMatch(n -> n.contains("compaction")));
+    }
+
+    @Test
+    void rollbackToRestoresTheActThatTurnWasWrittenIn(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        writeActs(root, "inn", "First act.", "Second act.");
+        StubModelCallPort roleplayLlm = new StubModelCallPort(32_768, "*nods* Time to move on. [NEXT ACT]", 0);
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED", 0)), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "Let's go.");
+        assertEquals(2, session.currentAct(), "la reponse a declenche [NEXT ACT]");
+
+        service.rollbackTo(root, session, TurnNumber.of(1));
+
+        assertEquals(1, session.currentAct());
+        ChatSession reloaded = newService(32_768).openSession(root, scenario, false);
+        assertEquals(1, reloaded.currentAct(), "persiste aussi : state.txt reflete l'acte restaure");
+    }
+
+    @Test
+    void rollbackToNeverRestoresPresenceBecauseThoseAreThePlayersOwnSettings(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "Hello Elena.");
+        service.setNpcPresent(root, session, "marcus", false);
+
+        service.rollbackTo(root, session, TurnNumber.of(1));
+
+        assertEquals(Set.of("elena"), session.presentNpcIds());
+        ChatSession reloaded = newService(32_768).openSession(root, service.loadScenario(root, "inn"), false);
+        assertEquals(Set.of("elena"), reloaded.presentNpcIds());
+    }
+
+    @Test
+    void aSavePointKeepsTheWholeHistorySoARollbackStillWorksAfterLoadingIt(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "First.");
+        service.sendMessage(root, session, "Second.");
+        SavePoint save = service.save(root, session);
+        service.sendMessage(root, session, "Third, after the save.");
+
+        service.loadSavePoint(root, session, save.id());
+        assertEquals(4, session.turns().size());
+        service.rollbackTo(root, session, TurnNumber.of(2));
+
+        assertEquals(2, session.turns().size());
+        assertEquals("First.", session.turns().get(0).text());
+    }
+
+    @Test
+    void undoAfterAnActAdvanceBringsTheActBackToo(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        writeActs(root, "inn", "First act.", "Second act.");
+        StubModelCallPort roleplayLlm = new StubModelCallPort(32_768, "*nods* [NEXT ACT]", 0);
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED", 0)), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "Let's go.");
+        assertEquals(2, session.currentAct());
+
+        service.undo(root, session, 1);
+
+        assertEquals(1, session.currentAct(), "undo est un retour en arriere : l'acte revient aussi");
+        assertTrue(session.turns().isEmpty());
+    }
+
+    @Test
+    void everyTurnIsOnDiskAsSoonAsItExistsNotOnlyAtTheEndOfTheRound(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        List<List<String>> filesSeenAtEachTurn = new java.util.ArrayList<>();
+
+        service.sendMessage(root, session, "Hello.", new ExchangeProgressListener() {
+            @Override public void onPartialReply(String npcId, PartialGeneration partial) { }
+            @Override public void onTurnReady(ChatTurn turn) {
+                try { filesSeenAtEachTurn.add(turnFileNames(root, "inn")); } catch (IOException e) { throw new RuntimeException(e); }
+            }
+        });
+
+        assertEquals(List.of(List.of("000001.md"), List.of("000001.md", "000002.md")), filesSeenAtEachTurn);
     }
 
     // ── Progressive acts ────────────────────────────────────────────────────
@@ -678,7 +876,7 @@ class ChatServiceImplTest {
         ChatSession session = service.openSession(root, scenario, true);
         service.sendMessage(root, session, "Hello there.");
 
-        Files.writeString(root.resolve("inn").resolve("elena.txt"), "# Elena\nUpdated public sheet.",
+        Files.writeString(root.resolve("inn").resolve("characters").resolve("elena.txt"), "# Elena\nUpdated public sheet.",
             StandardCharsets.UTF_8);
 
         service.restartSession(root, session);
@@ -875,8 +1073,8 @@ class ChatServiceImplTest {
         List<ChatTurn> turnsBefore = session.turns();
 
         // Edite elena.txt et ajoute un troisieme PNJ pendant que la session tourne.
-        Files.writeString(root.resolve("inn/elena.txt"), "# Elena\nA reformed smuggler now.", StandardCharsets.UTF_8);
-        Files.writeString(root.resolve("inn/clara.txt"), "# Clara\nA traveling bard.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/characters/elena.txt"), "# Elena\nA reformed smuggler now.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/characters/clara.txt"), "# Clara\nA traveling bard.", StandardCharsets.UTF_8);
 
         service.reloadScenario(root, session);
 
@@ -915,6 +1113,117 @@ class ChatServiceImplTest {
 
         assertFalse(changed);
         assertEquals(Set.of("character"), session.presentNpcIds());
+    }
+
+    // ── [NPC STARTS] : un PNJ ouvre l'histoire ou l'acte ───────────────────────
+
+    private static GenerationSettings alwaysInterject() {
+        return new GenerationSettings(null, null, null, null, null, null, null, 1.0, null);
+    }
+
+    @Test
+    void emptyDoOpensTheStoryWithTheNpcNamedByTheMarkerAndNobodyElse(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject()); // sans le garde-fou, Elena interviendrait a coup sur
+
+        assertFalse(session.pendingNpcOpening().isNone());
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals(1, result.replyTurns().size());
+        assertEquals("marcus", result.replyTurns().get(0).npcId());
+        assertTrue(session.pendingNpcOpening().isNone(), "une fois le PNJ intervenu, plus rien n'est en attente");
+    }
+
+    @Test
+    void retryOfTheOpeningGivesTheWordToTheSameNamedNpcAgain(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "DO:");
+
+        ChatTurnResult retried = service.retry(root, session);
+
+        assertEquals(1, retried.replyTurns().size());
+        assertEquals("marcus", retried.replyTurns().get(0).npcId());
+    }
+
+    @Test
+    void anOpeningWithoutNameStillMakesExactlyOnePresentNpcSpeak(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS]\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals(1, result.replyTurns().size());
+        assertTrue(Set.of("elena", "marcus").contains(result.replyTurns().get(0).npcId()));
+    }
+
+    @Test
+    void aScenarioWithoutMarkerKeepsTheUsualBehaviourOfAnEmptyDo(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        assertTrue(session.pendingNpcOpening().isNone());
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals(2, result.replyTurns().size(), "pas d'ouverture voulue : le tour normal, interjection comprise");
+    }
+
+    @Test
+    void aRealPlayerMessageOnAFreshStoryIsNotAnOpening(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+
+        ChatTurnResult result = service.sendMessage(root, session, "Elena, a word please.");
+
+        assertEquals("elena", result.replyTurns().get(0).npcId(), "le joueur a parle en premier : sa mention prime");
+        assertTrue(session.pendingNpcOpening().isNone());
+    }
+
+    @Test
+    void theMarkerOfAnActOpensThatActWhenItBegins(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"),
+            "A stormy night.\n\n# One\nThe door is shut.\n\n# Two\n[NPC STARTS: Elena]\nThe door bursts open.\n",
+            StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        assertTrue(session.pendingNpcOpening().isNone(), "l'acte 1 n'a pas de marqueur");
+        service.sendMessage(root, session, "Hello.");
+        assertTrue(service.advanceAct(root, session));
+
+        assertTrue(session.pendingNpcOpening().isNamed());
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals(1, result.replyTurns().size());
+        assertEquals("elena", result.replyTurns().get(0).npcId());
+        assertTrue(session.pendingNpcOpening().isNone());
+    }
+
+    @Test
+    void aNamedNpcMutedByThePlayerDoesNotOpenInsteadOfSomeoneElsePresent(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.setNpcPresent(root, session, "marcus", false);
+
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals("elena", result.replyTurns().get(0).npcId());
     }
 
     private static class StubModelCallPort implements ModelCallPort {

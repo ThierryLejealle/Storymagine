@@ -3,31 +3,96 @@
 Référence pour écrire ou modifier un scénario dans `chatscenarios/`. Tout ce qui suit a été vérifié
 dans le code (pas seulement supposé) — voir les fiches `evols/` citées pour le détail.
 
-## 1. Structure d'un dossier de scénario
+**Plan du document** : §1 à §3 décrivent le SCÉNARIO (ce que vous écrivez). §4 décrit les
+mécanismes du jeu. §5 explique comment vérifier un scénario. §6, en fin de document, décrit le
+dossier `run/` (ce que l'appli génère pendant qu'on joue).
+
+## 1. Le scénario : ce que vous écrivez
+
+Un scénario est un dossier. Il contient **uniquement des fichiers que l'auteur écrit**. L'appli n'y
+écrit jamais rien, sauf dans le sous-dossier `run/` (voir §6).
 
 ```
 chatscenarios/mon-scenario/
-  scenario.txt        obligatoire — monde, prémisse, actes
-  elena.txt            un fichier par personnage (nom libre)
-  marcus.txt
-  ...
-  history.md            générés/gérés par l'appli, jamais à écrire à la main
-  summary.md
-  act.txt
-  present.txt
-  interject.txt
-  saves/
-  archive/
-  logs/
+  scenario.txt        obligatoire — ligne Joueur, prémisse, actes
+  scenario-1.txt      optionnel — suite des actes (scénario long)
+  scenario-2.txt      optionnel — numéros consécutifs
+  characters/         obligatoire — un fichier par personnage
+    elena.txt
+    marcus.txt
+  run/                généré par l'appli, jamais à écrire à la main (voir §6)
 ```
 
-**Règle de chargement du Cast (`ChatFileStorageAdapter.loadCast`)** : tous les fichiers `.txt` du
-dossier sont des personnages, SAUF `scenario.txt`, `act.txt`, `present.txt`, `interject.txt`
-(réservés). Le nom de fichier (sans `.txt`) devient l'id interne du personnage — choisir un nom de
-fichier simple, sans espace ni accent, ex. `marcus.txt` pas `Marcus Dupont.txt`.
+- **Copier ou partager un scénario** = copier son dossier sans `run/`.
+- **`scenario.txt` + `scenario-N.txt`** : le texte de l'histoire. Les `scenario-N.txt` sont
+  concaténés après `scenario.txt` (numéros consécutifs, arrêt au premier manquant). Chacun doit
+  commencer par un titre `# ...` de premier niveau, sinon le chargement échoue explicitement.
+  Format : voir §2.
+- **`characters/`** : un fichier `.txt` par personnage. Format : voir §3.
 
-Un scénario à un seul personnage (juste `character.txt`) fonctionne sans rien de spécial — devient
-un `Cast` à un seul PNJ automatiquement.
+**Règle de chargement du Cast** : tout fichier `.txt` de `characters/` dont la première ligne est
+`# Nom` est un personnage. Un `.txt` sans cette ligne est ignoré silencieusement (brouillon, note).
+Le nom de fichier (sans `.txt`) devient l'id interne du personnage — choisir un nom de fichier
+simple, sans espace ni accent, ex. `marcus.txt` pas `Marcus Dupont.txt`. Comme seul `characters/`
+est lu, un `.txt` égaré à la racine du scénario ne peut jamais devenir un personnage.
+
+Un scénario à un seul personnage (un seul fichier dans `characters/`) fonctionne sans rien de
+spécial — devient un `Cast` à un seul PNJ automatiquement.
+
+Un scénario apparaît dans la liste de l'appli s'il a un `scenario.txt` et au moins un personnage
+valide dans `characters/`.
+
+### 1.1 Exemple minimal complet
+
+**Pour créer le squelette d'un nouveau scénario, lancer `init-chat.bat`** : il demande le dossier (le
+même choix que `chat.bat`), le nom du scénario (lettres, chiffres, `-` et `_`, sans espace ni accent),
+le nombre de PNJ puis leurs noms, et crée `scenario.txt` et une fiche par PNJ dans `characters/`.
+Chaque champ est une consigne entre parenthèses, à remplacer ; le premier acte nomme déjà tous les PNJ
+saisis (voir §2.4) ; `run/` n'est pas créé. Un scénario existant n'est jamais écrasé.
+
+Le plus petit scénario jouable : deux fichiers.
+
+`chatscenarios/auberge/scenario.txt`
+
+```
+Joueur : Mila
+
+#SCENARIO
+Monde : Une auberge de campagne, un soir d'orage.
+Prémisse : Mila, voyageuse trempée jusqu'aux os, cherche un abri pour la nuit.
+Ton : chaleureux, un peu mystérieux.
+
+# La nuit à l'auberge
+[Mila pousse la porte de l'auberge du Cerf Blanc, trempée par l'orage. Derrière le comptoir, Elena, l'aubergiste, lève les yeux.]
+[Mila cherche un lit pour la nuit et un repas chaud.]
+Point de départ : Mila vient d'entrer, la salle est presque vide.
+Ce qui doit se passer : Elena l'accueille et la conversation s'engage.
+```
+
+`chatscenarios/auberge/characters/elena.txt`
+
+```
+# Elena
+
+Elena, la trentaine, tient l'auberge du Cerf Blanc. Directe, chaleureuse, parle court.
+
+# SECRET
+Elena a volé autrefois dans un temple et craint d'être reconnue.
+```
+
+Points à remarquer :
+
+- Un seul acte, donc pas de `Quand écrire [NEXT ACT]` (rien à quoi avancer, voir §2.5).
+- Les lignes `[...]` du premier acte disent qui est le joueur, où il se trouve, qui est présent
+  (nommé) et son but (voir §2.4), toutes à la 3e personne.
+- La fiche d'Elena n'a pas de nom de fichier à accent ni d'espace : `elena.txt` donne l'id `elena`.
+- Pour un personnage sans secret, la fiche se réduit à `# Nom` et sa description : sans ligne
+  `# SECRET`, tout est public.
+- Encore plus court : un `scenario.txt` sans aucun acte (juste `Joueur :` et une prémisse avec un bloc
+  `[...]` d'ouverture) est valide. La partie démarre alors sans progression d'actes (voir §2.4).
+
+Ce scénario, une fois joué, crée `run/` à côté de ces fichiers (voir §6) ; il n'y a rien d'autre à
+écrire.
 
 ## 2. Format de `scenario.txt`
 
@@ -150,7 +215,7 @@ Quand écrire [NEXT ACT] : ...
 Ces libellés sont une convention du projet, pas une syntaxe imposée par le code — seuls `#SCENARIO`,
 les headings `#`/`##`, et les crochets `[...]` sont réellement parsés.
 
-## 3. Format d'un fichier personnage (`nom.txt`)
+## 3. Format d'un fichier personnage (`characters/nom.txt`)
 
 ```
 # Elena
@@ -187,7 +252,7 @@ Elena a autrefois volé dans un temple... (fiche secrète)
 
 Chaque PNJ présent ou absent de la scène. Tous présents par défaut. Impossible de rendre absent le
 dernier PNJ présent (garde-fou : quelqu'un doit toujours pouvoir répondre). Persisté dans
-`present.txt`.
+`run/current/state.txt` (voir §6.5).
 
 ### 4.2 Qui répond (`SpeakerSelector`) — trois étapes, revu le 2026-07-16
 
@@ -240,21 +305,66 @@ courant est remplie → avance à l'acte suivant, ses lignes `[...]` s'affichent
 "Précédent"/"Suivant" pour corriger. Bouton 🔍 pour demander au LLM (sans rien persister) où en est
 la condition de l'acte suivant.
 
+#### Faire ouvrir la scène par un PNJ — `[NPC STARTS]`
+
+Par défaut, c'est le joueur qui parle en premier. Pour qu'un PNJ prenne la parole à sa place, écrire
+sur **une ligne seule** (comme un bloc, mais sans phrase autour) :
+
+```
+[NPC STARTS]
+[NPC STARTS: Elena]
+```
+
+- Placé dans l'en-tête du scénario (avant le premier acte) : il ouvre l'histoire. Placé dans un
+  acte : il ouvre cet acte, dès qu'il devient courant (passage automatique ou bouton « Suivant »).
+- Effet : exactement comme si le joueur avait cliqué **DO** sans rien écrire. Une bulle `DO:` du
+  joueur s'affiche, puis le PNJ parle ; lui seul (pas d'interjection des autres).
+- Sans nom : un PNJ présent est tiré au hasard (inutile s'il n'y en a qu'un). Avec un nom : celui-là.
+  Le nom peut être l'identifiant du fichier, le nom complet ou un seul mot du nom (`Elena` pour
+  `Elena Voss`), sans tenir compte des accents ni de la casse. Un nom inconnu empêche le scénario de
+  se charger (message d'erreur explicite) ; un PNJ nommé mais retiré de la scène par le joueur laisse
+  la place à un autre PNJ présent.
+- La ligne est retirée du texte : le LLM ne la lit jamais. Une mention au milieu d'une phrase (comme
+  dans les consignes de la graine d'`init-chat`) n'est jamais prise pour le mot-clé.
+- Si le joueur écrit avant que le PNJ n'ait parlé, c'est son message qui compte : pas d'ouverture.
+
 ### 4.6 Sauvegardes et redémarrage
 
-- Sauvegarde automatique après chaque tour (slot unique, écrasé à chaque fois).
-- 💾 Sauvegarder : point de sauvegarde manuel, horodaté, illimité en nombre.
-- 🔄 Recommencer : remet la session à zéro sur le même scénario (confirmation demandée) — l'ancien
-  historique est archivé, jamais perdu.
-- ⟳ (à côté de "Personnages") : recharge `scenario.txt` et les fichiers personnages depuis le
-  disque sans toucher à la conversation en cours — pratique pour corriger une fiche en cours de
-  partie.
+- Chaque tour est écrit sur disque dès qu'il existe, dans son propre fichier (voir §6.2) : il n'y a
+  plus de « slot unique écrasé à chaque fois », la partie en cours est toujours à jour.
+- 💾 Sauvegarder : point de sauvegarde manuel, horodaté, illimité en nombre. C'est un zip complet de
+  la partie en cours (voir §6.7). Charger une sauvegarde remplace la partie en cours (confirmation
+  demandée) et on peut ensuite continuer à remonter dans l'historique (§4.8), comme si on n'avait
+  jamais quitté la partie.
+- 🔄 Recommencer : remet la session à zéro sur le même scénario (confirmation demandée) — la partie
+  qui se termine est archivée dans un zip, jamais perdue.
+- ⟳ (à côté de "Personnages") : recharge `scenario.txt` (et ses suites `scenario-N.txt`) et les
+  fiches de `characters/` depuis le disque sans toucher à la conversation en cours — pratique pour
+  corriger une fiche en cours de partie.
 
 ### 4.7 Compaction du contexte
 
 Quand la transcription dépasse le budget de tokens disponible, les tours les plus anciens sont
-résumés (`ChatSummarizer`) et remplacés par ce résumé dans le prompt — jamais perdus pour de bon,
-archivés verbatim dans `full-history.md`.
+résumés (`ChatSummarizer`) et remplacés par ce résumé dans le prompt. Rien n'est perdu : tous les
+tours restent sur disque, un fichier chacun, et chaque compaction est elle-même un fichier placé
+dans la même suite (voir §6.4). La compaction a lieu **à la fin d'un tour complet** (après la
+réponse de tous les PNJ du tour), et elle garde toujours les derniers tours en clair.
+
+### 4.8 Retour en arrière (bouton ↩ « revenir ici » sur chaque bulle)
+
+Chaque bulle porte son numéro `#N` (voir §6.2). Le bouton ↩ d'une bulle ramène la partie à
+l'état exact où elle se trouvait juste après ce tour — conversation, résumé et acte.
+
+- **Destructif** : tout ce qui suit le tour choisi est supprimé définitivement. L'appli demande une
+  confirmation explicite et propose de faire une sauvegarde avant (jamais de sauvegarde silencieuse).
+- **Restauré** : les tours, le résumé tel qu'il était à ce moment-là (la bonne compaction, voir §6.6),
+  l'acte courant.
+- **Non restauré** : la présence 🔊/🔇, l'interjection 💬 et les réglages de génération. Ce sont des
+  réglages que le joueur change lui-même : remonter dans la conversation ne doit pas réactiver un
+  PNJ qu'on vient de couper.
+- Le tour suivant reprend le numéro `N+1`.
+- « Annuler » et « Régénérer » sont des cas particuliers de ce mécanisme (retour au dernier tour
+  du joueur, puis nouvelle génération).
 
 ## 5. Vérifier un scénario avant de le tester en vrai
 
@@ -273,3 +383,197 @@ session.turns().forEach(t -> { if (t.speaker() == ChatTurn.Speaker.NARRATOR) Sys
 
 Vérifier en particulier : le nombre d'actes correspond à ce qui était voulu, et les tours NARRATOR
 d'ouverture orientent bien le joueur (voir §2.4).
+
+## 6. Le dossier `run/` : la partie en cours (généré par l'appli)
+
+Tout ce qui précède (§1 à §3) est le **scénario** : des textes écrits à la main, jamais modifiés par
+l'appli. Cette section décrit l'autre moitié : ce que l'appli **génère** pendant qu'on joue. Tout y
+vit dans `run/`, sous-dossier du scénario. Un scénario neuf n'a pas de `run/`. Rien dans `run/` ne
+s'écrit ni ne s'édite à la main. La spécification technique (formats exacts, algorithmes) est dans
+`specs/chat.md`, section « Le run ».
+
+### 6.1 Vue d'ensemble
+
+```
+chatscenarios/mon-scenario/
+  scenario.txt, scenario-N.txt, characters/      <- le scénario (§1)
+  run/
+    current/                                     la partie en cours
+      turns/
+        000001.md                                un fichier par tour
+        000002.md
+        ...
+        000013.md
+        000013-compaction-f000012.md             une compaction : un fichier dans la même suite
+        000014.md
+        ...
+      state.txt                                  présence et interjection des PNJ
+    saves/
+      2026-10-25-143012-123.zip                  sauvegardes manuelles (zip de current/)
+    archive/
+      2026-10-25-150400-567.zip                  parties archivées par « Recommencer »
+    logs/                                        seulement si lancé avec --logs (§6.8)
+    tests/                                       rapports du testeur de scénario (§6.8)
+```
+
+Trois familles, trois durées de vie :
+
+| Dossier | Nature | Durée de vie |
+|---|---|---|
+| `current/` | État de la partie en cours | Remplacé à chaque « Recommencer », réduit par un retour en arrière |
+| `saves/`, `archive/` | Parties mises de côté | Précieux, jamais supprimés par l'appli |
+| `logs/`, `tests/` | Diagnostics | Jetables |
+
+### 6.2 Les tours : un fichier par tour, numérotés
+
+Chaque tour de la conversation — réplique du joueur, d'un PNJ, ou ligne du narrateur (les `[...]`
+d'ouverture d'un acte, §2.4) — est un fichier dans `run/current/turns/`. Il est écrit dès que le
+tour existe.
+
+- **Numéro** (`TurnNumber`) : entier qui s'incrémente de 1 à chaque tour, à partir de 1 au début
+  de la partie. Il ne redescend jamais, sauf par un retour en arrière (§4.8). La compaction
+  (§6.4) ne le remet pas à zéro : le numéro identifie le tour pour toute la partie.
+- **Nom du fichier** : numéro sur 6 chiffres, `000013.md`. Le nom suffit à ordonner et à retrouver
+  un tour, sans ouvrir le fichier.
+- **Contenu** : une ligne séparatrice avec le numéro et l'acte en vigueur quand le tour a été
+  écrit, puis l'en-tête du locuteur, puis le texte du tour.
+
+```
+----- #13 · acte 2 -----
+### LLM: elena
+*Elena essuie un verre sans quitter le colis des yeux.* « Posez ça sur le comptoir, doucement. »
+```
+
+Les trois en-têtes de locuteur sont `### PLAYER`, `### LLM: {id du PNJ}` et `### NARRATOR`. Pour un
+scénario sans actes, l'acte écrit est `acte 0`.
+
+**Le numéro n'existe jamais pour le LLM.** Il est porté par un champ du tour, jamais par son texte.
+Le prompt est construit à partir du texte et des champs du tour : la ligne `----- #13 · acte 2 -----`
+n'existe que dans les fichiers du disque (et le numéro `#13` sur les bulles de l'interface).
+
+Pour relire toute l'histoire d'une partie, ouvrir les fichiers de tour dans l'ordre : mis bout à bout,
+ils reproduisent un journal lisible grâce à la ligne séparatrice (il n'y a pas d'export automatique).
+
+### 6.3 La fenêtre vivante
+
+Ce que le LLM reçoit comme « conversation » n'est pas toute la suite des tours : c'est le résumé de
+la dernière compaction (§6.4), puis les tours qui la suivent en clair. Les tours déjà repliés dans le
+résumé restent sur disque mais ne sont plus envoyés au modèle.
+
+### 6.4 Les compactions : un fichier dans la suite
+
+Une compaction replie les anciens tours dans un résumé (`ChatSummarizer`). Elle se produit **à la fin
+d'un tour complet**, après la réponse de tous les PNJ, et seulement si le budget de contexte est
+dépassé. Elle se caractérise par deux numéros :
+
+- **R** : le numéro du dernier tour existant au moment de la compaction. C'est lui qui la place
+  dans la suite : la compaction vient juste après le tour R.
+- **F** : le numéro du dernier tour **replié** dans le résumé. Normalement `F < R` : les tours de
+  `F+1` à `R` restent en clair (F = R seulement si une compaction a tout replié, fenêtre vide). F ne
+  peut pas se deviner à partir de R, parce que le nombre de tours gardés en clair varie d'une
+  compaction à l'autre.
+
+Le fichier s'appelle `{R sur 6 chiffres}-compaction-f{F sur 6 chiffres}.md` et contient **le texte du
+résumé, rien d'autre**. Exemple : `000013-compaction-f000012.md` = compaction faite après le tour 13,
+qui a replié les tours jusqu'au 12 ; les tours 13 et 14 sont donc encore en clair à l'étape suivante.
+
+Un résumé est **cumulatif** : il inclut déjà le contenu du résumé précédent. Pour reprendre une
+partie à un moment donné, on n'a donc jamais besoin que d'**une seule** compaction, la plus récente
+qui existait à ce moment-là.
+
+Il n'y a pas d'identifiant propre à une compaction : R suffit, il est unique dans une histoire linéaire
+(un retour en arrière supprime toutes les compactions de R supérieur).
+
+### 6.5 `state.txt` : acte courant, présence et interjection
+
+Les seuls réglages de la partie qui ne se déduisent pas des tours :
+
+```
+act=2
+present=elena,marcus
+interjecting=elena
+```
+
+- `act` : l'acte en vigueur maintenant. Il peut différer de l'acte écrit sur le dernier tour après un
+  « Précédent » manuel (qui ne crée aucun tour) : c'est ce fichier qui le retient.
+- `present`, `interjecting` : un identifiant de PNJ par valeur, séparés par des virgules (les ids sont
+  les noms de fichier de `characters/`, sans `.txt`). Clé absente : tous les PNJ sont présents et
+  éligibles à l'interjection (comme une partie neuve). Voir §4.1 et §4.3.
+
+### 6.6 Reprendre la partie à un numéro donné
+
+Au chargement d'une partie, comme lors d'un retour en arrière au tour N, l'appli reconstruit l'état
+« juste après le tour N » (au chargement, N est le dernier tour). Règle :
+
+1. Lister les noms de fichiers de `turns/`, sans les ouvrir.
+2. Choisir la **compaction la plus récente dont R ≤ N** ; s'il n'y en a aucune, il n'y a pas de résumé.
+3. Le résumé est le contenu de ce fichier (ou vide). La conversation en clair est la suite des
+   tours de `F+1` à `N` (ou de `1` à `N` sans compaction).
+4. L'acte courant est celui écrit sur le tour N. Seule exception : au chargement d'une partie (N =
+   dernier tour), c'est l'acte de `state.txt` qui prime, pour ne pas perdre un « Précédent » manuel.
+
+Exemple. Partie jouée : tours 11, 12, 13, puis une compaction après le 13 (qui a replié jusqu'au 12),
+puis les tours 14, 15, 16.
+
+```
+turns/  000011.md  000012.md  000013.md  000013-compaction-f000012.md  000014.md  000015.md  000016.md
+
+Reprendre au #16 : résumé de la compaction + tours 13, 14, 15, 16
+Reprendre au #14 : résumé de la compaction + tours 13, 14      (la compaction a bien existé avant le 14)
+Reprendre au #13 : résumé de la compaction + tour 13           (la compaction suit le tour 13)
+Reprendre au #12 : pas de résumé (la compaction n'a pas encore eu lieu) + tours 1 à 12
+```
+
+Un **retour en arrière** ajoute une dernière étape : tout fichier dont le numéro est supérieur à N est
+supprimé — un fichier de tour par son propre numéro, une compaction par son R. La compaction de
+l'exemple ci-dessus disparaît donc dans un retour au #12 et survit à un retour au #13. Ensuite, si le
+texte en clair dépasse le budget de contexte (cas d'un retour avant la première compaction, où il
+n'y a plus de résumé pour alléger), une nouvelle compaction est faite immédiatement.
+
+### 6.7 Sauvegardes et archives : des zips de `current/`
+
+Une sauvegarde manuelle (💾) et une archive de « Recommencer » ont exactement la même forme : un zip de
+`run/current/` (le dossier `turns/` et `state.txt`), nommé d'après l'horodatage (précision à la
+milliseconde, pour que deux sauvegardes rapprochées ne s'écrasent jamais) :
+`run/saves/2026-10-25-143012-123.zip`, `run/archive/2026-10-25-150400-567.zip`.
+
+- Une sauvegarde est **complète** : elle contient tout l'historique, donc on peut remonter dans le
+  temps après l'avoir chargée.
+- Charger une sauvegarde **remplace** `current/` par le contenu du zip (confirmation demandée).
+- La liste des sauvegardes affiche, pour chacune, le numéro de son dernier tour.
+- Les zips sont des fichiers immuables : l'appli n'en modifie jamais un après l'avoir écrit.
+
+### 6.8 `logs/` et `tests/`
+
+- **`logs/`** : par défaut, **rien n'est écrit**. Pour activer les logs d'une session, lancer l'appli
+  avec l'option `--logs` (`chat.bat --logs`). Il se crée alors un sous-dossier horodaté par lancement,
+  avec `master-log.txt` et `llm_calls/` (un fichier par appel au modèle, prompt compris).
+- **`tests/`** : le testeur de scénario (`test-scenario.bat`) y écrit `{horodatage}/report.html`. Le
+  rapport est le produit du testeur : il est toujours écrit. Les logs détaillés de ses appels au
+  modèle suivent la même règle que `logs/` (`test-scenario.bat --logs`, dans le même sous-dossier
+  horodaté que le rapport).
+
+### 6.9 Que peut-on supprimer ?
+
+| Pour... | Supprimer |
+|---|---|
+| Repartir de zéro en gardant sauvegardes et archives | `run/current/` |
+| Libérer de la place sans toucher aux parties | `run/logs/` et `run/tests/` (`clean-logs.bat`) |
+| Effacer toute trace de jeu sur ce scénario | `run/` |
+| Partager ou archiver le scénario | copier le dossier sans `run/` |
+
+### 6.10 Ancien format et migration
+
+Avant cette structure, les fichiers de session (`history.md`, `summary.md`, `act.txt`, `present.txt`,
+`interject.txt`, `full-history.md`) et les dossiers `saves/`, `archive/`, `logs/`, `tests/` vivaient à
+la racine du scénario, à côté des fiches personnage. Si l'appli en détecte, le scénario reste dans la
+liste mais refuse de se charger, avec un message qui demande de lancer `migration.bat`. Ce programme,
+à lancer une seule fois :
+
+- déplace les fiches personnage de la racine vers `characters/` ;
+- **supprime** les anciens fichiers de session et dossiers générés : **les anciennes parties,
+  sauvegardes et archives sont jetées**, seul le scénario est conservé ;
+- traite le dossier `chatscenarios/` du projet et le dossier configuré dans `chat.properties`
+  (`chatscenarios.root.default`), ou un chemin passé en argument ;
+- offre un `--dry-run` qui liste ce qui serait déplacé et supprimé sans rien toucher, et demande une
+  confirmation avant d'agir.

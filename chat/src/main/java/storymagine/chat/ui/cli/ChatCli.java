@@ -7,23 +7,21 @@ import storymagine.chat.coeur.service.ChatService;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.chat.ui.web.ChatWebServer;
 import storymagine.commun.coeur.ports.LogPort;
+import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
-import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.TeeLogAdapter;
-import storymagine.commun.ui.cli.OllamaSetupCli;
+import storymagine.commun.ui.cli.LlmSetupCli;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
@@ -32,6 +30,9 @@ public class ChatCli {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    /** Opt-in : write master-log.txt and one file per LLM call under the scenario's run/logs/. */
+    private static final String LOGS_OPTION = "--logs";
+
     public static void main(String[] args) throws IOException {
         System.out.println("=================================================");
         System.out.println("  Storymagine Chat");
@@ -39,24 +40,25 @@ public class ChatCli {
         OllamaEnvDisplay.print("  ");
         System.out.println();
 
-        Properties props   = loadProperties();
+        boolean    logsEnabled = Arrays.asList(args).contains(LOGS_OPTION);
+        Properties props   = ChatCliSupport.loadProperties();
         Scanner    scanner = new Scanner(System.in);
-        Path       root    = chooseChatScenariosRoot(props, scanner);
+        Path       root    = ChatCliSupport.chooseChatScenariosRoot(props, scanner);
 
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
 
-        // 1-2. Menu GPU + choix du modele (flux partage, cf. commun/ui/cli/OllamaSetupCli)
-        OllamaSetupCli.Selection setup  = OllamaSetupCli.run(props, scanner, log, "chat");
-        OllamaAdapter            ollama = setup.llm();
+        // 1-2. Choix du serveur LLM (Ollama ou llama-server) + modele (flux partage, cf. commun/ui/cli/LlmSetupCli)
+        LlmSetupCli.Selection setup = LlmSetupCli.run(props, scanner, log, "chat");
+        ModelCallPort         llm   = setup.llm();
 
-        ChatService service = ChatModule.assemble(ollama, new ChatFileStorageAdapter(), log);
+        ChatService service = ChatModule.assemble(llm, new ChatFileStorageAdapter(), log);
 
         // 3. Choix du chatscenario
         List<String> names = service.listScenarios(root);
         if (names.isEmpty()) {
             System.err.println("ERREUR : aucun chatscenario dans '" + root + "'.");
-            System.err.println("Un chatscenario est un sous-repertoire contenant character.txt et scenario.txt.");
+            System.err.println("Un chatscenario est un sous-repertoire contenant scenario.txt et un dossier characters/ avec au moins une fiche.");
             System.exit(1);
             return;
         }
@@ -73,46 +75,68 @@ public class ChatCli {
             System.exit(1);
             return;
         }
-        ChatScenario scenario = service.loadScenario(root, names.get(idx));
+        ChatScenario scenario;
+        try {
+            scenario = service.loadScenario(root, names.get(idx));
+        } catch (IllegalStateException e) {
+            System.err.println("ERREUR : " + e.getMessage());
+            System.exit(1);
+            return;
+        }
         System.out.println(">> Chatscenario : " + scenario.name());
-        fileLog.setOutputDir(root.resolve(scenario.name()).resolve("logs"));
+        // Aucun log sur disque par defaut : seule l'option --logs active FileLogAdapter (qui
+        // ignore toutes les ecritures tant qu'on ne lui a pas donne de repertoire).
+        Path logsDir = root.resolve(scenario.name()).resolve("run").resolve("logs");
+        if (logsEnabled) fileLog.setOutputDir(logsDir);
 
-        // 4. Continuer ou remettre a zero
-        System.out.print("Continuer la conversation ? [O/n] : ");
-        String contInput = scanner.nextLine().trim();
-        boolean reset = contInput.equalsIgnoreCase("n") || contInput.equalsIgnoreCase("non");
-        ChatSession session = service.openSession(root, scenario, reset);
-        System.out.println(reset
-            ? ">> Historique remis a zero."
-            : ">> Reprise (" + session.turns().size() + " tour(s) en memoire).");
+        // 4. Continuer ou remettre a zero — la question n'a de sens que s'il y a une partie a
+        // reprendre ; sans historique sur disque c'est un demarrage, rien a demander.
+        ChatSession session;
+        if (service.hasSavedSession(root, scenario)) {
+            System.out.print("Continuer la conversation ? [O/n] : ");
+            String contInput = scanner.nextLine().trim();
+            boolean reset = contInput.equalsIgnoreCase("n") || contInput.equalsIgnoreCase("non");
+            session = service.openSession(root, scenario, reset);
+            System.out.println(reset
+                ? ">> Historique remis a zero."
+                : ">> Reprise (" + session.turns().size() + " tour(s) en memoire).");
+        } else {
+            session = service.openSession(root, scenario, false);
+            System.out.println(">> Nouvelle partie (introduction : " + session.turns().size() + " tour(s)).");
+        }
 
         // 5. Chargement du modele + info materiel
-        System.out.printf("[%s] Chargement du modele (probe /api/show + appel de test)...%n", ts());
+        System.out.printf("[%s] Chargement du modele...%n", ts());
         long probeT0 = System.currentTimeMillis();
         try {
-            ollama.probe();
+            setup.lifecycle().probe();
             System.out.printf("[%s] Modele charge (%dms).%n", ts(), System.currentTimeMillis() - probeT0);
         } catch (Exception e) {
             System.out.printf("[%s] (echec probe apres %dms : %s)%n",
                 ts(), System.currentTimeMillis() - probeT0, e.getMessage());
         }
-        System.out.printf("[%s] Interrogation /api/ps...%n", ts());
-        OllamaPsInfo ps = OllamaPsInfo.query(setup.ollamaConfig().baseUrl(), setup.modelName()).orElse(null);
+        OllamaPsInfo ps = null;
+        if ("ollama".equals(setup.provider())) {
+            System.out.printf("[%s] Interrogation /api/ps...%n", ts());
+            ps = OllamaPsInfo.query(setup.baseUrl(), setup.modelName()).orElse(null);
+        }
         ModelHardwareDisplay.print("[chat] ", ps, NvidiaSmiSnapshot.capture());
 
         // 6. Serveur web
-        int    port = Integer.parseInt(props.getProperty("chat.web.port", "8765"));
+        int preferredPort = Integer.parseInt(props.getProperty("chat.web.port", "8765"));
+        System.out.printf("[%s] Demarrage du serveur web (port prefere %d)...%n", ts(), preferredPort);
+        int    port = new ChatWebServer(service, root, session, preferredPort).start();
         String url  = "http://localhost:" + port;
-        System.out.printf("[%s] Demarrage du serveur web (port %d)...%n", ts(), port);
-        ChatWebServer server = new ChatWebServer(service, root, session, port);
-        server.start();
+        if (port != preferredPort) {
+            System.out.printf("[%s] Port %d occupe (autre chat ?), utilisation du port %d.%n", ts(), preferredPort, port);
+        }
         System.out.printf("[%s] Serveur web pret.%n", ts());
 
         System.out.println();
         System.out.println("=================================================");
         System.out.println("  Chat pret : " + hyperlink(url, url));
-        if (fileLog.runDir() != null) {
-            System.out.println("  Logs      : " + fileLog.runDir().toAbsolutePath());
+        if (logsEnabled) {
+            System.out.println("  Logs      : " + logsDir.toAbsolutePath());
         }
         System.out.println("  Ctrl+C pour arreter.");
         System.out.println("=================================================");
@@ -124,55 +148,6 @@ public class ChatCli {
         return LocalTime.now().format(TIME);
     }
 
-    private static Path chooseChatScenariosRoot(Properties props, Scanner scanner) {
-        String defaultDir = props.getProperty("chatscenarios.root.default", "");
-        String projectDir = Paths.get("chatscenarios").toAbsolutePath().toString();
-
-        System.out.println("Ou se trouvent les chatscenarios ?");
-        System.out.println("  ENTREE - Repertoire par defaut : " + (defaultDir.isBlank() ? projectDir : defaultDir));
-        System.out.println("  1      - Repertoire du projet  : " + projectDir);
-        System.out.println("  2      - Autre repertoire...");
-        System.out.println();
-
-        while (true) {
-            System.out.print("Choix [ENTREE/1/2] : ");
-            String choice = scanner.nextLine().trim();
-            Path root = switch (choice) {
-                case ""  -> Paths.get(defaultDir.isBlank() ? projectDir : defaultDir);
-                case "1" -> Paths.get(projectDir);
-                case "2" -> {
-                    System.out.print("Chemin du repertoire : ");
-                    yield Paths.get(scanner.nextLine().trim());
-                }
-                default -> null;
-            };
-            if (root == null) {
-                System.out.println("  --> Entree invalide, choisir ENTREE, 1 ou 2.");
-                continue;
-            }
-            try {
-                Files.createDirectories(root);
-            } catch (IOException e) {
-                System.err.println("ERREUR : impossible de creer '" + root + "' : " + e.getMessage());
-                System.exit(1);
-            }
-            System.out.println();
-            return root;
-        }
-    }
-
-    private static Properties loadProperties() {
-        Properties props = new Properties();
-        Path global = Paths.get("storymagine.properties");
-        if (Files.exists(global)) {
-            try (InputStream is = Files.newInputStream(global)) { props.load(is); }
-            catch (IOException ignored) {}
-        }
-        try (InputStream is = ChatCli.class.getResourceAsStream("/chat.properties")) {
-            if (is != null) props.load(is);
-        } catch (IOException ignored) {}
-        return props;
-    }
 
     /** OSC 8 terminal hyperlink — rendu cliquable par Windows Terminal, silencieusement ignore par conhost classique. */
     private static String hyperlink(String url, String label) {

@@ -1,15 +1,15 @@
 package storymagine.redacteur.ui.cli;
 
 import storymagine.commun.coeur.ports.LogPort;
+import storymagine.commun.coeur.ports.ModelCallPort;
 import storymagine.commun.infra.ConsoleLogAdapter;
 import storymagine.commun.infra.FileLogAdapter;
 import storymagine.commun.infra.ModelHardwareDisplay;
 import storymagine.commun.infra.NvidiaSmiSnapshot;
-import storymagine.commun.infra.OllamaAdapter;
 import storymagine.commun.infra.OllamaEnvDisplay;
 import storymagine.commun.infra.OllamaPsInfo;
 import storymagine.commun.infra.TeeLogAdapter;
-import storymagine.commun.ui.cli.OllamaSetupCli;
+import storymagine.commun.ui.cli.LlmSetupCli;
 import storymagine.redacteur.RedacteurModule;
 import storymagine.redacteur.coeur.domaine.orchestrator.plan.BeatsConfig;
 import storymagine.redacteur.coeur.domaine.orchestrator.write.CorrectorConfig;
@@ -47,10 +47,10 @@ public class RedacteurCli {
         FileLogAdapter fileLog = new FileLogAdapter();
         LogPort        log     = new TeeLogAdapter(new ConsoleLogAdapter(), fileLog);
 
-        // 1-2. Menu GPU + choix du modele (flux partage, cf. commun/ui/cli/OllamaSetupCli)
-        OllamaSetupCli.Selection setup         = OllamaSetupCli.run(props, scanner, log, "redacteur");
-        OllamaAdapter            llm           = setup.llm();
-        String                   selectedModel = setup.modelName();
+        // 1-2. Choix du serveur LLM (Ollama ou llama-server) + modele (flux partage, cf. commun/ui/cli/LlmSetupCli)
+        LlmSetupCli.Selection setup         = LlmSetupCli.run(props, scanner, log, "redacteur");
+        ModelCallPort         llm           = setup.llm();
+        String                selectedModel = setup.modelName();
 
         // 3. Lister les scenarios
         System.out.println();
@@ -159,12 +159,13 @@ public class RedacteurCli {
         // -- 7. Chargement du modele + info materiel
         System.out.print("Chargement du modele... ");
         try {
-            llm.probe();
+            setup.lifecycle().probe();
             System.out.println("OK");
         } catch (Exception e) {
             System.out.println("(echec probe : " + e.getMessage() + ")");
         }
-        OllamaPsInfo ps = OllamaPsInfo.query(setup.ollamaConfig().baseUrl(), selectedModel).orElse(null);
+        OllamaPsInfo ps = "ollama".equals(setup.provider())
+            ? OllamaPsInfo.query(setup.baseUrl(), selectedModel).orElse(null) : null;
         // Recapture apres chargement — le snapshot "gpus" du menu GPU (etape 1) date d'avant
         // le probe et ne reflete plus la VRAM reellement occupee par le modele charge.
         List<NvidiaSmiSnapshot.GpuStat> gpusAfterLoad = NvidiaSmiSnapshot.capture();
