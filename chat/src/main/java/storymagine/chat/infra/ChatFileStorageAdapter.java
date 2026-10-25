@@ -1,5 +1,6 @@
 package storymagine.chat.infra;
 
+import storymagine.chat.coeur.domaine.pick.PickResolver;
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
@@ -10,6 +11,7 @@ import storymagine.chat.coeur.domaine.session.NumberedTurn;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.TurnNumber;
 import storymagine.chat.coeur.ports.ChatStoragePort;
+import storymagine.chat.coeur.ports.RandomnessPort;
 import storymagine.chat.infra.RunLayout.SequenceFile;
 
 import java.io.IOException;
@@ -40,7 +42,9 @@ import java.util.regex.Pattern;
  * "# Name" heading — see loadCast). Everything the app generates while playing lives under
  * {name}/run/ and is never part of the scenario : run/current/turns/ (one file per turn, one per
  * compaction — see RunLayout, TurnFileCodec), run/current/state.txt (see RunState), run/saves/ and
- * run/archive/ (zips of current/, see RunArchiver). A scenario directory still in the old layout is
+ * run/archive/ (zips of current/, see RunArchiver). A scenario using [PICK: name] tags (paragraphs
+ * drawn from picks/name.txt) is read from run/current/resolved/ once drawn — see scenarioTextDir.
+ * A scenario directory still in the old layout is
  * refused with a message pointing to migration.bat (see LegacyLayout). See specs/chat.md, "Le run".
  */
 public class ChatFileStorageAdapter implements ChatStoragePort {
@@ -68,6 +72,17 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss-SSS");
     private static final Pattern SAVE_ID_PATTERN = Pattern.compile("[0-9-]+");
 
+    private final RandomnessPort randomness;
+
+    public ChatFileStorageAdapter() {
+        this(new JavaRandomnessAdapter());
+    }
+
+    /** randomness draws the [PICK: ...] paragraphs — a test passes a scripted one. */
+    public ChatFileStorageAdapter(RandomnessPort randomness) {
+        this.randomness = randomness;
+    }
+
     @Override
     public List<String> listScenarioNames(Path chatScenariosRoot) {
         if (!Files.isDirectory(chatScenariosRoot)) return List.of();
@@ -93,14 +108,47 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
                 + " (fichiers de session ou fiches personnage a la racine) : lancer migration.bat.");
         }
         Cast cast = loadCast(dir);
-        String raw = readText(dir.resolve(SCENARIO_FILE));
+        Path textDir = scenarioTextDir(chatScenariosRoot, name, dir);
+        String raw = readText(textDir.resolve(SCENARIO_FILE));
         String[] lines = raw.split("\n", 2);
         Matcher m = PLAYER_NAME_LINE.matcher(lines[0].strip());
         String playerName = m.matches() ? m.group(1).strip() : null;
         String rest = m.matches() ? (lines.length > 1 ? lines[1] : "") : raw;
-        String combined = appendContinuationFiles(dir, rest);
+        String combined = appendContinuationFiles(textDir, rest);
         ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(combined);
         return new ChatScenario(name, cast, outline.premise(), outline.acts(), playerName, outline.premiseOpening());
+    }
+
+    /**
+     * The directory scenario.txt and its continuations are read from. A scenario without PICK tags
+     * is read in place. One with tags is resolved ONCE per run (see PickResolver) : the first load
+     * of a run draws the paragraphs and writes the resolved files to run/current/resolved/, every
+     * later load of that run reads them back, so the draws never change while the run lives. A
+     * restart or a reset deletes current/, hence the next load draws again ; a save point carries
+     * the resolved files along. Edits to scenario*.txt are therefore not seen until the next run.
+     */
+    private Path scenarioTextDir(Path chatScenariosRoot, String name, Path scenarioDir) {
+        Path resolvedDir = RunLayout.resolvedDir(chatScenariosRoot, name);
+        if (Files.isRegularFile(resolvedDir.resolve(SCENARIO_FILE))) return resolvedDir;
+
+        List<Path> sources = scenarioTextFiles(scenarioDir);
+        List<String> texts = sources.stream().map(ChatFileStorageAdapter::readText).toList();
+        if (texts.stream().noneMatch(PickResolver::containsTag)) return scenarioDir;
+
+        List<String> resolved = new PickResolver(new PickFileLibrary(scenarioDir), randomness).resolveAll(texts);
+        for (int i = 0; i < sources.size(); i++) {
+            writeAtomically(resolvedDir.resolve(sources.get(i).getFileName()), resolved.get(i));
+        }
+        return resolvedDir;
+    }
+
+    /** scenario.txt, then scenario-1.txt, scenario-2.txt, ... — consecutive numbers, stopping at the first missing one. */
+    private static List<Path> scenarioTextFiles(Path dir) {
+        List<Path> files = new ArrayList<>(List.of(dir.resolve(SCENARIO_FILE)));
+        for (int n = 1; Files.isRegularFile(dir.resolve("scenario-" + n + TXT_EXTENSION)); n++) {
+            files.add(dir.resolve("scenario-" + n + TXT_EXTENSION));
+        }
+        return files;
     }
 
     /**
@@ -371,7 +419,8 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
             throw new IllegalArgumentException("Sauvegarde inconnue : " + saveId);
         }
         RunArchiver.extractInto(zip, RunLayout.currentDir(chatScenariosRoot, scenario.name()));
-        return readCurrentRun(chatScenariosRoot, scenario);
+        // The save carries its own resolved scenario (PICK draws) : the scenario is read again from it.
+        return readCurrentRun(chatScenariosRoot, loadScenario(chatScenariosRoot, scenario.name()));
     }
 
     @Override

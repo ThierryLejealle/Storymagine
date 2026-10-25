@@ -16,7 +16,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Zips and unzips a run's current/ directory (turns/ and state.txt, entry names relative to
+ * Zips and unzips a run's current/ directory (turns/, state.txt and resolved/, entry names relative to
  * current/) — the one format shared by save points and archived runs. A zip is immutable once
  * written : it is built under a temporary name then moved into place. Extraction only accepts the
  * entry names a run can legitimately contain, so a doctored zip can never write outside current/.
@@ -24,6 +24,8 @@ import java.util.zip.ZipOutputStream;
 final class RunArchiver {
 
     private static final Pattern TURN_ENTRY  = Pattern.compile("turns/(\\d{6,})(?:-compaction-f\\d{6,})?\\.md");
+    /** The scenario with its PICK tags resolved for this run — kept in saves so a loaded save replays the same draws. */
+    private static final Pattern RESOLVED_ENTRY = Pattern.compile("resolved/scenario(?:-\\d+)?\\.txt");
     private static final Pattern PLAIN_TURN_ENTRY = Pattern.compile("turns/(\\d{6,})\\.md");
 
     private RunArchiver() {}
@@ -96,7 +98,8 @@ final class RunArchiver {
     }
 
     private static boolean isLegitimate(String entryName) {
-        return entryName.equals(RunLayout.STATE_FILE) || TURN_ENTRY.matcher(entryName).matches();
+        return entryName.equals(RunLayout.STATE_FILE) || TURN_ENTRY.matcher(entryName).matches()
+            || RESOLVED_ENTRY.matcher(entryName).matches();
     }
 
     private static List<Path> filesOf(Path currentDir) throws IOException {

@@ -23,6 +23,7 @@ final class RunLayout {
     static final String CURRENT_DIR = "current";
     static final String TURNS_DIR   = "turns";
     static final String STATE_FILE  = "state.txt";
+    static final String RESOLVED_DIR = "resolved";
     static final String SAVES_DIR   = "saves";
     static final String ARCHIVE_DIR = "archive";
     static final String LOGS_DIR    = "logs";
@@ -52,6 +53,11 @@ final class RunLayout {
 
     static Path stateFile(Path chatScenariosRoot, String scenarioName) {
         return currentDir(chatScenariosRoot, scenarioName).resolve(STATE_FILE);
+    }
+
+    /** The scenario files with their PICK tags replaced — written once per run, see ChatFileStorageAdapter.scenarioTextDir. */
+    static Path resolvedDir(Path chatScenariosRoot, String scenarioName) {
+        return currentDir(chatScenariosRoot, scenarioName).resolve(RESOLVED_DIR);
     }
 
     static Path savesDir(Path chatScenariosRoot, String scenarioName) {

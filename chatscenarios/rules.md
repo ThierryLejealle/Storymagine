@@ -20,6 +20,8 @@ chatscenarios/mon-scenario/
   characters/         obligatoire — un fichier par personnage
     elena.txt
     marcus.txt
+  picks/              optionnel — paragraphes tirés au hasard par [PICK: nom] (voir §2.6)
+    lieu.txt
   run/                généré par l'appli, jamais à écrire à la main (voir §6)
 ```
 
@@ -215,6 +217,105 @@ Quand écrire [NEXT ACT] : ...
 Ces libellés sont une convention du projet, pas une syntaxe imposée par le code — seuls `#SCENARIO`,
 les headings `#`/`##`, et les crochets `[...]` sont réellement parsés.
 
+### 2.6 Contenu aléatoire : `[PICK: nom]` et `[PICK-UNIQUE: nom]`
+
+Un scénario peut avoir des « trous » remplis différemment à chaque nouvelle partie : un lieu, un
+antagoniste, un déclencheur… Dans `scenario.txt` ou un `scenario-N.txt`, écrire un tag à
+l'endroit voulu ; au lancement d'une partie, il est remplacé par **un paragraphe tiré au hasard**
+dans le fichier `picks/nom.txt` du scénario.
+
+```
+chatscenarios/mon-scenario/
+  scenario.txt
+  picks/
+    lieu.txt            <- [PICK: lieu]  ou  [PICK-UNIQUE: lieu]
+    intrigue.txt
+```
+
+**Le fichier de picks** : des paragraphes séparés par une ligne qui ne contient que `---` (trois
+tirets ou plus, rien d'autre sur la ligne). Un paragraphe peut tenir sur plusieurs lignes. Un fichier
+sans séparateur = un seul paragraphe. Les paragraphes vides sont ignorés.
+
+```
+Le port est noyé dans la brume, les cloches sonnent à contretemps.
+---
+Un marché nocturne bat son plein sous des lanternes rouges.
+---
+La ville est déserte, les volets clos depuis trois jours.
+```
+
+**Les deux tags**
+
+| Tag | Comportement |
+|---|---|
+| `[PICK: lieu]` | Tire un paragraphe au hasard. Chaque `[PICK: lieu]` tire **indépendamment** : le même paragraphe peut sortir deux fois. |
+| `[PICK-UNIQUE: lieu]` | Tire **sans répétition** : jamais un paragraphe déjà distribué pour `lieu` pendant cette partie (par un `PICK-UNIQUE` **ou** par un `PICK` simple, dans tous les fichiers du scénario, dans l'ordre de lecture). Si tous les paragraphes sont déjà sortis, le lancement échoue avec un message clair. |
+
+Le nom du tag est le nom du fichier sans `.txt` (lettres, chiffres, `_` et `-` uniquement). Un `PICK`
+simple ne regarde pas ce que les `PICK-UNIQUE` ont déjà distribué : seul `PICK-UNIQUE` évite les doublons.
+
+**Exemple complet**
+
+`scenario.txt` :
+
+```
+Joueur : Alex
+
+#SCENARIO
+Prémisse : Alex arrive dans une ville portuaire où quelque chose cloche. [PICK: lieu]
+
+# Acte 1 - L'arrivée
+[Alex pose son sac devant l'auberge.]
+Point de départ : Alex vient de quitter la rue. En face de lui : [PICK-UNIQUE: lieu]
+Ce qui doit se passer : Elena met Alex en garde. [PICK: intrigue]
+```
+
+`picks/lieu.txt` : les trois paragraphes ci-dessus (brume, marché nocturne, ville déserte).
+
+`picks/intrigue.txt` :
+
+```
+Le maire a été remplacé par un imposteur, et Elena est la seule à l'avoir remarqué.
+---
+Un artefact a disparu du temple la nuit dernière, et on soupçonne les étrangers.
+```
+
+Deux parties possibles :
+
+| | Partie 1 | Partie 2 |
+|---|---|---|
+| Prémisse (`[PICK: lieu]`) | la brume | le marché nocturne |
+| Acte 1 (`[PICK-UNIQUE: lieu]`) | la ville déserte | la brume |
+| Intrigue (`[PICK: intrigue]`) | le maire imposteur | l'artefact volé |
+
+Le `PICK-UNIQUE` de l'acte 1 ne peut jamais retomber sur le lieu déjà donné à la prémisse : il tire
+parmi les paragraphes restants. Avec 4 `PICK-UNIQUE: lieu` pour 3 paragraphes, le lancement s'arrête
+sur : `[PICK-UNIQUE: lieu] : les 3 paragraphe(s) de picks/lieu.txt ont deja tous ete tires.`
+
+**Comment ça marche**
+
+- Le tirage se fait **une fois par partie**, à la première lecture du scénario d'une nouvelle partie
+  (premier lancement, « Recommencer »). Le résultat est écrit dans `run/current/resolved/` (copie de
+  `scenario.txt` et des `scenario-N.txt` où les tags sont remplacés) et c'est cette copie que le jeu
+  lit ensuite : les paragraphes ne changent donc plus tant que la partie existe, même après un
+  rechargement ou un redémarrage de l'appli.
+- Vos fichiers d'origine ne sont jamais modifiés : ils restent le gabarit.
+- Une **sauvegarde** (💾) emporte ses tirages avec elle : la charger rend les mêmes paragraphes.
+  « Recommencer » archive la partie et en tire de nouveaux.
+- Conséquence : tant qu'une partie est en cours, **modifier `scenario.txt` n'a pas d'effet** (le jeu lit
+  la copie résolue) ; le bouton ⟳ recharge la copie, pas vos fichiers. Pour voir une modification,
+  « Recommencer » (nouveaux tirages). Un scénario **sans** tag est lu directement, comme avant.
+- Le joueur ne voit un paragraphe tiré que s'il tombe dans un texte déjà affiché au joueur (une
+  ligne `[...]`, par exemple) ; sinon il ne sert qu'au LLM.
+- Le paragraphe est inséré tel quel à la place du tag. Une ligne `[...]` (narration affichée, §2.4)
+  doit rester sur **une seule ligne** : si un tag s'y trouve, ses paragraphes doivent tenir sur une
+  ligne, sinon les crochets ne se referment plus sur la même ligne. Dans le texte d'accompagnement
+  (§2.5) ou la prémisse, un paragraphe multi-lignes ne pose pas de problème.
+- Un tag à l'intérieur d'un paragraphe tiré n'est pas résolu (pas de tirage imbriqué).
+- Les fiches personnage (`characters/`) ne sont pas concernées pour l'instant.
+- Fichier `picks/nom.txt` absent ou sans paragraphe : le chargement échoue avec un message qui
+  nomme le tag.
+
 ## 3. Format d'un fichier personnage (`characters/nom.txt`)
 
 ```
@@ -340,7 +441,9 @@ sur **une ligne seule** (comme un bloc, mais sans phrase autour) :
   qui se termine est archivée dans un zip, jamais perdue.
 - ⟳ (à côté de "Personnages") : recharge `scenario.txt` (et ses suites `scenario-N.txt`) et les
   fiches de `characters/` depuis le disque sans toucher à la conversation en cours — pratique pour
-  corriger une fiche en cours de partie.
+  corriger une fiche en cours de partie. Exception : un scénario avec des `[PICK]` est relu depuis
+  sa copie résolue (`run/current/resolved/`), donc une modification de `scenario*.txt` n'est vue
+  qu'après « Recommencer » (voir §2.6). Les fiches de `characters/` sont relues normalement.
 
 ### 4.7 Compaction du contexte
 
@@ -408,6 +511,7 @@ chatscenarios/mon-scenario/
         000014.md
         ...
       state.txt                                  présence et interjection des PNJ
+      resolved/                                  scenario*.txt avec les [PICK] tirés (§2.6) ; absent sans tag
     saves/
       2026-10-25-143012-123.zip                  sauvegardes manuelles (zip de current/)
     archive/
@@ -533,7 +637,7 @@ n'y a plus de résumé pour alléger), une nouvelle compaction est faite immédi
 ### 6.7 Sauvegardes et archives : des zips de `current/`
 
 Une sauvegarde manuelle (💾) et une archive de « Recommencer » ont exactement la même forme : un zip de
-`run/current/` (le dossier `turns/` et `state.txt`), nommé d'après l'horodatage (précision à la
+`run/current/` (le dossier `turns/`, `state.txt` et, s'il existe, `resolved/` : les tirages `[PICK]`, §2.6), nommé d'après l'horodatage (précision à la
 milliseconde, pour que deux sauvegardes rapprochées ne s'écrasent jamais) :
 `run/saves/2026-10-25-143012-123.zip`, `run/archive/2026-10-25-150400-567.zip`.
 

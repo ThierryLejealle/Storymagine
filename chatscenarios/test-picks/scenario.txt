@@ -1,0 +1,12 @@
+Joueur : Alex
+
+#SCENARIO
+Monde : Un petit village de pêcheurs, aujourd'hui.
+Prémisse : Alex rend visite à Elena, qui tient la boutique du village.
+Ton : Léger, quotidien.
+
+# Acte 1 - Test des tirages
+[VISIBLE - Lieu tiré avec PICK : [PICK: lieu]]
+[VISIBLE - Premier objet tiré avec PICK-UNIQUE : [PICK-UNIQUE: objet]]
+Point de départ : Alex et Elena se trouvent ici : [PICK: lieu]
+Ce qui doit se passer : INVISIBLE pour le joueur. Elena montre à Alex un second objet, qu'elle présente simplement : [PICK-UNIQUE: objet]

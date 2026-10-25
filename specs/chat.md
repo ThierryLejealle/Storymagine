@@ -25,6 +25,7 @@ chatscenarios/{nom}/
   scenario-1.txt ...    optionnel — suite des actes, un fichier par tranche (voir plus bas)
   characters/           obligatoire — un fichier .txt par personnage
     {pnj}.txt           première ligne "# Nom" obligatoire
+  picks/{nom}.txt       optionnel — paragraphes pour [PICK: nom] (voir « Contenu aléatoire »)
   run/                  généré par l'appli — voir « Le run »
 ```
 
@@ -107,6 +108,31 @@ texte avant que le LLM ou `Teaser` ne le voie).
 - Pas d'ouverture après un undo, un rollback ou une sauvegarde chargée, ni après un arrêt ou une
   erreur ; une pression sur Stop pendant l'ouverture retire le `DO:` et la relancera au prochain
   chargement de la page.
+
+# Contenu aléatoire — `[PICK: nom]` et `[PICK-UNIQUE: nom]`
+
+Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/rules.md` §2.6. Ici, la mécanique.
+
+- **Concepts** : `PickTag` (nom = fichier sans `.txt`, `[\p{L}\p{N}_-]+`, jamais un chemin),
+  `PickParagraphs` (contenu d'un fichier coupé sur les lignes `---` ou plus ; CRLF toléré, paragraphes
+  vides ignorés), `PickLibrary` (nom → paragraphes ; `PickFileLibrary` lit `picks/`), `PickResolver`
+  (domaine, pur), port `RandomnessPort` (`JavaRandomnessAdapter` ; un test branche un tirage scripté).
+- **Règles** : `PICK` tire indépendamment. `PICK-UNIQUE` exclut tout paragraphe déjà distribué pour ce
+  tag pendant la résolution — par un `PICK-UNIQUE` ou un `PICK` ; un `PICK` ignore l'historique. La
+  mémoire couvre tous les fichiers du scénario, lus dans l'ordre (`scenario.txt`, `scenario-1.txt`…).
+  Plus aucun candidat : `IllegalStateException` nommant le tag. Un tag dans un paragraphe tiré n'est
+  pas résolu. Insensible à la casse (`[pick-unique: x]`).
+- **Quand** : `ChatFileStorageAdapter.loadScenario` → `scenarioTextDir`. Si `run/current/resolved/
+  scenario.txt` existe, il est lu (les tirages sont figés pour la durée du run). Sinon, si un fichier
+  du scénario contient un tag, tout est résolu en une fois puis écrit dans `resolved/` (écriture
+  atomique) ; sans tag, rien n'est écrit et le scénario est lu en place.
+- **Cycle de vie** : `resolved/` fait partie de `current/` — supprimé par `resetSession` (donc tirage
+  neuf au chargement suivant), zippé dans les sauvegardes et archives (`RunArchiver`), restauré avec
+  elles. Pour que le scénario en mémoire corresponde toujours au run : `openSession(reset=true)` et
+  `restartSession` rechargent le scénario **après** le reset, `loadSavePoint` le relit depuis la
+  sauvegarde. Corollaire : modifier `scenario*.txt` en cours de run est sans effet (⟳ relit la copie
+  résolue) jusqu'au prochain « Recommencer ».
+- Les fiches personnage ne sont pas résolues (extension possible plus tard). Aucun prompt modifié.
 
 # Conventions de formatage du chat
 
@@ -207,6 +233,7 @@ run/
       {n:6}.md                          un tour
       {R:6}-compaction-f{F:6}.md        une compaction
     state.txt                           présence et interjection
+    resolved/scenario[-N].txt           scénario dont les [PICK] sont tirés (absent sans tag)
   saves/{yyyy-MM-dd-HHmmss-SSS}.zip     zip de current/ (sauvegarde manuelle)
   archive/{yyyy-MM-dd-HHmmss-SSS}.zip   zip de current/ (archivage par « Recommencer »)
   logs/                                 seulement avec --logs
@@ -247,7 +274,7 @@ virgules. Fichier absent, ou clé absente : tous les PNJ présents / éligibles 
 réglages de génération ne sont pas persistés. Écrit après chaque `saveSession`, de façon atomique
 (fichier temporaire puis renommage).
 
-**Zips** : `turns/` et `state.txt` de `current/`, chemins relatifs à `current/`. Fichiers immuables,
+**Zips** : `turns/`, `state.txt` et `resolved/` de `current/`, chemins relatifs à `current/`. Fichiers immuables,
 écrits via `java.util.zip`. Charger un zip remplace entièrement `current/`.
 
 ## Ordre

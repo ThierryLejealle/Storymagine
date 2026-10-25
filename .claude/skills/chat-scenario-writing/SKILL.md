@@ -20,6 +20,8 @@ chatscenarios/mon-scenario/
   scenario-1.txt     optionnel, suite des actes (scénario long)
   characters/
     elena.txt        un fichier par PNJ, nom simple sans espace ni accent
+  picks/
+    lieu.txt         optionnel, paragraphes séparés par `---` pour [PICK: lieu] (voir plus bas)
 ```
 Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/rules.md` §1).
 Ne jamais créer ni éditer à la main le dossier `run/` (partie en cours, sauvegardes, archives, logs :
@@ -120,6 +122,16 @@ ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : comme un clic sur DO
 PNJ parle. Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
 Ne pas le mettre sur chaque acte « par défaut » : réserver-le aux scènes où quelqu'un agit
 réellement avant le joueur (arrivée, interpellation, événement).
+
+### Varier le scénario à chaque partie : `[PICK: nom]` et `[PICK-UNIQUE: nom]`
+
+Un tag dans `scenario.txt` / `scenario-N.txt` est remplacé, au lancement d'une nouvelle partie, par un
+paragraphe tiré au hasard dans `picks/nom.txt` (paragraphes séparés par une ligne `---` ou plus).
+`PICK` tire indépendamment (doublon possible) ; `PICK-UNIQUE` ne retire jamais un paragraphe déjà
+distribué pour ce nom pendant la partie. Le tirage est figé pour la durée de la partie (copie dans
+`run/current/resolved/`) : modifier `scenario.txt` en cours de partie n'a pas d'effet jusqu'à
+« Recommencer ». Sur une ligne `[...]`, les paragraphes doivent tenir sur une seule ligne. Exemple et
+détails : `chatscenarios/rules.md` §2.6.
 
 Outils de diagnostic en jeu : 🔍 (analyse où en est la condition, sans écrire dans l'historique),
 Précédent / Suivant (correction manuelle), ⟳ (recharger les fichiers après correction).

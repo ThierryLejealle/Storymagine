@@ -102,7 +102,9 @@ public class ChatServiceImpl implements ChatService {
     public ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset) {
         if (reset) {
             storage.resetSession(chatScenariosRoot, scenario);
-            return ChatSession.fresh(scenario);
+            // Loaded again AFTER the reset : a scenario with [PICK: ...] tags draws its paragraphs
+            // for the new run, the instance received here holds the previous run's draws.
+            return ChatSession.fresh(storage.loadScenario(chatScenariosRoot, scenario.name()));
         }
         return storage.loadSession(chatScenariosRoot, scenario);
     }
@@ -517,6 +519,7 @@ public class ChatServiceImpl implements ChatService {
         // confirmation avant d'appeler ce point d'entree (voir chat.html) — l'ecrasement est donc
         // toujours un choix explicite du joueur, pas un accident a rattraper.
         ChatSession loaded = storage.loadSavePoint(chatScenariosRoot, session.scenario(), saveId);
+        session.reloadScenario(loaded.scenario()); // the save's own [PICK: ...] draws
         session.restoreFrom(loaded);
         storage.saveSession(chatScenariosRoot, session);
     }
@@ -555,8 +558,9 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public void restartSession(Path chatScenariosRoot, ChatSession session) {
+        // Reset BEFORE loading : the load of a new run is what draws its [PICK: ...] paragraphs.
+        storage.resetSession(chatScenariosRoot, session.scenario());
         ChatScenario freshScenario = storage.loadScenario(chatScenariosRoot, session.scenario().name());
-        storage.resetSession(chatScenariosRoot, freshScenario);
         session.reloadScenario(freshScenario);
         ChatSession fresh = ChatSession.fresh(freshScenario);
         session.restore(fresh.summary(), fresh.turns(), fresh.currentAct(), fresh.presentNpcIds(),

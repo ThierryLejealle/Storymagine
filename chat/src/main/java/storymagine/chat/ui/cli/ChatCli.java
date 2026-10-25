@@ -3,6 +3,7 @@ package storymagine.chat.ui.cli;
 import storymagine.chat.ChatModule;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
+import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.service.ChatService;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.chat.ui.web.ChatWebServer;
@@ -99,10 +100,11 @@ public class ChatCli {
             session = service.openSession(root, scenario, reset);
             System.out.println(reset
                 ? ">> Historique remis a zero."
-                : ">> Reprise (" + session.turns().size() + " tour(s) en memoire).");
+                : ">> Reprise (" + session.turns().stream()
+                    .filter(t -> t.speaker() != ChatTurn.Speaker.NARRATOR).count() + " tour(s) joue(s) en memoire).");
         } else {
             session = service.openSession(root, scenario, false);
-            System.out.println(">> Nouvelle partie (introduction : " + session.turns().size() + " tour(s)).");
+            System.out.println(">> Nouvelle partie.");
         }
 
         // 5. Chargement du modele + info materiel
