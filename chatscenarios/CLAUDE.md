@@ -17,5 +17,5 @@ Les sections "Point de départ", "Ce qui doit se passer" et "Quand écrire [NEXT
 cette convention (elles parlent de "le joueur" ou du prénom du joueur) — les blocs `[...]` et la
 Prémisse doivent faire pareil.
 
-Voir aussi `rules.md` (racine de ce répertoire) pour l'ensemble des règles de scénario, personnage
+Voir aussi `guide-redaction-chat.md` (racine de ce répertoire) pour l'ensemble des règles de scénario, personnage
 et mécanismes du jeu.

@@ -5,7 +5,7 @@ description: Écrire ou modifier un scénario du module chat (chatscenarios/) �
 
 # Écrire un scénario de chat
 
-Référence complète : `chatscenarios/rules.md`. Spec technique : `specs/chat.md`. Ce guide est le
+Référence complète : `chatscenarios/guide-redaction-chat.md`. Spec technique : `specs/chat.md`. Ce guide est le
 raccourci pratique. Les textes du scénario sont en français ; le code et la doc en anglais/français
 selon le fichier.
 
@@ -23,9 +23,9 @@ chatscenarios/mon-scenario/
   picks/
     lieu.txt         optionnel, paragraphes séparés par `---` pour [PICK: lieu] (voir plus bas)
 ```
-Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/rules.md` §1).
+Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/guide-redaction-chat.md` §1).
 Ne jamais créer ni éditer à la main le dossier `run/` (partie en cours, sauvegardes, archives, logs :
-voir `chatscenarios/rules.md` §6). Pour partager un scénario, copier le dossier sans `run/`.
+voir `chatscenarios/guide-redaction-chat.md` §6). Pour partager un scénario, copier le dossier sans `run/`.
 Dans `characters/`, tout `.txt` dont la première ligne n'est pas `# Nom` est ignoré.
 
 ## 2. Mono ou multi-personnage
@@ -131,7 +131,7 @@ paragraphe tiré au hasard dans `picks/nom.txt` (paragraphes séparés par une l
 distribué pour ce nom pendant la partie. Le tirage est figé pour la durée de la partie (copie dans
 `run/current/resolved/`) : modifier `scenario.txt` en cours de partie n'a pas d'effet jusqu'à
 « Recommencer ». Sur une ligne `[...]`, les paragraphes doivent tenir sur une seule ligne. Exemple et
-détails : `chatscenarios/rules.md` §2.6.
+détails : `chatscenarios/guide-redaction-chat.md` §2.6.
 
 Outils de diagnostic en jeu : 🔍 (analyse où en est la condition, sans écrire dans l'historique),
 Précédent / Suivant (correction manuelle), ⟳ (recharger les fichiers après correction).
@@ -140,7 +140,7 @@ Précédent / Suivant (correction manuelle), ⟳ (recharger les fichiers après 
 
 Charger le scénario par le code (script jetable ou `ScenarioTesterCli`) et contrôler : nombre
 d'actes obtenu = nombre voulu, nombre de PNJ, tours NARRATOR d'ouverture clairs (voir §5 de
-`chatscenarios/rules.md`). Ne pas se fier à la relecture seule : le piège des feuilles ne se voit
+`chatscenarios/guide-redaction-chat.md`). Ne pas se fier à la relecture seule : le piège des feuilles ne se voit
 pas à l'œil.
 
 ## 7. Modèle de départ

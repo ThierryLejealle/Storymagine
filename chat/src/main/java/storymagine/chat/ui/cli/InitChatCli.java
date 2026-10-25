@@ -40,7 +40,7 @@ public class InitChatCli {
         }
         System.out.println();
         System.out.println("Remplace les textes (entre parentheses) dans scenario.txt et chaque fiche,");
-        System.out.println("puis lance chat.bat. Regles d'ecriture : chatscenarios/rules.md");
+        System.out.println("puis lance chat.bat. Regles d'ecriture : chatscenarios/guide-redaction-chat.md");
     }
 
     private static String askScenarioName(Scanner scanner, Path root) {

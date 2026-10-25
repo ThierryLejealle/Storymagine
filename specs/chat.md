@@ -7,7 +7,7 @@ qui continue tant qu'on veut, guidée par des actes écrits à la main, avec com
 l'historique pour ne jamais saturer le contexte du modèle.
 
 Documents liés :
-- `chatscenarios/rules.md` — référence détaillée pour écrire un scénario (pièges, mécanismes) ; sa
+- `chatscenarios/guide-redaction-chat.md` — référence détaillée pour écrire un scénario (pièges, mécanismes) ; sa
   section 6 décrit le dossier `run/` côté utilisateur.
 - `chatscenarios/CLAUDE.md` — règle d'écriture à la 3e personne.
 - `.claude/skills/chat-scenario-writing/SKILL.md` — guide pratique d'écriture (mono/multi-PNJ, fiche
@@ -111,7 +111,7 @@ texte avant que le LLM ou `Teaser` ne le voie).
 
 # Contenu aléatoire — `[PICK: nom]` et `[PICK-UNIQUE: nom]`
 
-Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/rules.md` §2.6. Ici, la mécanique.
+Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-redaction-chat.md` §2.6. Ici, la mécanique.
 
 - **Concepts** : `PickTag` (nom = fichier sans `.txt`, `[\p{L}\p{N}_-]+`, jamais un chemin),
   `PickParagraphs` (contenu d'un fichier coupé sur les lignes `---` ou plus ; CRLF toléré, paragraphes
@@ -148,7 +148,7 @@ Injectées dans chaque prompt (`ChatPromptBuilder`) :
 (2) sinon le PNJ unique du tour précédent ; (3) sinon tirage aléatoire parmi les PNJ éligibles
 à l'interjection. Ensuite, chaque autre PNJ présent et éligible tire sa chance d'interjecter
 (réglage « Chance d'interjection »). Présence (🔊/🔇) et interjection (💬) se règlent par PNJ.
-Détail : `chatscenarios/rules.md` §4.
+Détail : `chatscenarios/guide-redaction-chat.md` §4.
 
 # Appel LLM
 
@@ -213,7 +213,7 @@ utilisée. Attention : aucun verrou n'empêche d'ouvrir **le même scénario** d
 # Le run : état de partie, historique, compactions
 
 Tout ce que l'appli génère pour une partie vit dans `chatscenarios/{nom}/run/`. Cette section est la
-spécification technique ; sa version « utilisateur » est `chatscenarios/rules.md` §6.
+spécification technique ; sa version « utilisateur » est `chatscenarios/guide-redaction-chat.md` §6.
 
 ## Concepts (noms métier)
 

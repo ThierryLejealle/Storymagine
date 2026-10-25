@@ -15,10 +15,10 @@ import java.util.regex.Pattern;
 
 /**
  * Creates the skeleton of a new chatscenario : scenario.txt (a premise and two acts, every field a
- * "(...)" instruction still to be replaced, the first act already naming every Npc as rules.md
+ * "(...)" instruction still to be replaced, the first act already naming every Npc as guide-redaction-chat.md
  * demands) plus one character sheet per Npc under characters/. Never creates run/ — the game does
  * that — and never overwrites : an existing scenario directory is refused. Pure file creation, no
- * dialogue : the CLI (InitChatCli) asks, this builds. The texts follow chatscenarios/rules.md
+ * dialogue : the CLI (InitChatCli) asks, this builds. The texts follow chatscenarios/guide-redaction-chat.md
  * (third person, "Quand écrire [NEXT ACT]" on every act but the last).
  */
 public final class ScenarioScaffolder {
