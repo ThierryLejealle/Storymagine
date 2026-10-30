@@ -10,6 +10,8 @@ import storymagine.commun.coeur.ports.ModelCallPort;
 public class ChatSummarizer {
 
     private static final String AGENT_NAME = "ChatSummarizer";
+    /** Replaced in the system prompt by the scenario's language (see ScenarioLanguage.phrase). */
+    private static final String LANGUAGE_PLACEHOLDER = "{LANGUAGE}";
 
     private final ModelCallPort llm;
 
@@ -49,9 +51,10 @@ public class ChatSummarizer {
             Rules:
             - Use only the previous summary and the turns; add nothing else.
             - If the previous summary is "(empty)", build the summary from the turns alone.
-            - Write factual prose in the same language as the turns, third person: past tense for
-              events, present tense for the current situation.
-            - Output only the summary text, with no heading and no commentary.""";
+            - Write factual prose in {LANGUAGE}. Third person: past tense for events, present
+              tense for the current situation.
+            - Output only the summary text, with no heading and no commentary."""
+            .replace(LANGUAGE_PLACEHOLDER, input.language().phrase("the same language as the turns"));
 
         String user = "PREVIOUS SUMMARY:\n" + emptyIfBlank(input.previousSummary())
             + "\n\nNEW TURNS:\n" + input.transcriptToFold()

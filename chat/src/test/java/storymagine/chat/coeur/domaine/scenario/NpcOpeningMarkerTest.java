@@ -9,7 +9,7 @@ class NpcOpeningMarkerTest {
 
     @Test
     void bareMarkerMeansAnyNpcAndTheLineIsCutOut() {
-        NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract("Monde : un chateau.\n[NPC STARTS]\nTon : sombre.");
+        NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract("Monde : un chateau.\n{npc-starts}\nTon : sombre.");
 
         assertEquals(NpcOpening.ANY, e.opening());
         assertEquals("Monde : un chateau.\nTon : sombre.", e.text());
@@ -17,21 +17,26 @@ class NpcOpeningMarkerTest {
 
     @Test
     void markerWithNameNamesTheNpc() {
-        NpcOpening opening = NpcOpeningMarker.extract("[NPC STARTS: Elena Voss ]").opening();
+        NpcOpening opening = NpcOpeningMarker.extract("{npc-starts Elena Voss }").opening();
 
         assertTrue(opening.isNamed());
         assertEquals("Elena Voss", opening.npcName());
     }
 
     @Test
-    void spellingSlipsAreTolerated() {
-        assertTrue(NpcOpeningMarker.extract("[npc_starts]").opening().npcStarts());
-        assertTrue(NpcOpeningMarker.extract("  [NPC-START : Marcus]  ").opening().isNamed());
+    void caseAndSurroundingSpacesAreTolerated() {
+        assertTrue(NpcOpeningMarker.extract("{NPC-Starts}").opening().npcStarts());
+        assertTrue(NpcOpeningMarker.extract("  {npc-starts   Marcus}  ").opening().isNamed());
+    }
+
+    @Test
+    void theOldBracketSpellingIsNoLongerACommand() {
+        assertTrue(NpcOpeningMarker.extract("[NPC STARTS]").opening().isNone());
     }
 
     @Test
     void aMentionInsideASentenceIsNotAMarker() {
-        String note = "(Pour qu'un PNJ ouvre, écrire [NPC STARTS] seul sur une ligne.)";
+        String note = "(Pour qu'un PNJ ouvre, écrire {npc-starts} seul sur une ligne.)";
 
         NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract(note);
 
@@ -41,7 +46,7 @@ class NpcOpeningMarkerTest {
 
     @Test
     void theFirstMarkerDecidesAndEveryMarkerLineIsRemoved() {
-        NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract("[NPC STARTS: Marcus]\ntexte\n[NPC STARTS: Elena]\n");
+        NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract("{npc-starts Marcus}\ntexte\n{npc-starts Elena}\n");
 
         assertEquals("Marcus", e.opening().npcName());
         assertEquals("texte\n", e.text());

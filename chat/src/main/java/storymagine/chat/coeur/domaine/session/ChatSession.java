@@ -8,6 +8,7 @@ import storymagine.chat.coeur.domaine.scenario.Teaser;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -139,6 +140,28 @@ public class ChatSession {
     public String summary() { return summary; }
 
     /** 0 if the scenario has no acts, otherwise the 1-based number of the currently active act. */
+    private ReplyTrace lastReplyTrace;
+
+    /** Remembers the prompt behind the reply just appended (debug, never persisted, see ReplyOriginAnalyst). */
+    public void rememberReplyTrace(ReplyTrace trace) { this.lastReplyTrace = trace; }
+
+    /**
+     * The trace of the last Npc reply, only while that reply is still the last LLM turn of the
+     * conversation : after an undo, a rollback, a restart or a load, what was remembered no longer
+     * matches and nothing is offered.
+     */
+    public Optional<ReplyTrace> lastReplyTrace() {
+        if (lastReplyTrace == null) return Optional.empty();
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            ChatTurn turn = entries.get(i).turn();
+            if (turn.speaker() != ChatTurn.Speaker.LLM) continue;
+            boolean same = lastReplyTrace.reply().equals(turn.text())
+                && java.util.Objects.equals(lastReplyTrace.npcId(), turn.npcId());
+            return same ? Optional.of(lastReplyTrace) : Optional.empty();
+        }
+        return Optional.empty();
+    }
+
     public int currentAct() { return currentAct; }
 
     /**

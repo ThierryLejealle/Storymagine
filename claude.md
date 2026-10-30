@@ -67,6 +67,8 @@ On peut mettre des tests d'integration ; ils sont executés uniquement à la dem
 Privilégier les .bat pour lancer des traitements CLI
 Les .bat doivent être STUPIDES : la CLI codée en java dans /cli dans chaque module
 
+Le guide de rédaction de scénarios de chat (`chatscenarios/guide-redaction-chat.md`, et son raccourci `.claude/skills/chat-scenario-writing/SKILL.md`) doit être maintenu à jour : à chaque nouvelle fonctionnalité du module chat qui touche l'auteur d'un scénario, et à chaque limite ou piège découvert (comportement d'un petit LLM, bug de format, piège d'écriture), ajouter ou corriger la section concernée du guide (notamment §7 Conseils d'écriture) dans la même évolution.
+
 # Test
 L'hexagonal doit permettre de tester le coeur correctement.
 Eviter les tests triviaux : un test doit avoir de la valeur

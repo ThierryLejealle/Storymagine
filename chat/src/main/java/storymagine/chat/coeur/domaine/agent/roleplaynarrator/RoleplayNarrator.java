@@ -119,7 +119,7 @@ public class RoleplayNarrator {
         String replyText = NextActMarker.PATTERN.matcher(rawReply).replaceAll(" ").strip();
         String thinking = showThinking ? result.thinking().strip() : "";
 
-        return new RoleplayNarratorOutput(replyText, triggeredNextAct, thinking);
+        return new RoleplayNarratorOutput(replyText, triggeredNextAct, thinking, prompt);
     }
 
     private static List<String> stopSequencesFor(String playerName, Scene scene) {

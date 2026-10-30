@@ -2,6 +2,7 @@ package storymagine.chat.infra;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.SavePoint;
@@ -11,12 +12,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** [PICK: ...] resolution as the storage adapter drives it : once per run, kept by saves, redrawn by a new run. */
+/** {pick ...} resolution as the storage adapter drives it : once per run, kept by saves, redrawn by a new run. */
 class ChatFileStoragePicksTest {
 
     /** Always draws the same index, changeable between two loads. */
@@ -30,20 +33,20 @@ class ChatFileStoragePicksTest {
 
     @Test
     void firstLoadResolvesTheTagsAndWritesTheResolvedCopyWhileTheSourceStaysUntouched(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK: place]");
+        writeScenario(root, "Alex arrives. {pick random place}");
         randomness.index = 1;
 
         ChatScenario scenario = adapter.loadScenario(root, "inn");
 
         assertTrue(scenario.premise().contains("Night market."), scenario.premise());
-        assertFalse(scenario.premise().contains("PICK"));
-        assertTrue(Files.readString(root.resolve("inn/scenario.txt")).contains("[PICK: place]"));
+        assertFalse(scenario.premise().contains("pick"));
+        assertTrue(Files.readString(root.resolve("inn/scenario.txt")).contains("{pick random place}"));
         assertTrue(Files.readString(root.resolve("inn/run/current/resolved/scenario.txt")).contains("Night market."));
     }
 
     @Test
     void laterLoadsOfTheSameRunKeepTheSameDraws(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK: place]");
+        writeScenario(root, "Alex arrives. {pick random place}");
         randomness.index = 1;
         adapter.loadScenario(root, "inn");
 
@@ -55,7 +58,7 @@ class ChatFileStoragePicksTest {
 
     @Test
     void resettingTheRunMakesTheNextLoadDrawAgain(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK: place]");
+        writeScenario(root, "Alex arrives. {pick random place}");
         randomness.index = 1;
         ChatScenario first = adapter.loadScenario(root, "inn");
 
@@ -68,7 +71,7 @@ class ChatFileStoragePicksTest {
 
     @Test
     void aSavePointCarriesItsDrawsAndLoadingItBringsThemBack(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK: place]");
+        writeScenario(root, "Alex arrives. {pick random place}");
         randomness.index = 0;
         ChatScenario first = adapter.loadScenario(root, "inn");
         ChatSession session = ChatSession.fresh(first);
@@ -87,8 +90,8 @@ class ChatFileStoragePicksTest {
 
     @Test
     void picksAlsoResolveInContinuationFilesWithPickUniqueSharingTheMemoryAcrossFiles(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK-UNIQUE: place]");
-        Files.writeString(root.resolve("inn/scenario-1.txt"), "# Act two\n[PICK-UNIQUE: place]\n", StandardCharsets.UTF_8);
+        writeScenario(root, "Alex arrives. {pick unique place}");
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "# Act two\n{pick unique place}\n", StandardCharsets.UTF_8);
         randomness.index = 0;
 
         ChatScenario scenario = adapter.loadScenario(root, "inn");
@@ -96,6 +99,63 @@ class ChatFileStoragePicksTest {
         String all = scenario.premise() + scenario.acts();
         assertTrue(all.contains("Foggy harbor."), all);
         assertTrue(all.contains("Night market."), all);
+    }
+
+    @Test
+    void drawsAreRecordedInOrderAndSurviveReloadsAndSaves(@TempDir Path root) throws IOException {
+        writeScenario(root, "Alex arrives. {pick unique place} Later {pick random place}.");
+        randomness.index = 1;
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        ChatSession session = ChatSession.fresh(scenario);
+        adapter.saveSession(root, session);
+        SavePoint save = adapter.createSavePoint(root, session);
+
+        assertEquals(List.of("unique place Night market.", "random place Night market."), describe(adapter.pickDraws(root, scenario)));
+
+        adapter.resetSession(root, scenario);
+        assertTrue(adapter.pickDraws(root, scenario).isEmpty(), "a new run starts without draws");
+
+        randomness.index = 2;
+        ChatScenario next = adapter.loadScenario(root, "inn");
+        assertEquals(List.of("unique place Empty town.", "random place Empty town."), describe(adapter.pickDraws(root, next)));
+
+        ChatSession restored = adapter.loadSavePoint(root, next, save.id());
+        assertEquals(List.of("unique place Night market.", "random place Night market."),
+            describe(adapter.pickDraws(root, restored.scenario())));
+    }
+
+    @Test
+    void validatingOnDemandChangesNothingOnDisk(@TempDir Path root) throws IOException {
+        writeScenario(root, "Alex arrives. {pick random place}\n\n# Un\nElena parle.\n");
+
+        var report = adapter.validateScenario(root, "inn");
+
+        assertFalse(report.hasErrors(), report.issues().toString());
+        assertFalse(Files.exists(root.resolve("inn/run")), "aucun run cree, aucun tirage fige");
+    }
+
+    @Test
+    void validatingOnDemandListsEveryErrorOfTheScenario(@TempDir Path root) throws IOException {
+        writeScenario(root, "Alex arrives. {pick random weather} {pick 9 place}\n{npc-starts Zorglub}\n");
+
+        var report = adapter.validateScenario(root, "inn");
+
+        assertEquals(3, report.errors().size(), report.issues().toString());
+    }
+
+    @Test
+    void aRunStartedBeforeDrawsWereRecordedHasNoDraws(@TempDir Path root) throws IOException {
+        writeScenario(root, "Alex arrives. {pick random place}");
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        Files.delete(root.resolve("inn/run/current/resolved/picks.txt"));
+
+        assertTrue(adapter.pickDraws(root, scenario).isEmpty());
+    }
+
+    private static List<String> describe(PickDraws draws) {
+        return draws.values().stream()
+            .map(d -> d.mode().label() + " " + d.tag() + " " + String.join(" / ", d.paragraphs()))
+            .toList();
     }
 
     @Test
@@ -109,7 +169,7 @@ class ChatFileStoragePicksTest {
 
     @Test
     void aMissingPicksFileFailsTheLoadWithAMessageNamingTheTag(@TempDir Path root) throws IOException {
-        writeScenario(root, "Alex arrives. [PICK: weather]");
+        writeScenario(root, "Alex arrives. {pick random weather}");
 
         IllegalStateException e = assertThrows(IllegalStateException.class, () -> adapter.loadScenario(root, "inn"));
 

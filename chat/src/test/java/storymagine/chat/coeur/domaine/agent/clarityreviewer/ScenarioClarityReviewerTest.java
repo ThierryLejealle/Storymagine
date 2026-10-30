@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.agent.clarityreviewer;
 
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.commun.coeur.ports.LlmCallContext;
@@ -20,7 +21,7 @@ class ScenarioClarityReviewerTest {
 
         ScenarioClarityReviewerOutput output = reviewer.call(new ScenarioClarityReviewerInput(
             "A grumpy innkeeper.", "A stormy night.",
-            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof."));
+            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof.", ScenarioLanguage.UNSPECIFIED));
 
         assertEquals(java.util.List.of("The [NEXT ACT] condition is vague"), output.issues());
         assertEquals(java.util.List.of("Name a concrete trigger"), output.suggestions());
@@ -33,7 +34,7 @@ class ScenarioClarityReviewerTest {
 
         reviewer.call(new ScenarioClarityReviewerInput(
             "A grumpy innkeeper.", "A stormy night.",
-            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof."));
+            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof.", ScenarioLanguage.UNSPECIFIED));
 
         assertTrue(llm.lastUserPrompt.contains("A grumpy innkeeper."));
         assertTrue(llm.lastUserPrompt.contains("A stormy night."));

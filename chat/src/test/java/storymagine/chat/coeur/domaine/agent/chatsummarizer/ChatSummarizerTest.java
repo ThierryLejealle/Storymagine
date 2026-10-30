@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.agent.chatsummarizer;
 
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import org.junit.jupiter.api.Test;
 import storymagine.commun.coeur.ports.LlmCallContext;
 import storymagine.commun.coeur.ports.LlmResult;
@@ -14,7 +15,8 @@ class ChatSummarizerTest {
         CapturingModelCallPort llm = new CapturingModelCallPort("Updated summary.");
         ChatSummarizer summarizer = new ChatSummarizer(llm);
 
-        summarizer.call(new ChatSummarizerInput("Previous summary.", "Player: hello\nInnkeeper: welcome"));
+        summarizer.call(new ChatSummarizerInput("Previous summary.", "Player: hello\nInnkeeper: welcome",
+            ScenarioLanguage.UNSPECIFIED));
 
         assertEquals(Boolean.TRUE, llm.lastCtx.think());
     }

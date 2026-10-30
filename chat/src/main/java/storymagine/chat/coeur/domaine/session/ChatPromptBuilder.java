@@ -20,11 +20,14 @@ public final class ChatPromptBuilder {
 
     public record ChatPrompt(String system, String user) {}
 
+    /** Replaced in SYSTEM_INTRO by the scenario's language (see ScenarioLanguage.phrase). */
+    private static final String LANGUAGE_PLACEHOLDER = "{LANGUAGE}";
+
     private static final String SYSTEM_INTRO = """
         Let's roleplay. You are the character described below. Stay in character in every reply:
         speak, act and think as they would. Never speak or act for the player's character, unless
-        they hand you the narrator's pen with "DO: " (see below). Reply in the same language as
-        the character and scenario below.
+        they hand you the narrator's pen with "DO: " (see below).
+        Write every reply in {LANGUAGE}.
 
         Turn scope: when you and the player's character discover something in the world
         together — a room, a corridor, a view — keep narrating it freely, as you already do.
@@ -176,6 +179,9 @@ public final class ChatPromptBuilder {
         an action someone is mid-way through), finish it in this same reply, then write "[NEXT ACT]"
         right after.
 
+        If the action starts to become repetitive and you are close to this act's condition, consider
+        writing "[NEXT ACT]" now rather than prolonging the scene.
+
         """ + NEXT_ACT_NO_CHARACTER_INFLUENCE;
 
     /**
@@ -204,10 +210,13 @@ public final class ChatPromptBuilder {
      * speaker is reacting unprompted, not the one the player addressed (see
      * SpeakerSelector.rollInterjectors).
      */
-    public static ChatPrompt build(ChatScenario scenario, Scene scene, int currentAct, String summary,
+    public static ChatPrompt build(ChatScenario scenario, Scene sceneAtStart, int currentAct, String summary,
                                     List<ChatTurn> recentTurns) {
+        // Sheets as they are at this act : the scenario's {delta-pnj} changes, public or secret.
+        Scene scene = sceneAtStart.mapNpcs(npc -> scenario.sheetAt(npc, currentAct));
         StringBuilder system = new StringBuilder();
-        system.append(SYSTEM_INTRO).append("\n\n");
+        system.append(SYSTEM_INTRO.replace(LANGUAGE_PLACEHOLDER,
+            scenario.language().phrase("the same language as the character and scenario below"))).append("\n\n");
         system.append("YOUR CHARACTER:\n").append(scene.speaker().fullSheet()).append("\n\n");
         if (!scene.otherPresent().isEmpty()) {
             system.append("ALSO PRESENT IN THE SCENE — what you knew about them from the start (never\n")
@@ -250,6 +259,9 @@ public final class ChatPromptBuilder {
         if (summary != null && !summary.isBlank()) {
             system.append("STORY SO FAR:\n").append(summary).append("\n\n");
         }
+        if (scenario.style().isPresent()) {
+            system.append("STYLE ADVICE:\n").append(scenario.style().text()).append("\n\n");
+        }
         system.append(SYSTEM_FORMATTING);
         if (remindNextActConditionInFormatting) {
             system.append("\n").append(NEXT_ACT_FORMATTING_REMINDER);
@@ -276,15 +288,22 @@ public final class ChatPromptBuilder {
         return new ChatPrompt(system.toString(), user.toString());
     }
 
-    /** "{playerName}: .../{name}: .../Narration: ..." transcript, shared with ChatSummarizer folding. */
+    /**
+     * "{playerName}: .../{name}: .../Narration: ..." transcript, shared with ChatSummarizer folding.
+     * The player's "(...)" thoughts are removed here (see PlayerThoughts) ; a player turn made only
+     * of thoughts is left out entirely rather than shown as an empty line.
+     */
     public static String transcript(List<ChatTurn> turns, Cast cast, String playerName) {
         StringBuilder sb = new StringBuilder();
         for (ChatTurn turn : turns) {
+            boolean fromPlayer = turn.speaker() == ChatTurn.Speaker.PLAYER;
+            String text = fromPlayer ? PlayerThoughts.strip(turn.text()) : turn.text();
+            if (fromPlayer && text.isBlank()) continue;
             sb.append(switch (turn.speaker()) {
                 case PLAYER   -> playerName + ": ";
                 case LLM      -> labelFor(turn.npcId(), cast) + ": ";
                 case NARRATOR -> "Narration: ";
-            }).append(turn.text()).append('\n');
+            }).append(text).append('\n');
         }
         return sb.toString();
     }

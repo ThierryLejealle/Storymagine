@@ -1,6 +1,9 @@
 package storymagine.chat.infra;
 
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
+import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
+import storymagine.chat.coeur.domaine.scenario.CharacterDeltaMarker;
+import storymagine.chat.coeur.domaine.scenario.LegacyCommandSyntax;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
@@ -27,7 +30,7 @@ final class ScenarioOutlineParser {
 
     private ScenarioOutlineParser() {}
 
-    /** premiseOpening : who speaks first when the story begins ("[NPC STARTS]" in the premise, already cut out of premise). */
+    /** premiseOpening : who speaks first when the story begins ("{npc-starts}" in the premise, already cut out of premise). */
     record Outline(String premise, List<ScenarioAct> acts, NpcOpening premiseOpening) {}
 
     static Outline parse(String rawInput) {
@@ -38,9 +41,11 @@ final class ScenarioOutlineParser {
         // titres "#"/"##", scenario.acts() se retrouvait vide, et le fallback "pas d'actes" (voir
         // ChatSession.fresh) deversait toute la premisse d'un coup — voir evols/2026-07-17-...
         String raw = rawInput.replace("\r\n", "\n").replace("\r", "\n");
+        LegacyCommandSyntax.requireNone(raw);
         List<Heading> headings = splitHeadings(raw);
         if (headings.isEmpty()) {
             NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(raw);
+            requireNoDelta(premise.text());
             return new Outline(premise.text().strip(), List.of(), premise.opening());
         }
 
@@ -55,11 +60,19 @@ final class ScenarioOutlineParser {
             actHeadings = headings;
         }
         NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(premiseText);
+        requireNoDelta(premise.text());
 
         List<Node> roots = buildTree(actHeadings);
         List<ScenarioAct> leaves = new ArrayList<>();
         for (Node root : roots) flatten(root, new ArrayList<>(), leaves, new ArrayList<>());
         return new Outline(premise.text().strip(), leaves, premise.opening());
+    }
+
+    /** A "{delta-pnj}" in the premise would have nothing to apply to and would reach every character as text. */
+    private static void requireNoDelta(String premise) {
+        if (!CharacterDeltaMarker.extract(premise).deltas().isEmpty()) {
+            throw new IllegalArgumentException("{delta-pnj ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -104,8 +117,9 @@ final class ScenarioOutlineParser {
     private static final class Node {
         ActNumber  number;
         String     title;
-        String     body;        // "[NPC STARTS]" line already cut out
+        String     body;        // "{npc-starts}" line already cut out
         NpcOpening opening = NpcOpening.NONE;
+        List<CharacterDelta> deltas = new ArrayList<>();
         List<Node> children = new ArrayList<>();
     }
 
@@ -117,8 +131,10 @@ final class ScenarioOutlineParser {
             Node node = new Node();
             node.title = h.title;
             NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(h.body.strip());
-            node.body    = body.text().strip();
+            CharacterDeltaMarker.Extracted withoutDeltas = CharacterDeltaMarker.extract(body.text());
+            node.body    = withoutDeltas.text().strip();
             node.opening = body.opening();
+            node.deltas  = withoutDeltas.deltas();
 
             int depth = Math.min(h.depth, stack.size() + 1); // tolerate a heading level skip
             while (stack.size() >= depth) stack.remove(stack.size() - 1);
@@ -148,11 +164,13 @@ final class ScenarioOutlineParser {
                 .reduce((a, b) -> a + "\n\n" + b).orElse("");
             List<String> beats = new ArrayList<>();
             NpcOpening opening = NpcOpening.NONE;
+            List<CharacterDelta> deltas = new ArrayList<>();
             for (Node entered : newlyEntered(path, previousPath)) {
                 beats.addAll(Teaser.extractAll(entered.body));
+                deltas.addAll(entered.deltas);
                 if (opening.isNone()) opening = entered.opening; // le premier marqueur, de la racine a la feuille, decide
             }
-            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening));
+            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas));
             previousPath.clear();
             previousPath.addAll(path);
         } else {

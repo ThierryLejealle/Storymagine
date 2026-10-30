@@ -73,7 +73,7 @@ button:disabled{background:#9ca3af;cursor:default}
 #nextActBtn,#prevActBtn{flex:none;padding:.25rem .8rem;border-radius:.9rem;border:1px solid #e5e7eb;
             background:#fff;color:#2563eb;font-size:.78rem;font-weight:600}
 #nextActBtn:disabled,#prevActBtn:disabled{display:none}
-#analyzeNextActBtn,#analyzeMindStateBtn{flex:none;padding:.2rem .5rem;border-radius:.9rem;border:1px solid #e5e7eb;
+#analyzeNextActBtn,#analyzeMindStateBtn,#replyOriginBtn,#picksBtn,#scenarioPromptBtn{flex:none;padding:.2rem .5rem;border-radius:.9rem;border:1px solid #e5e7eb;
             background:#fff;font-size:.85rem;line-height:1}
 #analyzeNextActBtn:disabled{display:none}
 .analysis-overlay{position:fixed;inset:0;background:rgba(17,24,39,.5);display:flex;
@@ -88,6 +88,12 @@ button:disabled{background:#9ca3af;cursor:default}
 .analysis-section p{font-size:.92rem;line-height:1.5;color:#111827;white-space:pre-wrap}
 .analysis-loading{color:#6b7280;font-style:italic}
 #analysisCloseBtn{margin-top:.5rem}
+.analysis-box.wide{max-width:56rem}
+.picks-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.picks-table th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;
+            padding:.3rem .5rem;border-bottom:1px solid #e5e7eb}
+.picks-table td{padding:.4rem .5rem;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:pre-wrap}
+.picks-table td:first-child,.picks-table td:nth-child(2){white-space:nowrap}
 .npc-picker{position:fixed;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:.3rem;
             box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:2100;min-width:9rem}
 .npc-picker.hidden{display:none}
@@ -219,6 +225,9 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
   <button id="nextActBtn" type="button" title="Passer à l'acte suivant (titre masqué : pas de spoil)">Suivant &#8594;</button>
   <button id="analyzeNextActBtn" type="button" title="Analyser où en est la condition de passage à l'acte suivant (ne modifie pas l'historique)">🔍</button>
   <button id="analyzeMindStateBtn" type="button" title="Voir l'état d'esprit du personnage : situation, pensées, plans (ne modifie pas l'historique)">🧠</button>
+  <button id="replyOriginBtn" type="button" title="Debug : pistes sur ce qui, dans le prompt, correspond à la dernière réponse du dernier personnage (ne modifie pas l'historique)">❓</button>
+  <button id="picksBtn" type="button" title="Tirages {pick} de cette partie, dans l'ordre">🎲</button>
+  <button id="scenarioPromptBtn" type="button" title="Debug : texte du scénario envoyé aux personnages (prémisse + acte courant, sans l'historique)">🐞</button>
 </div>
 <main id="turns"></main>
 <footer>
@@ -300,6 +309,9 @@ const prevActBtnEl = document.getElementById('prevActBtn');
 const analyzeNextActBtnEl = document.getElementById('analyzeNextActBtn');
 const analyzeMindStateBtnEl = document.getElementById('analyzeMindStateBtn');
 const npcPickerEl = document.getElementById('npcPicker');
+const replyOriginBtnEl = document.getElementById('replyOriginBtn');
+const picksBtnEl = document.getElementById('picksBtn');
+const scenarioPromptBtnEl = document.getElementById('scenarioPromptBtn');
 const analysisOverlayEl = document.getElementById('analysisOverlay');
 const analysisTitleEl = document.getElementById('analysisTitle');
 const analysisContentEl = document.getElementById('analysisContent');
@@ -725,6 +737,7 @@ function analysisSection(title, text) {
 async function runAnalysis(title, endpoint, sections) {
   analysisTitleEl.textContent = title;
   analysisContentEl.innerHTML = '<p class="analysis-loading">Analyse en cours…</p>';
+  analysisContentEl.parentElement.classList.remove('wide');
   analysisOverlayEl.classList.remove('hidden');
   try {
     const res = await fetch(endpoint, { method: 'POST' });
@@ -748,12 +761,66 @@ function analyzeNextAct() {
   ]);
 }
 
+function analyzeReplyOrigin() {
+  return runAnalysis('Pistes : ce que la dernière réponse doit au prompt', '/analyze-reply-origin', [
+    ['Éléments retrouvés dans le prompt', 'traced', 'Aucun.'],
+    ['Éléments sans passage correspondant', 'untraced', 'Aucun.'],
+    ['Lecture', 'reading', '—'],
+  ]);
+}
+
 function analyzeMindState(npcId, npcLabel) {
   return runAnalysis("État d'esprit de " + npcLabel, '/analyze-mind-state?npcId=' + encodeURIComponent(npcId), [
     ['Situation', 'situation', '—'],
     ['Pensées', 'thoughts', '—'],
     ['Plans', 'plans', 'Rien de particulier pour l\'instant.'],
   ]);
+}
+
+// Pop-up en lecture seule alimentee par un GET : render recoit le JSON et rend le HTML du contenu.
+// wide elargit la boite (tableau). Meme pop-up que les analyses, rien n'est ajoute a l'historique.
+async function showReadOnly(title, endpoint, wide, render) {
+  analysisTitleEl.textContent = title;
+  analysisContentEl.innerHTML = '<p class="analysis-loading">Chargement…</p>';
+  analysisContentEl.parentElement.classList.toggle('wide', wide);
+  analysisOverlayEl.classList.remove('hidden');
+  // La pop-up dit toujours ce qu'elle a recu (statut HTTP + debut de la reponse) quand ce n'est pas
+  // le JSON attendu ou quand le rendu est vide : un affichage vide ne doit jamais rester muet.
+  let status = '?';
+  let raw = '';
+  try {
+    const res = await fetch(endpoint);
+    status = res.status;
+    raw = await res.text();
+    const data = JSON.parse(raw);
+    const html = data.error
+      ? '<p class="analysis-loading">Erreur : ' + escapeHtml(data.error) + '</p>'
+      : render(data);
+    if (!html || !html.trim()) throw new Error('rendu vide');
+    analysisContentEl.innerHTML = html;
+  } catch (err) {
+    console.error('showReadOnly', endpoint, status, raw, err);
+    analysisContentEl.innerHTML = '<p class="analysis-loading">Affichage impossible (' + escapeHtml(endpoint)
+      + ', HTTP ' + escapeHtml(String(status)) + ') : ' + escapeHtml(String(err)) + '</p>'
+      + (raw ? '<p class="analysis-loading">Début de la réponse : ' + escapeHtml(raw.slice(0, 300)) + '</p>' : '');
+  }
+}
+
+function showPicks() {
+  return showReadOnly('Tirages', '/picks', true, rows => rows.length
+    ? '<table class="picks-table"><tr><th>Fichier</th><th>Type</th><th>Valeur</th></tr>'
+      + rows.map(r => '<tr><td>' + escapeHtml(r.file) + '</td><td>' + escapeHtml(r.type) + '</td><td>'
+        + escapeHtml(r.value) + '</td></tr>').join('') + '</table>'
+    : '<p class="analysis-loading">Aucun tirage enregistré.</p>');
+}
+
+function showScenarioPrompt() {
+  return showReadOnly('Scénario envoyé aux personnages', '/scenario-prompt', false, v =>
+    analysisSection('Prémisse', v.premise || '—')
+    + analysisSection(v.currentAct ? 'Acte ' + v.currentAct + ' / ' + v.totalActs : 'Acte courant',
+        v.actText || 'Aucun acte actif.')
+    + (v.style ? analysisSection('Conseil stylistique', v.style) : '')
+    + (v.warnings.length ? analysisSection('Avertissements', v.warnings.join('\n')) : ''));
 }
 
 // Le bouton 🧠 est global (un seul scenario peut avoir plusieurs PNJ presents) : il ouvre d'abord
@@ -801,7 +868,7 @@ function updateChrome(history) {
   npcOpeningPending = history.npcOpeningPending;
 }
 
-// Vrai quand l'histoire ou l'acte courant vient de commencer et que l'auteur a ecrit [NPC STARTS]
+// Vrai quand l'histoire ou l'acte courant vient de commencer et que l'auteur a ecrit {npc-starts}
 // dans le scenario : un PNJ doit parler en premier (voir ChatSession.pendingNpcOpening).
 let npcOpeningPending = false;
 
@@ -1231,11 +1298,29 @@ async function rollbackToHere(turnEl) {
   }
 }
 
+// Miroir de PlayerThoughts.strip() (coeur) : les "(...)" sont retires avant tout envoi aux LLM. Un
+// message qui n'est QUE des pensees n'apporte donc rien aux personnages — on demande confirmation.
+function isOnlyThoughts(text) {
+  const body = text.replace(/^DO:/i, '').trim();
+  let previous;
+  let current = body;
+  do {
+    previous = current;
+    current = previous.replace(/\([^()]*\)/g, '');
+  } while (current !== previous);
+  return body !== '' && current.trim() === '';
+}
+
+function confirmSend(text) {
+  return !isOnlyThoughts(text)
+    || confirm('Ce message ne contient que des pensées (…) : aucun personnage ne le verra. L\'envoyer quand même ?');
+}
+
 formEl.addEventListener('submit', (e) => {
   e.preventDefault();
   if (generating) return; // inputEl reste tapable pendant un round, mais pas soumissible
   const text = inputEl.value.trim();
-  if (!text) return;
+  if (!text || !confirmSend(text)) return;
   inputEl.value = '';
   sendMessage(text);
 });
@@ -1244,6 +1329,7 @@ doBtnEl.addEventListener('click', () => {
   if (generating) return; // defense en profondeur, doBtnEl.disabled devrait deja bloquer le clic
   const typed = inputEl.value.trim();
   const text = /^DO:/i.test(typed) ? typed : ('DO: ' + typed).trim();
+  if (!confirmSend(text)) return;
   inputEl.value = '';
   sendMessage(text);
 });
@@ -1254,6 +1340,9 @@ nextActBtnEl.addEventListener('click', nextAct);
 prevActBtnEl.addEventListener('click', previousAct);
 analyzeNextActBtnEl.addEventListener('click', analyzeNextAct);
 analyzeMindStateBtnEl.addEventListener('click', openNpcPicker);
+replyOriginBtnEl.addEventListener('click', analyzeReplyOrigin);
+picksBtnEl.addEventListener('click', showPicks);
+scenarioPromptBtnEl.addEventListener('click', showScenarioPrompt);
 document.addEventListener('click', (e) => {
   if (!npcPickerEl.classList.contains('hidden') && e.target !== analyzeMindStateBtnEl
       && !npcPickerEl.contains(e.target)) closeNpcPicker();

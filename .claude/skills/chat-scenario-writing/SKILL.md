@@ -21,7 +21,7 @@ chatscenarios/mon-scenario/
   characters/
     elena.txt        un fichier par PNJ, nom simple sans espace ni accent
   picks/
-    lieu.txt         optionnel, paragraphes séparés par `---` pour [PICK: lieu] (voir plus bas)
+    lieu.txt         optionnel, paragraphes séparés par `---` pour {pick random lieu} (voir plus bas)
 ```
 Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/guide-redaction-chat.md` §1).
 Ne jamais créer ni éditer à la main le dossier `run/` (partie en cours, sauvegardes, archives, logs :
@@ -110,33 +110,56 @@ naturelle » : imprécis, à éviter.
   petits modèles à boucler ; préférer « dès que… »).
 - Conditions qui s'enchaînent : chaque acte doit contenir de quoi satisfaire sa propre
   condition, sinon l'histoire reste bloquée (le joueur peut forcer avec Suivant).
+- Séquences qui se ressemblent (plusieurs combats…) : un marqueur unique par scène (adversaire,
+  lieu) dans la condition et un fait d'ancrage dans `Point de départ`. Ce que voit chaque PNJ
+  (anti-spoil, budget de contexte), texte commun hérité des titres parents, méthode pour un long
+  scénario en petit contexte, pièges connus : `chatscenarios/guide-redaction-chat.md` §2.3, §2.7, §7.
 - Ne pas écrire de ligne seule `[NEXT ACT]` entre crochets ; garder le marqueur au milieu de la
   phrase (`Quand écrire [NEXT ACT] : ...`) — c'est ce qui l'empêche d'être pris pour une
   réplique `[...]` à afficher.
 
-### Faire parler un PNJ en premier : `[NPC STARTS]`
+### Faire parler un PNJ en premier : `{npc-starts}`
 
-À l'inverse de `[NEXT ACT]`, celui-ci s'écrit **seul sur sa ligne** (sinon il n'est pas reconnu) :
-`[NPC STARTS]` (PNJ au hasard) ou `[NPC STARTS: Elena]`. Dans l'en-tête avant le premier acte, il
+Toutes les commandes de l'auteur s'écrivent entre **accolades** (`[...]` reste réservé à la narration
+et à `[NEXT ACT]`). Celle-ci s'écrit **seule sur sa ligne** (sinon le chargement échoue) :
+`{npc-starts}` (PNJ au hasard) ou `{npc-starts Elena}`. Dans l'en-tête avant le premier acte, il
 ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : comme un clic sur DO sans texte, un seul
 PNJ parle. Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
 Ne pas le mettre sur chaque acte « par défaut » : réserver-le aux scènes où quelqu'un agit
 réellement avant le joueur (arrivée, interpellation, événement).
 
-### Varier le scénario à chaque partie : `[PICK: nom]` et `[PICK-UNIQUE: nom]`
+### Varier le scénario à chaque partie : `{pick type nom}`
 
-Un tag dans `scenario.txt` / `scenario-N.txt` est remplacé, au lancement d'une nouvelle partie, par un
-paragraphe tiré au hasard dans `picks/nom.txt` (paragraphes séparés par une ligne `---` ou plus).
-`PICK` tire indépendamment (doublon possible) ; `PICK-UNIQUE` ne retire jamais un paragraphe déjà
-distribué pour ce nom pendant la partie. Le tirage est figé pour la durée de la partie (copie dans
+Une commande dans `scenario.txt` / `scenario-N.txt` est remplacée, au lancement d'une nouvelle partie,
+par un ou plusieurs paragraphes de `picks/nom.txt` (séparés par une ligne `---` ou plus). Le type est
+obligatoire : `{pick random nom}` (un, doublon possible), `{pick unique nom}` (un, jamais déjà
+distribué), `{pick 3 nom}` (3 différents), `{pick all nom}` (tous, dans l'ordre). Le tirage est figé pour la durée de la partie (copie dans
 `run/current/resolved/`) : modifier `scenario.txt` en cours de partie n'a pas d'effet jusqu'à
 « Recommencer ». Sur une ligne `[...]`, les paragraphes doivent tenir sur une seule ligne. Exemple et
 détails : `chatscenarios/guide-redaction-chat.md` §2.6.
 
+### Style commun à tous les personnages : `style.txt`
+
+Fichier optionnel à la racine du scénario, donné à chaque personnage sous `STYLE ADVICE:`. Décrire la
+manière d'écrire (voix, rythme, ton), en positif et court (moins de 1 200 caractères), jamais des
+événements ni des commandes `{...}`. Absent ou vide : aucun effet. Guide §2.10.
+
+### Faire évoluer un personnage : `{delta-pnj public|secret nom : texte}`
+
+Une ligne seule dans un acte ajoute une ligne à la fiche du personnage à partir de cet acte :
+`public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel objectif,
+découverte gardée pour soi). La visibilité est obligatoire. La ligne est retirée du texte de l'acte,
+donc un secret ne fuit pas. Détails : `chatscenarios/guide-redaction-chat.md` §2.8.
+
 Outils de diagnostic en jeu : 🔍 (analyse où en est la condition, sans écrire dans l'historique),
+❓ (pistes : quels passages du prompt correspondent à la dernière réponse, lesquels de ses éléments
+n'en ont aucun ; guide §4.3 bis),
 Précédent / Suivant (correction manuelle), ⟳ (recharger les fichiers après correction).
 
 ## 6. Vérifier avant de jouer
+
+`validation-scenarios.bat` (guide §2.9) liste toutes les erreurs et avertissements d'un scénario sans lancer
+de partie ; la même vérification a lieu à chaque chargement.
 
 Charger le scénario par le code (script jetable ou `ScenarioTesterCli`) et contrôler : nombre
 d'actes obtenu = nombre voulu, nombre de PNJ, tours NARRATOR d'ouverture clairs (voir §5 de

@@ -1,4 +1,5 @@
 Joueur : Alex
+Langue : français
 Monde : Fantastique médiéval sombre. La ville portuaire de Bragheval, connue pour sa guilde des
 voleurs officieuse et sa tolérance discrète envers les affaires louches tant qu'elles ne
 dérangent pas les puissants.

@@ -20,13 +20,16 @@ public final class NextActReadinessPromptBuilder {
 
     public record NextActPrompt(String system, String user) {}
 
+    /** Replaced in SYSTEM by the scenario's language (see ScenarioLanguage.phrase). */
+    private static final String LANGUAGE_PLACEHOLDER = "{LANGUAGE}";
+
     private static final String SYSTEM = """
         You are analyzing this roleplay session as its author — not as any character in it. Do not
         write narration, dialogue, or actions. Your only job is to judge whether the story is ready
         to move to the next act.
 
         OUTPUT FORMAT
-        Write your answer in the same language as the scenario text below. Write exactly these
+        Write your answer in {LANGUAGE}. Write exactly these
         three sections, nothing before or after:
         CONDITION:
         STATE:
@@ -72,7 +75,7 @@ public final class NextActReadinessPromptBuilder {
         ScenarioAct act = scenario.acts().get(currentAct - 1);
 
         StringBuilder user = new StringBuilder();
-        user.append("CHARACTER SHEET:\n").append(speaker.fullSheet()).append("\n\n");
+        user.append("CHARACTER SHEET:\n").append(scenario.sheetAt(speaker, currentAct).fullSheet()).append("\n\n");
         user.append("PREMISE:\n").append(scenario.premise()).append("\n\n");
         user.append("CURRENT ACT (").append(currentAct).append(" of ").append(scenario.acts().size())
             .append("):\n").append(act.text()).append("\n\n");
@@ -84,6 +87,8 @@ public final class NextActReadinessPromptBuilder {
                 .append(ChatPromptBuilder.transcript(recentTurns, scenario.cast(), scenario.playerName()));
         }
 
-        return new NextActPrompt(SYSTEM, user.toString());
+        return new NextActPrompt(
+            SYSTEM.replace(LANGUAGE_PLACEHOLDER, scenario.language().phrase("the same language as the scenario text below")),
+            user.toString());
     }
 }

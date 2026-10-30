@@ -1,4 +1,5 @@
 Joueur : Mila
+Langue : français
 
 #SCENARIO
 Monde : L'Académie de Brumeval forme de jeunes sorciers et sorcières dans un vieux château perché au-dessus des nuages, entre cours de métamorphose, duels amicaux et couloirs mouvants. La magie y est enseignée avec sérieux, mais les élèves trouvent toujours un moyen de semer le chaos.

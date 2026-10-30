@@ -1,63 +1,54 @@
-# Règles du module chat — scénarios, personnages, mécanismes
+# Guide de rédaction des scénarios de chat
 
-Référence pour écrire ou modifier un scénario dans `chatscenarios/`. Tout ce qui suit a été vérifié
-dans le code (pas seulement supposé) — voir les fiches `evols/` citées pour le détail.
+Référence pour écrire ou modifier un scénario dans `chatscenarios/`. Les faits décrits ont été
+vérifiés dans le code.
 
-**Plan du document** : §1 à §3 décrivent le SCÉNARIO (ce que vous écrivez). §4 décrit les
-mécanismes du jeu. §5 explique comment vérifier un scénario. §6, en fin de document, décrit le
-dossier `run/` (ce que l'appli génère pendant qu'on joue).
+**Plan.** *Spécification* (ce que fait l'appli) : §1 fichiers, §2 format de `scenario.txt`, §3 fiche
+personnage, §4 mécanismes de jeu, §5 vérification, §6 dossier `run/`. *Conseils et pièges*
+(recommandations, hors spécification) : §7. À lire avant d'écrire les actes : §2.3, §2.7 et §7.
 
-## 1. Le scénario : ce que vous écrivez
+**Maintenance.** Ce guide est mis à jour à chaque fonctionnalité du module chat qui touche l'auteur
+d'un scénario, et à chaque limite ou piège découvert.
 
-Un scénario est un dossier. Il contient **uniquement des fichiers que l'auteur écrit**. L'appli n'y
-écrit jamais rien, sauf dans le sous-dossier `run/` (voir §6).
+## 1. Fichiers
+
+Un scénario est un dossier. L'auteur n'y écrit que `scenario*.txt`, `style.txt`, `characters/` et `picks/` ;
+l'appli n'écrit que dans `run/` (§6).
 
 ```
 chatscenarios/mon-scenario/
   scenario.txt        obligatoire — ligne Joueur, prémisse, actes
-  scenario-1.txt      optionnel — suite des actes (scénario long)
-  scenario-2.txt      optionnel — numéros consécutifs
+  scenario-1.txt      optionnel — suite des actes (numéros consécutifs)
+  style.txt           optionnel — conseil de style commun à tous les personnages (§2.10)
   characters/         obligatoire — un fichier par personnage
     elena.txt
     marcus.txt
-  picks/              optionnel — paragraphes tirés au hasard par [PICK: nom] (voir §2.6)
+  picks/              optionnel — paragraphes tirés par {pick … nom} (§2.6)
     lieu.txt
-  run/                généré par l'appli, jamais à écrire à la main (voir §6)
+  run/                généré par l'appli, jamais écrit à la main (§6)
 ```
 
-- **Copier ou partager un scénario** = copier son dossier sans `run/`.
-- **`scenario.txt` + `scenario-N.txt`** : le texte de l'histoire. Les `scenario-N.txt` sont
-  concaténés après `scenario.txt` (numéros consécutifs, arrêt au premier manquant). Chacun doit
-  commencer par un titre `# ...` de premier niveau, sinon le chargement échoue explicitement.
-  Format : voir §2.
-- **`characters/`** : un fichier `.txt` par personnage. Format : voir §3.
+| Élément | Règle |
+|---|---|
+| `scenario-N.txt` | Concaténés après `scenario.txt`, numéros consécutifs, arrêt au premier manquant. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
+| `characters/*.txt` | Un fichier = un personnage si sa **première ligne** est `# Nom`. Sinon le fichier est ignoré sans avertissement. Seul `characters/` est lu. |
+| Id d'un personnage | Nom du fichier sans `.txt` : simple, sans espace ni accent (`marcus.txt`, pas `Marcus Dupont.txt`). |
+| Nombre de PNJ | Un seul fichier suffit : le scénario est alors mono-personnage. |
+| Liste de l'appli | Un scénario y figure s'il a un `scenario.txt` et au moins un personnage valide. |
+| Copier ou partager | Copier le dossier sans `run/`. |
 
-**Règle de chargement du Cast** : tout fichier `.txt` de `characters/` dont la première ligne est
-`# Nom` est un personnage. Un `.txt` sans cette ligne est ignoré silencieusement (brouillon, note).
-Le nom de fichier (sans `.txt`) devient l'id interne du personnage — choisir un nom de fichier
-simple, sans espace ni accent, ex. `marcus.txt` pas `Marcus Dupont.txt`. Comme seul `characters/`
-est lu, un `.txt` égaré à la racine du scénario ne peut jamais devenir un personnage.
+**Squelette** : `init-chat.bat` demande le dossier (même choix que `chat.bat`), le nom du scénario
+(lettres, chiffres, `-`, `_`), le nombre de PNJ et leurs noms. Il crée `scenario.txt` et une fiche par
+PNJ, chaque champ étant une consigne entre parenthèses à remplacer, avec un premier acte qui nomme
+tous les PNJ. Il n'écrase jamais un scénario existant et ne crée pas `run/`.
 
-Un scénario à un seul personnage (un seul fichier dans `characters/`) fonctionne sans rien de
-spécial — devient un `Cast` à un seul PNJ automatiquement.
-
-Un scénario apparaît dans la liste de l'appli s'il a un `scenario.txt` et au moins un personnage
-valide dans `characters/`.
-
-### 1.1 Exemple minimal complet
-
-**Pour créer le squelette d'un nouveau scénario, lancer `init-chat.bat`** : il demande le dossier (le
-même choix que `chat.bat`), le nom du scénario (lettres, chiffres, `-` et `_`, sans espace ni accent),
-le nombre de PNJ puis leurs noms, et crée `scenario.txt` et une fiche par PNJ dans `characters/`.
-Chaque champ est une consigne entre parenthèses, à remplacer ; le premier acte nomme déjà tous les PNJ
-saisis (voir §2.4) ; `run/` n'est pas créé. Un scénario existant n'est jamais écrasé.
-
-Le plus petit scénario jouable : deux fichiers.
+### 1.1 Exemple minimal
 
 `chatscenarios/auberge/scenario.txt`
 
 ```
 Joueur : Mila
+Langue : français
 
 #SCENARIO
 Monde : Une auberge de campagne, un soir d'orage.
@@ -82,32 +73,34 @@ Elena, la trentaine, tient l'auberge du Cerf Blanc. Directe, chaleureuse, parle 
 Elena a volé autrefois dans un temple et craint d'être reconnue.
 ```
 
-Points à remarquer :
-
-- Un seul acte, donc pas de `Quand écrire [NEXT ACT]` (rien à quoi avancer, voir §2.5).
-- Les lignes `[...]` du premier acte disent qui est le joueur, où il se trouve, qui est présent
-  (nommé) et son but (voir §2.4), toutes à la 3e personne.
-- La fiche d'Elena n'a pas de nom de fichier à accent ni d'espace : `elena.txt` donne l'id `elena`.
-- Pour un personnage sans secret, la fiche se réduit à `# Nom` et sa description : sans ligne
-  `# SECRET`, tout est public.
-- Encore plus court : un `scenario.txt` sans aucun acte (juste `Joueur :` et une prémisse avec un bloc
-  `[...]` d'ouverture) est valide. La partie démarre alors sans progression d'actes (voir §2.4).
-
-Ce scénario, une fois joué, crée `run/` à côté de ces fichiers (voir §6) ; il n'y a rien d'autre à
-écrire.
+- Un seul acte : pas de `Quand écrire [NEXT ACT]` (rien à quoi avancer, §2.5).
+- Plus court encore : un `scenario.txt` sans acte (ligne `Joueur :` et prémisse contenant un bloc
+  `[...]` d'ouverture) est valide ; la partie démarre sans progression d'actes (§2.4).
+- Sans ligne `# SECRET`, toute la fiche est publique.
 
 ## 2. Format de `scenario.txt`
 
-### 2.1 Ligne "Joueur" (optionnelle, tout en premier)
+### 2.1 En-tête : lignes `Joueur` et `Langue`
 
 ```
 Joueur : Alex
+Langue : français
 ```
 
-Si absente, le joueur s'appelle **"Alex"** par défaut (`ChatScenario.playerName`, normalisé dans
-le code — jamais vide). Ce nom remplace "Player" partout où le joueur est désigné dans la
-transcription envoyée au modèle. Mettre cette ligne explicitement dans chaque scénario par
-convention du projet, même si "Alex" serait pris par défaut de toute façon.
+Lignes optionnelles, **consécutives, tout en haut** de `scenario.txt`, dans n'importe quel ordre. La
+première autre ligne (même vide) termine l'en-tête ; une ligne `Joueur :` ou `Langue :` placée plus bas
+est du texte ordinaire.
+
+| Ligne | Effet | Défaut |
+|---|---|---|
+| `Joueur : X` | Nom du joueur : il remplace « Player » dans la transcription envoyée au modèle. | `Alex` |
+| `Langue : X` | Langue dans laquelle les PNJ écrivent leurs réponses. Code (`fr`, `en`, `es`, `de`, `it`, `pt`), nom français ou anglais, sans tenir compte de la casse ni des accents. Toute autre valeur est transmise telle quelle. | Non précisée : le PNJ choisit lui-même la langue (fiche et scénario). |
+
+Convention du projet : toujours écrire les deux lignes. Sans `Langue :`, un petit modèle peut hésiter
+entre les langues du prompt, de la fiche et du joueur. La langue est donnée de la même façon à tous les
+appels du module (réponses des PNJ, résumé, analyses 🔍 et état d'esprit, testeur de scénario).
+
+**Scénarios sans ligne `Langue :`** : ils restent valides, la langue est alors simplement non précisée.
 
 ### 2.2 Prémisse
 
@@ -118,88 +111,88 @@ Prémisse : ...
 Ton : ...
 ```
 
-Le `#SCENARIO` est optionnel : s'il est absent, tout le texte avant le premier `#`/`##` devient la
-prémisse. S'il est présent, son corps devient la prémisse et la lecture des actes commence après.
-Convention interne (pas une contrainte du code) : `Monde :` / `Prémisse :` / `Ton :`, parfois
-`Fil conducteur discret :`. La prémisse est envoyée au LLM à chaque tour, jamais montrée telle
-quelle au joueur (seules les lignes `[...]`, voir §2.4, sont montrées).
+- Avec `#SCENARIO`, son corps est la prémisse et les actes commencent après. Sans lui, le texte avant le
+  premier titre `#` est la prémisse.
+- `Monde :`, `Prémisse :`, `Ton :` (parfois `Fil conducteur discret :`) sont une convention, pas une
+  syntaxe.
+- La prémisse est envoyée à chaque PNJ à chaque tour (§2.7). Le joueur ne la voit jamais telle quelle.
 
-**⚠️ Toujours écrire la Prémisse à la 3e personne** (voir `chatscenarios/CLAUDE.md`) — elle est
-transmise telle quelle dans le prompt de CHAQUE personnage, pas seulement narrée au joueur. "Tu es
-Alex..." contredit l'assignation de personnage donnée à un PNJ dans son propre prompt. Écrire
-"Alex est un jeune mage..." (comme un narrateur décrivant la situation de l'extérieur), jamais
-"Tu es...".
+**3e personne obligatoire**, pour la prémisse, les lignes `[...]` et le texte des actes : ces textes
+sont recopiés dans le prompt de chaque PNJ. « Alex est un jeune mage… », jamais « Tu es Alex… » : la
+2e personne contredit l'assignation de personnage donnée au PNJ dans son propre prompt.
 
-### 2.3 Structure des actes — ⚠️ piège à connaître
+### 2.3 Structure des actes
 
-Les actes sont écrits en Markdown imbriqué (`#`, `##`, `###`...). **Règle du parseur
-(`ScenarioOutlineParser`) : seules les FEUILLES (un heading SANS sous-heading) sont des actes
-réellement jouables.** Un heading qui a un enfant n'est jamais "l'acte courant" lui-même — son
-corps de texte est simplement hérité par tous ses descendants (ancêtre de chapitre).
+Les actes s'écrivent en titres Markdown imbriqués (`#`, `##`, `###`…). **Seules les feuilles (titre sans
+sous-titre) sont des actes jouables.** Un titre qui a un enfant n'est jamais l'acte courant : son corps
+est hérité par ses descendants.
 
 ```
-# Chapitre A          <- PAS un acte jouable s'il a un enfant ci-dessous
-## Scène A.1          <- acte jouable (numéro 1.1)
-## Scène A.2          <- acte jouable (numéro 1.2)
-# Chapitre B          <- idem, pas jouable seul
-## Scène B.1          <- acte jouable (numéro 2.1)
+# Chapitre A          <- pas jouable (a des enfants)
+## Scène A.1          <- acte 1.1
+## Scène A.2          <- acte 1.2
+# Chapitre B          <- pas jouable
+## Scène B.1          <- acte 2.1
 ```
 
-**Piège vécu** (voir `evols/2026-07-15-...`) : écrire `# Acte 1` suivi d'un SEUL `## Acte 2`
-ne donne PAS deux actes séquentiels — ça donne un seul acte (2 fusionné avec le contexte hérité de
-1), parce que "Acte 1" n'est jamais une feuille. **Pour deux actes séquentiels indépendants, les
-mettre tous les deux au même niveau (`#`/`#`, jamais `#`/`##`).** N'utiliser l'imbrication `#`/`##`
-que pour un vrai regroupement thématique voulu (un chapitre avec plusieurs scènes dedans, comme
-`temple-noir-actes` ou `quete-des-amazones`).
+Deux actes séquentiels indépendants s'écrivent au même niveau (`#` / `#`). `# Acte 1` suivi d'un seul
+`## Acte 2` donne **un seul acte** (le second, qui hérite du premier). N'imbriquer que pour un vrai
+regroupement : un chapitre contenant plusieurs scènes.
 
-Toujours vérifier le nombre d'actes obtenu après avoir écrit un scénario (voir §5, script de
-vérification).
+| Sujet | Règle |
+|---|---|
+| Texte d'une feuille | Corps de chaque ancêtre (racine → feuille) puis corps de la feuille, séparés par une ligne vide. C'est le `CURRENT SCENE` du PNJ (§2.7). |
+| Texte commun | Le corps d'un parent est partagé par toutes ses scènes enfants et renvoyé au modèle à chaque tour de chacune. |
+| Titres | Jamais envoyés au modèle ; utilisés par l'interface et le testeur de scénario. |
+| `[...]` d'un parent | Affichés une seule fois, à la première entrée dans le chapitre. Restent dans le texte envoyé au modèle. |
+| `Quand écrire [NEXT ACT]` dans un parent | Hérité par toutes les feuilles du chapitre. À écrire dans la feuille. |
+| `{npc-starts}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la feuille, décide (§4.5). |
+| `{delta-pnj …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants (§2.8). |
+| Numérotation | Racines `1`, `2`… ; enfants `1.1`, `1.2`… ; petits-enfants `1.1.1`. |
+| Saut de niveau | `#` puis `###` : traité comme `##`. |
+| Ligne commençant par `#` | Toujours un titre, même `#mot` : elle coupe le corps de l'acte. |
+| Parent sans corps | Valide (regroupement et numéro). |
+| Plusieurs fichiers | Chaque `scenario-N.txt` commence par un `#` de premier niveau : un chapitre et ses `##` tiennent dans un seul fichier. |
+| Fins de ligne | CRLF et CR sont normalisés en LF. |
 
-### 2.4 Lignes `[...]` — ce que le joueur voit réellement
+Exemple : texte commun au chapitre, une condition par scène.
 
-Dans le corps de chaque acte (ou dans la prémisse pour un scénario sans actes), toute ligne entre
-crochets `[...]` devient une réplique NARRATOR affichée au joueur au moment où cet acte devient
-courant :
+```
+# Le col de Vaur
+Le col est battu par le vent. Les bandits de Varek tendent des embuscades depuis les rochers.
+## Embuscade
+[Des archers surgissent des rochers.]
+Quand écrire [NEXT ACT] : Dès que les archers ont fui ou sont à terre.
+## Poursuite
+[Varek s'enfuit vers la vallée.]
+Quand écrire [NEXT ACT] : Dès que Varek est capturé ou hors de vue.
+```
 
-**⚠️ Scénario SANS actes (`scenario.acts()` vide) : un seul bloc `[...]` compte.** Si la prémisse
-en contient plusieurs, seul le PREMIER est affiché à l'ouverture — les autres sont ignorés (revu
-le 2026-07-17, voir `evols/2026-07-17-...`). Un scénario sans actes n'a qu'un seul état d'ouverture,
-pas une pile à déverser d'un coup ; sans ce plafond, une prémisse plate contenant plusieurs blocs
-`[...]` (plusieurs scènes narratives pensées pour s'enchaîner) les affichait TOUTES avant même le
-premier message du joueur, sans jamais appeler le LLM. Si votre scénario a plusieurs scènes
-d'ouverture distinctes, utilisez de vrais actes (`#`/`##`, voir §2.3) plutôt qu'une prémisse plate —
-c'est le seul moyen d'obtenir une progression normale entre elles.
+Toujours vérifier le nombre d'actes obtenu (§5).
+
+### 2.4 Lignes `[...]` : ce que le joueur voit
+
+Une ligne `[...]` du corps d'un acte devient un tour NARRATOR affiché au joueur quand l'acte devient
+courant. Aucun appel au modèle n'est fait pour l'afficher.
+
+- Le `[` est le premier caractère non blanc de sa ligne, le `]` le dernier d'une ligne (la même ou une
+  suivante). Un bloc sur plusieurs lignes est joint en une seule ligne de narration.
+- Le texte reste aussi dans le prompt de chaque PNJ (§2.7).
+- **Scénario sans actes** : seul le premier bloc `[...]` de la prémisse est affiché ; les autres sont
+  ignorés. Plusieurs scènes d'ouverture exigent de vrais actes.
+- **Chapitre parent** : ses `[...]` ne s'affichent qu'à la première entrée dans le chapitre.
+- **Tout premier acte** : ses `[...]` disent qui est le joueur, où il est, qui est présent (**tous les PNJ
+  nommés**, même discrets) et quel est le but général. Tous les PNJ sont présents dès le tour 1 (§4.1) ;
+  un PNJ non présenté peut être tiré au hasard et rester sans répondre (§7.4).
+- Même règle de 3e personne que la prémisse (§2.2).
 
 ```
 [Le tonnerre gronde alors qu'Alex referme derrière lui la porte de l'auberge.]
 ```
 
-**⚠️ Même règle que la Prémisse : toujours à la 3e personne** (voir `chatscenarios/CLAUDE.md`).
-Ces lignes ne sont pas seulement affichées au joueur — elles sont aussi injectées telles quelles
-dans le prompt de CHAQUE PNJ via `act.text()` (voir `Teaser.java`, qui les laisse volontairement
-dans le texte "so the LLM reads them too, in place"). Écrites à la 2e personne ("Tu es Alex...",
-"vous venez de..."), elles contredisent l'assignation de personnage donnée à chaque PNJ dans son
-propre prompt — bug réel corrigé le 2026-07-16 sur les 5 scénarios existants.
+### 2.5 Texte d'accompagnement de l'acte
 
-**Règle d'or (voir `evols/2026-07-15-...`, audit d'introduction)** : le TOUT PREMIER acte du
-scénario doit avoir des lignes `[...]` qui disent clairement au joueur : qui il/elle est, où il/elle
-se trouve, qui est présent (nommé), et quel est le but général. Une seule ligne purement
-atmosphérique ("le tonnerre gronde...") sans ces informations laisse le joueur perdu — c'est arrivé
-et corrigé une fois, ne pas répéter l'erreur sur un nouveau scénario.
-
-Un chapitre parent (`#` non-feuille) peut aussi avoir ses propres lignes `[...]` : elles ne
-s'affichent qu'une seule fois, la première fois qu'un de ses descendants devient courant — jamais
-répétées à chaque sous-scène suivante du même chapitre.
-
-**Deuxième piège vécu, multi-PNJ** (voir `evols/2026-07-15-...`) : tous les PNJ sont présents
-dès le tour 1 par défaut (§4.1) — même si le premier acte ne met en scène qu'un seul personnage
-narrativement. Si le joueur ne nomme personne, `SpeakerSelector` peut choisir au hasard un PNJ que
-l'acte 1 n'a pas encore "montré". Le modèle, ne sachant pas s'il est censé être dans la pièce, peut
-boucler indéfiniment sur cette ambiguïté au lieu de répondre (observé : 54s de réflexion, réponse
-vide). **Toujours mentionner TOUS les PNJ dans les lignes `[...]` du tout premier acte**, même en
-retrait/silencieux, si la mise en scène narrative se concentre sur un seul d'entre eux au début.
-
-### 2.5 Texte d'accompagnement de chaque acte (jamais montré au joueur, lu par le LLM)
+Jamais affiché au joueur ; lu par les PNJ.
 
 ```
 Point de départ : ...
@@ -207,116 +200,171 @@ Ce qui doit se passer : ...
 Quand écrire [NEXT ACT] : ...
 ```
 
-- `Point de départ` : situe la scène pour le LLM.
-- `Ce qui doit se passer` : ce que la scène doit accomplir avant de pouvoir avancer.
-- `Quand écrire [NEXT ACT]` : condition précise de transition. Omis sur le tout dernier acte
-  (rien à quoi avancer). Si absent sur un acte qui n'est pas le dernier, le LLM utilise une règle
-  par défaut ("quand la scène semble arrivée à sa conclusion naturelle") — moins précis, à éviter
-  si possible.
-
-Ces libellés sont une convention du projet, pas une syntaxe imposée par le code — seuls `#SCENARIO`,
-les headings `#`/`##`, et les crochets `[...]` sont réellement parsés.
-
-### 2.6 Contenu aléatoire : `[PICK: nom]` et `[PICK-UNIQUE: nom]`
-
-Un scénario peut avoir des « trous » remplis différemment à chaque nouvelle partie : un lieu, un
-antagoniste, un déclencheur… Dans `scenario.txt` ou un `scenario-N.txt`, écrire un tag à
-l'endroit voulu ; au lancement d'une partie, il est remplacé par **un paragraphe tiré au hasard**
-dans le fichier `picks/nom.txt` du scénario.
-
-```
-chatscenarios/mon-scenario/
-  scenario.txt
-  picks/
-    lieu.txt            <- [PICK: lieu]  ou  [PICK-UNIQUE: lieu]
-    intrigue.txt
-```
-
-**Le fichier de picks** : des paragraphes séparés par une ligne qui ne contient que `---` (trois
-tirets ou plus, rien d'autre sur la ligne). Un paragraphe peut tenir sur plusieurs lignes. Un fichier
-sans séparateur = un seul paragraphe. Les paragraphes vides sont ignorés.
-
-```
-Le port est noyé dans la brume, les cloches sonnent à contretemps.
----
-Un marché nocturne bat son plein sous des lanternes rouges.
----
-La ville est déserte, les volets clos depuis trois jours.
-```
-
-**Les deux tags**
-
-| Tag | Comportement |
+| Libellé | Rôle |
 |---|---|
-| `[PICK: lieu]` | Tire un paragraphe au hasard. Chaque `[PICK: lieu]` tire **indépendamment** : le même paragraphe peut sortir deux fois. |
-| `[PICK-UNIQUE: lieu]` | Tire **sans répétition** : jamais un paragraphe déjà distribué pour `lieu` pendant cette partie (par un `PICK-UNIQUE` **ou** par un `PICK` simple, dans tous les fichiers du scénario, dans l'ordre de lecture). Si tous les paragraphes sont déjà sortis, le lancement échoue avec un message clair. |
+| `Point de départ` | Situe la scène. |
+| `Ce qui doit se passer` | Ce que la scène doit accomplir avant d'avancer. |
+| `Quand écrire [NEXT ACT]` | Condition de transition. À omettre sur le dernier acte. |
 
-Le nom du tag est le nom du fichier sans `.txt` (lettres, chiffres, `_` et `-` uniquement). Un `PICK`
-simple ne regarde pas ce que les `PICK-UNIQUE` ont déjà distribué : seul `PICK-UNIQUE` évite les doublons.
+- Les libellés sont une convention. Seuls `#SCENARIO`, les titres et les `[...]` sont analysés.
+- Le mode strict de `[NEXT ACT]` (§4.5) s'active dès que le texte `[NEXT ACT]` figure dans le texte
+  résolu de l'acte. Écrit **dans une phrase**, il est ignoré comme ligne `[...]` ; **seul sur une
+  ligne entre crochets**, il serait affiché au joueur comme narration.
+- Sans condition sur un acte non final, le PNJ avance quand la scène lui semble conclue (moins précis).
 
-**Exemple complet**
+### 2.6 Contenu aléatoire : `{pick type nom}`
 
-`scenario.txt` :
+Une commande `pick` de `scenario.txt` ou `scenario-N.txt` est remplacée, au début de chaque nouvelle
+partie, par un ou plusieurs paragraphes de `picks/nom.txt`.
+
+**Fichier de picks** : paragraphes séparés par une ligne ne contenant que `---` (trois tirets ou plus).
+Un paragraphe peut tenir sur plusieurs lignes. Sans séparateur : un seul paragraphe. Paragraphes vides
+ignorés. Le nom est le nom du fichier sans `.txt` (lettres, chiffres, `_`, `-`).
+
+**Le type est obligatoire** (deuxième mot), le nom du fichier est le troisième :
+
+| Commande | Comportement |
+|---|---|
+| `{pick random lieu}` | Un paragraphe, tirage indépendant : le même peut sortir plusieurs fois. |
+| `{pick unique lieu}` | Un paragraphe jamais déjà distribué pour `lieu` pendant cette partie. Si tous sont sortis, le chargement échoue avec un message. |
+| `{pick 3 lieu}` | 3 paragraphes **différents entre eux**, au hasard, séparés par une ligne vide. Erreur si le fichier en contient moins. |
+| `{pick all lieu}` | **Tous** les paragraphes, dans l'ordre du fichier, sans hasard (par exemple pour importer une fiche de lore fixe). |
+
+Ce que distribue n'importe quelle commande (`random`, `unique`, nombre ou `all`) compte comme « déjà
+distribué » pour un `unique` ultérieur sur le même fichier. Un `random` ou un nombre, eux, ignorent ce
+qui est déjà sorti.
 
 ```
-Joueur : Alex
-
-#SCENARIO
-Prémisse : Alex arrive dans une ville portuaire où quelque chose cloche. [PICK: lieu]
-
-# Acte 1 - L'arrivée
-[Alex pose son sac devant l'auberge.]
-Point de départ : Alex vient de quitter la rue. En face de lui : [PICK-UNIQUE: lieu]
-Ce qui doit se passer : Elena met Alex en garde. [PICK: intrigue]
+Prémisse : Alex arrive dans une ville portuaire où quelque chose cloche. {pick random lieu}
+...
+Point de départ : Alex vient de quitter la rue. En face de lui : {pick unique lieu}
+Ce qui doit se passer : Elena met Alex en garde. {pick 2 intrigue}
 ```
 
-`picks/lieu.txt` : les trois paragraphes ci-dessus (brume, marché nocturne, ville déserte).
+Ici le `unique` ne peut pas retomber sur le lieu déjà donné à la prémisse. Avec 4 `{pick unique lieu}`
+pour 3 paragraphes, le chargement s'arrête sur `{pick unique lieu} : les 3 paragraphe(s) de
+picks/lieu.txt ont deja tous ete tires.`
 
-`picks/intrigue.txt` :
+- Le tirage se fait **une fois par partie** (premier lancement, « Recommencer »). Le résultat est écrit
+  dans `run/current/resolved/` (copie des `scenario*.txt` avec les tags remplacés) ; le jeu lit cette
+  copie. Les paragraphes sont donc stables, y compris après redémarrage. Une sauvegarde 💾 emporte ses
+  tirages.
+- Le bouton 🎲 de la partie affiche le tableau des tirages : une ligne par commande `pick`, avec le
+  fichier, le type tel qu'écrit (`random`, `unique`, `3`, `all`) et la valeur obtenue (un paragraphe par
+  ligne quand il y en a plusieurs), dans l'ordre du scénario. Le bouton 🐞 (debug) affiche le texte de scénario réellement envoyé aux personnages : la
+  prémisse puis l'acte courant (le texte des `#`/`##`/`###` parents inclus, §2.3), sans l'historique.
+  Les tirages ne sont enregistrés que pour une partie démarrée après cette fonction ; une partie plus
+  ancienne affiche « Aucun tirage enregistré ».
+- **Modifier `scenario*.txt` en cours de partie n'a pas d'effet** ; ⟳ recharge la copie, pas les
+  fichiers d'origine. Pour voir une modification : « Recommencer ». Un scénario sans tag est lu
+  directement.
+- Le paragraphe est inséré tel quel. Dans une ligne `[...]`, il doit tenir sur **une seule ligne**.
+  Ailleurs (prémisse, texte d'accompagnement), plusieurs lignes sont acceptées.
+- Le joueur ne voit un paragraphe que s'il tombe dans un texte affiché (une ligne `[...]`).
+- Pas de tirage imbriqué (une commande dans un paragraphe tiré n'est pas résolue). Les fiches personnage ne
+  sont pas concernées.
+- Fichier `picks/nom.txt` absent ou sans paragraphe : échec du chargement, avec le nom du fichier.
 
-```
-Le maire a été remplacé par un imposteur, et Elena est la seule à l'avoir remarqué.
----
-Un artefact a disparu du temple la nuit dernière, et on soupçonne les étrangers.
-```
+### 2.7 Ce que voit chaque PNJ
 
-Deux parties possibles :
+Prompt système envoyé au PNJ qui parle, à chaque tour, dans cet ordre :
 
-| | Partie 1 | Partie 2 |
+| # | Bloc | Contenu |
 |---|---|---|
-| Prémisse (`[PICK: lieu]`) | la brume | le marché nocturne |
-| Acte 1 (`[PICK-UNIQUE: lieu]`) | la ville déserte | la brume |
-| Intrigue (`[PICK: intrigue]`) | le maire imposteur | l'artefact volé |
+| 1 | Règles de jeu | Texte fixe : incarner le personnage, portée du tour, longueur, fiche = note privée |
+| 2 | `YOUR CHARACTER` | Sa fiche **complète** (publique + `# SECRET`) |
+| 3 | `ALSO PRESENT` | Fiche **publique** des autres PNJ présents |
+| 4 | `NOT IN THE SCENE` | Fiche **publique** des PNJ absents (ne jamais les faire parler) |
+| 5 | `SCENARIO` | La **prémisse**, en entier |
+| 6 | `CURRENT SCENE` | Texte de l'**acte courant** (§2.3), puis la règle `[NEXT ACT]` (§4.5) si ce n'est pas le dernier acte |
+| 7 | `STORY SO FAR` | Résumé des tours anciens (§4.7) |
+| 7 bis | `STYLE ADVICE` | Contenu de `style.txt` (§2.10), seulement s'il existe et n'est pas vide |
+| 8 | Format | Conventions `*action*`, `OOC:`, `DO:` (§4.9) ; règle sur les autres PNJ ; règle d'interjection si besoin |
 
-Le `PICK-UNIQUE` de l'acte 1 ne peut jamais retomber sur le lieu déjà donné à la prémisse : il tire
-parmi les paragraphes restants. Avec 4 `PICK-UNIQUE: lieu` pour 3 paragraphes, le lancement s'arrête
-sur : `[PICK-UNIQUE: lieu] : les 3 paragraphe(s) de picks/lieu.txt ont deja tous ete tires.`
+Le prompt utilisateur contient les derniers tours en clair.
 
-**Comment ça marche**
+| Information | PNJ qui parle | Autres PNJ | Joueur |
+|---|---|---|---|
+| Fiche publique | oui | oui | n'est pas dans le chat |
+| `# SECRET` | oui (le sien) | jamais | n'est pas dans le chat |
+| Prémisse | oui, à chaque tour | oui | non |
+| Texte de l'acte courant | oui | oui | non, sauf les lignes `[...]` |
+| Lignes `[...]` d'un acte | oui | oui | oui, à l'entrée de l'acte |
+| Actes futurs | **jamais** | **jamais** | non |
+| Actes passés | via résumé et derniers tours | idem | tours affichés |
 
-- Le tirage se fait **une fois par partie**, à la première lecture du scénario d'une nouvelle partie
-  (premier lancement, « Recommencer »). Le résultat est écrit dans `run/current/resolved/` (copie de
-  `scenario.txt` et des `scenario-N.txt` où les tags sont remplacés) et c'est cette copie que le jeu
-  lit ensuite : les paragraphes ne changent donc plus tant que la partie existe, même après un
-  rechargement ou un redémarrage de l'appli.
-- Vos fichiers d'origine ne sont jamais modifiés : ils restent le gabarit.
-- Une **sauvegarde** (💾) emporte ses tirages avec elle : la charger rend les mêmes paragraphes.
-  « Recommencer » archive la partie et en tire de nouveaux.
-- Conséquence : tant qu'une partie est en cours, **modifier `scenario.txt` n'a pas d'effet** (le jeu lit
-  la copie résolue) ; le bouton ⟳ recharge la copie, pas vos fichiers. Pour voir une modification,
-  « Recommencer » (nouveaux tirages). Un scénario **sans** tag est lu directement, comme avant.
-- Le joueur ne voit un paragraphe tiré que s'il tombe dans un texte déjà affiché au joueur (une
-  ligne `[...]`, par exemple) ; sinon il ne sert qu'au LLM.
-- Le paragraphe est inséré tel quel à la place du tag. Une ligne `[...]` (narration affichée, §2.4)
-  doit rester sur **une seule ligne** : si un tag s'y trouve, ses paragraphes doivent tenir sur une
-  ligne, sinon les crochets ne se referment plus sur la même ligne. Dans le texte d'accompagnement
-  (§2.5) ou la prémisse, un paragraphe multi-lignes ne pose pas de problème.
-- Un tag à l'intérieur d'un paragraphe tiré n'est pas résolu (pas de tirage imbriqué).
-- Les fiches personnage (`characters/`) ne sont pas concernées pour l'instant.
-- Fichier `picks/nom.txt` absent ou sans paragraphe : le chargement échoue avec un message qui
-  nomme le tag.
+Seul l'acte courant (ancêtres inclus) est payé à chaque tour, et une information écrite dans un acte
+n'existe pour le modèle qu'à partir de l'arrivée dans cet acte : un acte futur ne peut ni être spoilé
+ni alourdir le contexte.
 
-## 3. Format d'un fichier personnage (`characters/nom.txt`)
+### 2.8 Faire évoluer un personnage : `{delta-pnj public|secret nom : texte}`
+
+Ajoute une ligne à la fiche d'un personnage **à partir de l'acte où la commande est écrite**, pour tous
+les actes suivants. La commande tient sur **une ligne seule** ; la visibilité est obligatoire (deuxième
+mot), le nom du personnage vient en troisième.
+
+```
+{delta-pnj public Elena : Elle a perdu un œil dans l'embuscade.}
+{delta-pnj secret Marcus : Il a reconnu le chef des bandits et décide de le suivre.}
+```
+
+| Visibilité | Effet |
+|---|---|
+| `public` | La ligne rejoint la partie **publique** de la fiche : le personnage et tous les PNJ présents ou coéquipiers la lisent (blessure, changement visible). |
+| `secret` | La ligne rejoint la partie **`# SECRET`** (créée si la fiche n'en a pas) : seul ce personnage la lit (nouvel objectif, découverte gardée pour soi). |
+
+- Le nom suit les mêmes règles que `{npc-starts Nom}` (§4.5) ; un nom inconnu empêche le chargement.
+- La ligne est retirée du texte de l'acte, qui va à tous les PNJ : un `secret` ne fuit jamais vers les autres.
+- Dans un titre parent, la commande s'applique à l'entrée dans le chapitre, puis reste valable.
+- Interdit dans la prémisse (aucun acte auquel l'attacher). Pas de `pick` dans le texte d'un delta.
+- Les deltas sont recalculés à partir des actes 1 à l'acte courant : revenir en arrière (↩, « Précédent »,
+  sauvegarde, ⟳) donne toujours la fiche qui correspond à l'acte. Les tours déjà joués restent dans
+  l'historique.
+- Chaque delta est relu à chaque tour par le personnage concerné : en garder peu, courts.
+
+### 2.9 Validation du scénario
+
+À chaque chargement d'un scénario, ses fichiers sont vérifiés et **toutes** les erreurs sont listées avec
+leur fichier et leur ligne ; une erreur empêche le chargement.
+
+| Erreur | Exemple |
+|---|---|
+| Ancienne syntaxe | `[PICK: x]`, `[NPC STARTS]` (à réécrire avec les accolades) |
+| Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{delta-pnj Elena : …}` (visibilité manquante) |
+| Commande qui doit être seule sur sa ligne | `{npc-starts}` ou `{delta-pnj …}` au milieu d'une phrase |
+| Fichier ou paragraphes manquants | `picks/x.txt` absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
+| Personnage inconnu | `{npc-starts Zorglub}`, `{delta-pnj secret Zorglub : …}` |
+
+Avertissements (affichés au lancement et dans 🐞, sans bloquer) : un acte non final sans
+`Quand écrire [NEXT ACT]`, un PNJ jamais cité dans la prémisse ni dans le premier acte.
+`validation-scenarios.bat` vérifie tous les scénarios sans lancer de partie ni figer de tirage.
+
+### 2.10 Style commun : `style.txt`
+
+Fichier **optionnel**, à la racine du scénario (à côté de `scenario.txt`). Son contenu est donné à
+**chaque personnage** sous le titre `STYLE ADVICE:`, après le résumé de l'histoire et avant les règles de
+format. Il factorise le style quand plusieurs personnages l'ont en commun, et le sépare du contenu des
+fiches. Fichier absent ou vide : le prompt est exactement le même que sans la fonction.
+
+```
+Phrases courtes, vocabulaire simple.
+Un détail sensoriel par réplique, jamais plus.
+Humour sec, sans exclamations.
+```
+
+- Décrire **la manière d'écrire** (voix, rythme, vocabulaire, ton), jamais des événements : le texte
+  est lu à chaque tour par tous les personnages, il n'est pas protégé contre les spoilers.
+- Formuler en positif (« phrases courtes ») plutôt qu'en interdits absolus (« jamais de longues phrases »),
+  qui font boucler un petit modèle. Court : au-delà de 1 200 caractères, un avertissement apparaît.
+- Une consigne de longueur (« réponses très longues ») entre en conflit avec les règles de longueur du
+  prompt et avec l'interjection (une ligne courte) : ne pas s'en servir pour la longueur.
+- Même langue que le scénario. Aucune commande entre accolades dans ce fichier : elle serait envoyée telle
+  quelle au modèle, le chargement la refuse.
+- Relu à chaque chargement : ⟳ prend en compte une modification en cours de partie. Reçu par les
+  personnages qui jouent (dont une interjection ou un `DO:`), pas par le résumé ni par les analyses 🔍 et 🧠.
+  Le bouton 🐞 l'affiche (« Conseil stylistique »).
+
+## 3. Fiche personnage (`characters/nom.txt`)
 
 ```
 # Elena
@@ -327,152 +375,186 @@ Elena, la trentaine, tient l'auberge... (fiche publique)
 Elena a autrefois volé dans un temple... (fiche secrète)
 ```
 
-- Première ligne `# Nom` **obligatoire** (revu le 2026-07-17) : devient le nom affiché
-  (`Npc.label()`) — gardée verbatim dans la fiche publique, pas retirée. Un fichier `.txt` sans
-  cette ligne en premier n'est PAS chargé comme PNJ — il est silencieusement ignoré (voir
-  `ChatFileStorageAdapter.hasNameHeading`). Avant, n'importe quel `.txt` égaré dans le dossier
-  (note, brouillon, sauvegarde manuelle) devenait un PNJ fantôme sans avertissement, avec son id de
-  fichier comme nom — risque réel signalé par l'utilisateur.
-- Ligne `# SECRET` seule (insensible à la casse) optionnelle : sépare fiche publique / fiche
-  secrète. Absente : tout le fichier est public, pas de partie secrète.
-- **Le PNJ qui parle reçoit toujours sa fiche complète (publique + secrète)** — il se connaît
-  lui-même. **Les autres PNJ présents dans la scène reçoivent leur fiche PUBLIQUE** (jamais leur
-  `# SECRET`, qui ne fuite jamais vers un autre PNJ — règle anti-triche, voir `ChatPromptBuilder
-  .OTHER_NPCS_RULE`). Revu le 2026-07-16 : avant, les autres PNJ n'étaient connus que par leur nom
-  ("tu ne sais rien d'eux"), ce qui lisait bizarrement pour une équipe qui voyage ensemble depuis
-  plusieurs chapitres — `scene.otherPresent()` ne contient jamais le joueur, seulement des PNJ déjà
-  établis comme coéquipiers dès la prémisse du scénario, donc partager leur fiche publique entre
-  eux est toujours cohérent narrativement.
-- Bonne pratique pour donner du relief : des secrets qui se répondent entre eux sans jamais être
-  méchants ni casser l'histoire (aspirations, envies, non-dits) — voir `quete-des-amazones` pour un
-  exemple à trois PNJ dont les secrets s'entrecroisent.
+| Élément | Règle |
+|---|---|
+| Première ligne `# Nom` | Obligatoire. Devient le nom affiché ; reste dans la fiche publique. Sans elle, le fichier est ignoré (§1). |
+| Ligne `# SECRET` | Optionnelle, seule sur sa ligne, insensible à la casse. Sépare fiche publique et fiche secrète. Absente : tout est public. |
+| Qui lit quoi | Le PNJ qui parle reçoit sa fiche complète. Les autres PNJ, présents ou absents, reçoivent la fiche **publique** ; un `# SECRET` ne va jamais à un autre PNJ (§2.7). |
+| Statut de la fiche | Le modèle la reçoit comme une note privée de l'auteur : il ne doit pas la citer. |
 
-## 4. Mécanismes du jeu (panneau de gauche, réglages, boutons)
+Les fiches publiques sont lues par les autres PNJ comme des coéquipiers déjà établis. Des secrets qui se
+répondent entre eux (aspirations, envies, non-dits) donnent du relief sans casser l'histoire.
+
+**Rôle de la fiche : qui est le personnage, pas ce qui lui arrive.** La fiche est envoyée en entier dès
+le tour 1, à chaque tour, sans aucun filtre par acte. Tout ce qu'elle contient est donc su du PNJ
+immédiatement (et, pour la partie publique, de tous les autres PNJ). L'histoire, elle, appartient aux
+actes, qui n'arrivent au modèle qu'un par un (§2.7).
+
+| Dans la fiche | Dans un acte (jamais dans la fiche) |
+|---|---|
+| Identité, âge, rôle, apparence utile | Événements à venir et rebondissements |
+| Voix et manières : débit, tics, ce qu'il dit ou ne dit jamais | Conditions de transition `[NEXT ACT]` (inopérantes dans une fiche : seul le texte de l'acte les déclenche) |
+| Comportements typiques, y compris « quand rien ne se passe » | Réactions précises à un événement précis de l'intrigue |
+| Buts et valeurs de départ | Ce que le joueur fait ou ressent |
+| Histoire passée connue du PNJ dès le tour 1 (`# SECRET` si les autres l'ignorent) | Lieux, décor et situation de la scène en cours |
+| Relations de départ avec les autres PNJ | Ce qui n'est vrai qu'à partir d'un moment de l'histoire |
+
+Test à appliquer à chaque phrase de la fiche :
+
+1. Est-ce vrai et su du PNJ dès le tour 1, quoi que fasse le joueur ? Sinon : dans un acte.
+2. Cette fiche servirait-elle telle quelle dans un autre scénario ? Sinon, elle contient du scénario.
+3. Cette phrase décrit-elle un trait observable (comment le PNJ agit ou parle) ? Une étiquette (« timide »)
+   ressort telle quelle dans les répliques ; la remplacer par un comportement (« baisse les yeux,
+   répond en phrases courtes »).
+
+Conséquences d'un scénario écrit dans une fiche : spoil dès le tour 1, fuite vers les autres PNJ si c'est
+dans la partie publique, contexte payé à chaque tour par tous, deux sources de vérité qui peuvent se
+contredire, fiche non réutilisable.
+
+## 4. Mécanismes du jeu
 
 ### 4.1 Présence (vignette 🔊/🔇)
 
-Chaque PNJ présent ou absent de la scène. Tous présents par défaut. Impossible de rendre absent le
-dernier PNJ présent (garde-fou : quelqu'un doit toujours pouvoir répondre). Persisté dans
-`run/current/state.txt` (voir §6.5).
+Chaque PNJ est présent ou absent de la scène. Tous sont présents par défaut. Le dernier PNJ présent ne
+peut pas être rendu absent. Persisté dans `run/current/state.txt` (§6.5).
 
-### 4.2 Qui répond (`SpeakerSelector`) — trois étapes, revu le 2026-07-16
+### 4.2 Qui répond
 
-1. **Mention** : le message du joueur nomme un ou plusieurs PNJ présents → TOUS ceux nommés
-   répondent, dans le même tour, dans l'ORDRE D'APPARITION de leur nom dans le message (pas
-   alphabétique — un PNJ juste cité en passant après le PNJ réellement visé ne doit jamais répondre
-   avant lui). Détection insensible aux accents/majuscules, et seuls les 5 premiers caractères
-   normalisés du nom doivent matcher (mot entier au sens large : "Cel" ou une coquille légère
-   suffisent à viser "Céleste", même principe que SillyTavern).
-2. **Continuité** : personne n'est nommé, mais UN SEUL PNJ a parlé au tour précédent → il reprend
-   la parole en premier. Un simple "et après ?" continue donc la conversation avec la bonne
-   personne au lieu de retomber sur un tirage au hasard. Si ce PNJ n'est plus présent (mute entre
-   temps), on retombe sur l'étape 3.
-3. **Repli** : personne n'est nommé, et l'étape 2 ne s'applique pas (premier échange, ou plusieurs
-   PNJ avaient parlé au tour précédent) → UN SEUL PNJ est tiré au hasard, uniquement parmi ceux
-   éligibles à l'interjection (icône 💬 activée, voir §4.3) — un PNJ dont le 💬 est désactivé ne
-   doit jamais être pioché ici, sinon le bouton ne tient pas sa promesse ("ne réagit que si visé
-   par son nom"). Si personne n'est éligible (tout le monde a désactivé son 💬), repli sur tous les
-   PNJ présents quand même — quelqu'un doit répondre au joueur.
+Trois étapes, la première qui s'applique décide :
 
-**Reprise sur réponse vide** (voir `evols/2026-07-15-...`) : un petit modèle peut parfois
-épuiser tout son budget de génération en réflexion et ne rien répondre du tout (`RoleplayNarrator`
-détecte une réponse vide et retente une fois, même prompt — abandonne après ce seul essai plutôt
-que de boucler). Si ça arrive régulièrement sur un scénario donné, c'est souvent le signe d'une
-ambiguïté de mise en scène à corriger (voir le piège du §2.4) plutôt qu'un simple aléa du modèle.
+1. **Mention** : le message du joueur nomme un ou plusieurs PNJ présents. Tous répondent, dans l'ordre
+   d'apparition de leur nom dans le message. Détection insensible aux accents et à la casse ; les 5
+   premiers caractères normalisés du nom suffisent (« Cel » vise « Céleste »).
+2. **Continuité** : personne n'est nommé et un seul PNJ a parlé au tour précédent : il reprend la
+   parole (s'il est encore présent).
+3. **Repli** : un seul PNJ est tiré au hasard parmi ceux dont l'icône 💬 est activée. Si aucun ne l'est,
+   tirage parmi tous les présents.
 
-### 4.3 Interjection (icône 💬, réglage "Chance d'interjection") — revu le 2026-07-16
+**Réponse vide** : un petit modèle peut épuiser son budget en réflexion sans répondre. L'appli détecte la
+réponse vide et relance une fois avec le même prompt, puis abandonne.
 
-Après l'étape ci-dessus, quelle qu'elle soit (mention, continuité ou tirage), chaque PNJ présent,
-éligible (icône 💬 activée — actif par défaut, à désactiver PNJ par PNJ si besoin) et qui n'a pas
-déjà été choisi comme principal tire indépendamment sa chance de réagir quand même. Pas de
-restriction sur le nombre de PNJ principaux : même si deux ont été nommés, un troisième présent
-peut encore interjecter. Répond après le ou les PNJ principaux, voit déjà leur réponse ; si
-plusieurs interjectent, leur ordre entre eux est aléatoire (pas d'ordre stable). Réglage global
-"Chance d'interjection" dans le panneau (0 à 1, défaut 0.5) — pas de réglage par PNJ. Voir
-`evols/2026-07-15-...` et `evols/2026-07-16-...` (refonte).
+### 4.3 Interjection (icône 💬, réglage « Chance d'interjection »)
 
-### 4.4 Réflexion / thinking (case "Afficher la réflexion", icône 🧠)
+Après l'étape 4.2, chaque PNJ présent, éligible (💬 activée, active par défaut, réglable par PNJ) et non
+choisi comme principal tire sa chance de réagir. Le nombre de PNJ principaux ne limite pas les
+interjections. L'interjecteur répond après les principaux, voit leurs réponses ; plusieurs interjecteurs
+répondent dans un ordre aléatoire. Réglage global 0 à 1, défaut 0.5, sans réglage par PNJ. Le prompt de
+l'interjecteur lui demande une réaction courte.
 
-La réflexion est **toujours demandée** au modèle à chaque appel, indépendamment de l'affichage
-(meilleure qualité de réponse, voir `evols/2026-07-15-...`). L'affichage dans le chat est
-séparé, actif par défaut (case décochable). Certains modèles ne savent pas produire de réflexion
-séparée (dépend de comment ils sont enregistrés dans Ollama) — rien à faire côté scénario, c'est
-une capacité du modèle, pas du scénario.
+### 4.3 bis Comprendre une réponse : le bouton ❓
+
+Quand un personnage invente une partie de l'histoire ou une action « hors cadre », le bouton ❓ (à côté
+du 🧠) met en regard la **dernière réponse du dernier PNJ** et le prompt exact qu'il a reçu. Il liste
+les éléments de la réponse qui ont un passage correspondant (avec le bloc du prompt, une citation et
+`[direct]` ou `[indirect]`), ceux qui n'en ont aucun, et une courte lecture.
+
+- Ce sont des **pistes**, pas l'explication du modèle (un modèle ne peut pas dire pourquoi il a écrit
+  ce qu'il a écrit). Le plus utile : les éléments **sans passage correspondant** viennent du modèle
+  lui-même, ni du scénario ni des règles du jeu. Un élément **indirect** signale souvent une
+  extrapolation à partir d'une phrase du scénario trop vague ou trop ouverte.
+- Lecture seule : rien n'est écrit dans l'historique ni archivé. Disponible tant que la dernière
+  réponse est encore la dernière (plus rien après un ↩, un retour en arrière ou un redémarrage).
+- Il reçoit le prompt entier plus la réponse : sur un petit contexte, l'appel peut dépasser la limite.
+- Si « Afficher la réflexion » est cochée, la réflexion du modèle est jointe à l'analyse.
+
+### 4.4 Réflexion (case « Afficher la réflexion », icône 🧠)
+
+La réflexion est toujours demandée au modèle ; la case ne règle que son affichage (actif par défaut).
+Certains modèles ne produisent pas de réflexion séparée selon leur enregistrement dans Ollama : c'est une
+capacité du modèle, pas du scénario.
 
 ### 4.5 Progression d'actes
 
-Le LLM écrit `[NEXT ACT]` dans sa réponse (retiré avant affichage) quand la condition de l'acte
-courant est remplie → avance à l'acte suivant, ses lignes `[...]` s'affichent. Boutons manuels
-"Précédent"/"Suivant" pour corriger. Bouton 🔍 pour demander au LLM (sans rien persister) où en est
-la condition de l'acte suivant.
+Le PNJ écrit `[NEXT ACT]` dans sa réponse quand la condition de l'acte courant est remplie. Le marqueur
+est retiré avant affichage, l'acte suivant devient courant et ses lignes `[...]` s'affichent. Jamais sur
+le dernier acte.
 
-#### Faire ouvrir la scène par un PNJ — `[NPC STARTS]`
+Contrôles du joueur : « Précédent » / « Suivant » (corrections manuelles), 🔍 (analyse sans rien écrire
+dans l'historique).
 
-Par défaut, c'est le joueur qui parle en premier. Pour qu'un PNJ prenne la parole à sa place, écrire
-sur **une ligne seule** (comme un bloc, mais sans phrase autour) :
+**Qui décide d'avancer** : le PNJ qui joue, à chaque tour, dans sa propre réponse, sans autre appel.
+Règle ajoutée à son prompt (bloc `CURRENT SCENE`, §2.7) :
+
+| Cas | Règle envoyée |
+|---|---|
+| Dernier acte | Aucune |
+| Le texte de l'acte contient `[NEXT ACT]` (§2.5) | Mode strict : écrire le marqueur seulement quand la condition s'est produite. Fait externe : constaté dans l'histoire. État interne du PNJ : jugé sur le comportement du joueur pendant plusieurs échanges récents. Échange sans rapport en cours : le terminer dans la même réponse, puis écrire le marqueur. Rappel court répété dans les conventions de format. |
+| Sinon | Mode par défaut : avancer quand la scène semble conclue |
+
+Dans tous les cas, le marqueur est une note de raisonnement sans influence sur le comportement du
+personnage, écrite à la fin de la réponse. Le bouton 🔍 appelle un agent séparé
+(`NextActReadinessAnalyst`) : lecture seule, mêmes réglages d'échantillonnage que le jeu, il ne pilote
+rien.
+
+#### `{npc-starts}` : faire ouvrir la scène par un PNJ
+
+Par défaut, le joueur parle en premier. Pour qu'un PNJ ouvre, écrire sur **une ligne seule** :
 
 ```
-[NPC STARTS]
-[NPC STARTS: Elena]
+{npc-starts}
+{npc-starts Elena}
 ```
 
-- Placé dans l'en-tête du scénario (avant le premier acte) : il ouvre l'histoire. Placé dans un
-  acte : il ouvre cet acte, dès qu'il devient courant (passage automatique ou bouton « Suivant »).
-- Effet : exactement comme si le joueur avait cliqué **DO** sans rien écrire. Une bulle `DO:` du
-  joueur s'affiche, puis le PNJ parle ; lui seul (pas d'interjection des autres).
-- Sans nom : un PNJ présent est tiré au hasard (inutile s'il n'y en a qu'un). Avec un nom : celui-là.
-  Le nom peut être l'identifiant du fichier, le nom complet ou un seul mot du nom (`Elena` pour
-  `Elena Voss`), sans tenir compte des accents ni de la casse. Un nom inconnu empêche le scénario de
-  se charger (message d'erreur explicite) ; un PNJ nommé mais retiré de la scène par le joueur laisse
-  la place à un autre PNJ présent.
-- La ligne est retirée du texte : le LLM ne la lit jamais. Une mention au milieu d'une phrase (comme
-  dans les consignes de la graine d'`init-chat`) n'est jamais prise pour le mot-clé.
-- Si le joueur écrit avant que le PNJ n'ait parlé, c'est son message qui compte : pas d'ouverture.
+| Sujet | Règle |
+|---|---|
+| Emplacement | En-tête du scénario (avant le premier acte) : ouvre l'histoire. Dans un acte : ouvre cet acte quand il devient courant (automatiquement ou par « Suivant »). |
+| Effet | Comme un clic sur **DO** sans texte : une bulle `DO:` du joueur, puis le PNJ parle seul (pas d'interjection). |
+| Sans nom | Un PNJ présent est tiré au hasard. |
+| Avec nom | Id de fichier, nom complet ou un seul mot du nom (`Elena` pour `Elena Voss`), sans tenir compte des accents ni de la casse. Nom inconnu : le scénario refuse de se charger. PNJ nommé mais retiré de la scène : un autre PNJ présent le remplace. |
+| Texte | La ligne est retirée : le modèle ne la lit jamais. Une mention au milieu d'une phrase est refusée au chargement (la commande doit être seule sur sa ligne). |
+| Joueur plus rapide | Si le joueur écrit avant que le PNJ ait parlé, son message compte : pas d'ouverture. |
 
 ### 4.6 Sauvegardes et redémarrage
 
-- Chaque tour est écrit sur disque dès qu'il existe, dans son propre fichier (voir §6.2) : il n'y a
-  plus de « slot unique écrasé à chaque fois », la partie en cours est toujours à jour.
-- 💾 Sauvegarder : point de sauvegarde manuel, horodaté, illimité en nombre. C'est un zip complet de
-  la partie en cours (voir §6.7). Charger une sauvegarde remplace la partie en cours (confirmation
-  demandée) et on peut ensuite continuer à remonter dans l'historique (§4.8), comme si on n'avait
-  jamais quitté la partie.
-- 🔄 Recommencer : remet la session à zéro sur le même scénario (confirmation demandée) — la partie
-  qui se termine est archivée dans un zip, jamais perdue.
-- ⟳ (à côté de "Personnages") : recharge `scenario.txt` (et ses suites `scenario-N.txt`) et les
-  fiches de `characters/` depuis le disque sans toucher à la conversation en cours — pratique pour
-  corriger une fiche en cours de partie. Exception : un scénario avec des `[PICK]` est relu depuis
-  sa copie résolue (`run/current/resolved/`), donc une modification de `scenario*.txt` n'est vue
-  qu'après « Recommencer » (voir §2.6). Les fiches de `characters/` sont relues normalement.
+- Chaque tour est écrit sur disque dès qu'il existe (§6.2) : la partie en cours est toujours à jour.
+- 💾 **Sauvegarder** : point de sauvegarde manuel, horodaté, en nombre illimité ; zip complet de la
+  partie (§6.7). Charger une sauvegarde remplace la partie en cours (confirmation) ; on peut ensuite
+  remonter dans l'historique (§4.8).
+- 🔄 **Recommencer** : remet la session à zéro sur le même scénario (confirmation). La partie terminée
+  est archivée dans un zip.
+- ⟳ (à côté de « Personnages ») : recharge `scenario*.txt` et `characters/` sans toucher à la
+  conversation. Exception : un scénario avec `{pick}` est relu depuis sa copie résolue (§2.6).
 
 ### 4.7 Compaction du contexte
 
-Quand la transcription dépasse le budget de tokens disponible, les tours les plus anciens sont
-résumés (`ChatSummarizer`) et remplacés par ce résumé dans le prompt. Rien n'est perdu : tous les
-tours restent sur disque, un fichier chacun, et chaque compaction est elle-même un fichier placé
-dans la même suite (voir §6.4). La compaction a lieu **à la fin d'un tour complet** (après la
-réponse de tous les PNJ du tour), et elle garde toujours les derniers tours en clair.
+Quand la transcription dépasse le budget de tokens, les tours les plus anciens sont résumés
+(`ChatSummarizer`) et remplacés par ce résumé dans le prompt. Tous les tours restent sur disque (§6.4). La
+compaction a lieu à la fin d'un tour complet (après les réponses de tous les PNJ) et garde toujours les
+derniers tours en clair.
 
-### 4.8 Retour en arrière (bouton ↩ « revenir ici » sur chaque bulle)
+### 4.8 Retour en arrière (bouton ↩ sur chaque bulle)
 
-Chaque bulle porte son numéro `#N` (voir §6.2). Le bouton ↩ d'une bulle ramène la partie à
-l'état exact où elle se trouvait juste après ce tour — conversation, résumé et acte.
+Chaque bulle porte son numéro `#N` (§6.2). Le bouton ramène la partie à l'état exact juste après ce tour.
 
-- **Destructif** : tout ce qui suit le tour choisi est supprimé définitivement. L'appli demande une
-  confirmation explicite et propose de faire une sauvegarde avant (jamais de sauvegarde silencieuse).
-- **Restauré** : les tours, le résumé tel qu'il était à ce moment-là (la bonne compaction, voir §6.6),
-  l'acte courant.
-- **Non restauré** : la présence 🔊/🔇, l'interjection 💬 et les réglages de génération. Ce sont des
-  réglages que le joueur change lui-même : remonter dans la conversation ne doit pas réactiver un
-  PNJ qu'on vient de couper.
-- Le tour suivant reprend le numéro `N+1`.
-- « Annuler » et « Régénérer » sont des cas particuliers de ce mécanisme (retour au dernier tour
-  du joueur, puis nouvelle génération).
+- **Destructif** : tout ce qui suit est supprimé définitivement. Confirmation explicite, avec
+  proposition de sauvegarde préalable.
+- **Restauré** : les tours, le résumé tel qu'il était à ce moment (§6.6), l'acte courant.
+- **Non restauré** : présence 🔊/🔇, interjection 💬, réglages de génération.
+- Le tour suivant reprend le numéro `N+1`. « Annuler » et « Régénérer » sont des retours au dernier tour
+  du joueur suivis d'une nouvelle génération.
+
+### 4.9 Conventions de message du joueur
+
+Injectées dans le prompt de chaque PNJ :
+
+| Écriture | Sens |
+|---|---|
+| `*texte*` | Action ou détail de scène, jamais une réplique |
+| Texte sans astérisques | Parole |
+| `(texte)` | Pensée du personnage du joueur. Reste affichée et sauvegardée, mais **supprimée du texte envoyé aux LLM** (PNJ, résumé, analyses) : aucun PNJ ne peut y réagir. Un message fait uniquement de pensées n'est pas transmis. |
+| `OOC: …` | Instruction hors-jeu, que personne dans l'histoire n'a dite ni entendue. Le PNJ répond en tant que lui-même et s'arrête là : la scène n'avance pas dans cette réponse. |
+| `DO: …` | Le joueur confie la plume du narrateur au PNJ pour une seule réponse : avancer la scène, narrer, agir pour d'autres personnages. Au tour suivant, retour à son seul personnage. |
+| `DO:` vide | Le PNJ parle en premier (`{npc-starts}`, §4.5) |
+
+Le message du joueur est présenté au modèle sous le nom du joueur (§2.1). La génération est coupée si le
+modèle dérive vers le tour du joueur ou vers une narration à sa place.
 
 ## 5. Vérifier un scénario avant de le tester en vrai
 
-Le plus fiable : charger le scénario par le code et regarder le résultat, pas juste relire le texte
-(le piège du §2.3 ne se voit pas à la simple lecture). Un script Java jetable suffit :
+Commencer par `validation-scenarios.bat` (§2.9) : il liste toutes les erreurs et avertissements sans
+lancer de partie. Pour aller plus loin, charger le scénario par le code et regarder le résultat, pas
+juste relire le texte (le piège du §2.3 ne se voit pas à la simple lecture). Un script Java jetable
+suffit :
 
 ```java
 ChatFileStorageAdapter storage = new ChatFileStorageAdapter();
@@ -511,7 +593,8 @@ chatscenarios/mon-scenario/
         000014.md
         ...
       state.txt                                  présence et interjection des PNJ
-      resolved/                                  scenario*.txt avec les [PICK] tirés (§2.6) ; absent sans tag
+      resolved/                                  scenario*.txt avec les {pick} tirés (§2.6) ; absent sans pick
+        picks.txt                                les tirages dans l'ordre (tableau 🎲) ; absent pour un ancien run
     saves/
       2026-10-25-143012-123.zip                  sauvegardes manuelles (zip de current/)
     archive/
@@ -637,7 +720,7 @@ n'y a plus de résumé pour alléger), une nouvelle compaction est faite immédi
 ### 6.7 Sauvegardes et archives : des zips de `current/`
 
 Une sauvegarde manuelle (💾) et une archive de « Recommencer » ont exactement la même forme : un zip de
-`run/current/` (le dossier `turns/`, `state.txt` et, s'il existe, `resolved/` : les tirages `[PICK]`, §2.6), nommé d'après l'horodatage (précision à la
+`run/current/` (le dossier `turns/`, `state.txt` et, s'il existe, `resolved/` : les tirages `{pick}`, §2.6), nommé d'après l'horodatage (précision à la
 milliseconde, pour que deux sauvegardes rapprochées ne s'écrasent jamais) :
 `run/saves/2026-10-25-143012-123.zip`, `run/archive/2026-10-25-150400-567.zip`.
 
@@ -666,18 +749,162 @@ milliseconde, pour que deux sauvegardes rapprochées ne s'écrasent jamais) :
 | Effacer toute trace de jeu sur ce scénario | `run/` |
 | Partager ou archiver le scénario | copier le dossier sans `run/` |
 
-### 6.10 Ancien format et migration
+### 6.10 Ancien format
 
 Avant cette structure, les fichiers de session (`history.md`, `summary.md`, `act.txt`, `present.txt`,
 `interject.txt`, `full-history.md`) et les dossiers `saves/`, `archive/`, `logs/`, `tests/` vivaient à
 la racine du scénario, à côté des fiches personnage. Si l'appli en détecte, le scénario reste dans la
-liste mais refuse de se charger, avec un message qui demande de lancer `migration.bat`. Ce programme,
-à lancer une seule fois :
+liste mais refuse de se charger, avec un message « format non pris en charge ». Il n'y a plus de
+programme de conversion : déplacer les fiches dans `characters/` et supprimer les anciens fichiers de
+session à la main.
 
-- déplace les fiches personnage de la racine vers `characters/` ;
-- **supprime** les anciens fichiers de session et dossiers générés : **les anciennes parties,
-  sauvegardes et archives sont jetées**, seul le scénario est conservé ;
-- traite le dossier `chatscenarios/` du projet et le dossier configuré dans `chat.properties`
-  (`chatscenarios.root.default`), ou un chemin passé en argument ;
-- offre un `--dry-run` qui liste ce qui serait déplacé et supprimé sans rien toucher, et demande une
-  confirmation avant d'agir.
+## 7. Conseils et avertissements
+
+Cette section regroupe des recommandations issues de l'expérience (pas de la spec : §1 à §6). Elle
+est écrite pour être lue seule, y compris par un petit modèle qui rédige un scénario. **À mettre à
+jour à chaque nouvelle fonctionnalité qui touche l'auteur et à chaque piège ou limite découvert.**
+
+### 7.0 Principe : des fiches et des événements, pas un script
+
+L'histoire vient de la rencontre entre **des personnages bien définis** (fiches, §3) et **des situations
+et événements** (actes, §2). Le PNJ agit selon sa fiche, l'objectif et la situation qu'on lui donne ; le
+joueur apporte l'imprévu.
+
+**Le piège : tout rédiger dans le scénario.** Un acte qui dicte répliques, gestes et enchaînements
+transforme le chat en récitation : le PNJ cherche à jouer le texte plutôt qu'à réagir au joueur, et la
+condition `[NEXT ACT]` devient l'unique enjeu de la scène.
+
+| À écrire dans un acte | À éviter dans un acte |
+|---|---|
+| La situation (lieu, moment, ce qui vient de se passer) | Des répliques toutes faites |
+| Un enjeu ou un objectif (ce que les PNJ veulent, ce qui presse) | Un déroulé minute par minute |
+| Un obstacle ou un événement déclencheur | Ce que le joueur va faire ou ressentir |
+| Une seule condition de sortie observable (§7.2) | L'état émotionnel qu'un PNJ doit atteindre sans que le joueur y contribue |
+
+Pour la fiche : un but, un trait de caractère, une façon de parler, ce que le PNJ fait quand rien ne se
+passe. Tout cela se joue sans script.
+
+**Limites de ce principe.** Il repose sur l'expérience du projet, pas sur une mesure. Trop peu
+d'information produit aussi un échec : un PNJ sans but ni pression attend le joueur et la scène stagne.
+Chaque acte doit donc donner au moins une raison d'agir (un objectif, une urgence ou un événement), sans
+dire comment.
+
+### 7.1 Budget de contexte et anti-spoil
+
+Conséquences de §2.7 :
+
+1. La prémisse est envoyée à chaque tour à tous les PNJ : la garder courte, **sans spoil** (monde,
+   ton, situation de départ).
+2. Un rebondissement s'écrit dans l'acte où il devient utile, pas avant.
+3. Ce qu'un seul PNJ sait depuis le début va dans son `# SECRET` ; ce qui n'est vrai qu'à partir d'un
+   moment de l'histoire va dans l'acte.
+4. Le texte commun d'un chapitre parent est renvoyé à chaque tour de chaque scène : le garder court.
+   Ce qui ne sert que dans une scène va dans cette scène.
+5. Les lignes `[...]` d'un acte sont connues de tous les PNJ dès l'arrivée de l'acte.
+6. Le PNJ ne voit pas l'acte suivant : une condition ne peut s'appuyer que sur le texte de l'acte
+   courant.
+
+### 7.2 Réussir ses `Quand écrire [NEXT ACT]`
+
+Le PNJ qui joue décide seul (§4.5), avec l'acte courant, le résumé et les derniers tours. Deux pannes
+opposées :
+
+| Panne | Cause fréquente |
+|---|---|
+| Scénario bloqué | Condition trop stricte, jamais atteignable dans l'acte, ou impossible à constater dans la conversation |
+| Passage trop rapide à l'acte suivant | Condition vague, ou semblable à un événement déjà arrivé (visible dans le résumé) |
+
+Règles :
+
+1. Un seul fait observable et nommé (personnage, lieu, objet, décision dite à voix haute). Jamais
+   « quand la scène est finie ».
+2. Formuler « dès que… », jamais « jamais avant… » (une négation absolue fait boucler un petit modèle).
+3. Une seule condition par acte, courte, sans cascade de « et / ou ». Au plus deux faits si une sortie
+   de secours est nécessaire (« Varek mort ou en fuite, ou le groupe a quitté la clairière »).
+4. `Ce qui doit se passer` doit mener à la condition, sinon l'histoire reste bloquée.
+5. Pas de condition vraie dès le début de l'acte.
+6. État interne d'un PNJ : formuler ce qu'il doit avoir dit ou décidé (« Dès qu'Elena a avoué le vol
+   à voix haute »), pas une émotion vague.
+7. Écrire la condition dans la feuille, pas dans un parent (§2.3).
+
+**Scène qui boucle alors que la condition est remplie.** Le contrôle de disponibilité (bouton d'analyse)
+est un diagnostic manuel : son verdict n'est pas renvoyé au PNJ qui joue. Pour limiter les boucles, le
+prompt lui demande d'envisager `[NEXT ACT]` quand l'action devient répétitive et que la condition est
+proche. Cela ne remplace pas une condition claire : si la scène boucle, vérifier d'abord la condition
+(règles 1 à 6).
+
+**Séquences qui se ressemblent** (plusieurs combats, négociations, enquêtes). Le résumé dit « le combat
+contre les bandits s'est terminé » ; à l'acte suivant, « le combat est terminé » paraît déjà vrai.
+Parades, à combiner :
+
+- Un marqueur unique par scène (adversaire nommé, lieu, enjeu), cité dans la condition.
+- Un fait d'ancrage dans `Point de départ` : une situation nouvelle, distincte de la précédente.
+- Une condition qui nomme cette scène, jamais le genre d'événement.
+
+```
+# Le guet-apens du col
+Point de départ : Des bandits surgissent sur le sentier du col de Vaur.
+Quand écrire [NEXT ACT] : Dès que Varek, le chef des bandits, est mort ou a fui, et qu'aucun bandit du col n'est encore debout.
+
+# Les loups de la forêt de Saule
+Point de départ : La nuit tombe dans la forêt de Saule et une meute de loups encercle le camp.
+Quand écrire [NEXT ACT] : Dès que la meute de loups est morte ou a fui dans les bois.
+```
+
+Mauvais pour ces deux actes : « Dès que le combat est terminé ». Cette phrase serait vraie dès le
+premier tour du second acte.
+
+Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bis), 🎲 tirages `{pick}` et 🐞 texte de scénario envoyé (§2.6), boutons Précédent / Suivant.
+
+### 7.3 Écrire un long scénario avec un petit contexte
+
+1. **Tableau d'actes dans un fichier temporaire** hors du dossier du scénario (l'appli ne le lit
+   jamais), supprimé à la fin. Une ligne par acte :
+
+   | N° | Lieu / adversaire | Point de départ (fait d'ancrage) | Ce qui doit se passer | Condition `[NEXT ACT]` (fait unique, nommé) | Distinct de l'acte précédent par |
+   |---|---|---|---|---|---|
+   | 1 | Col de Vaur / Varek | Des bandits surgissent sur le sentier | Combat, Varek cède | Varek mort ou en fuite | Embuscade, de jour |
+   | 2 | Forêt de Saule / loups | Nuit, la meute encercle le camp | Défense du camp | La meute est morte ou en fuite | Animaux, de nuit |
+
+   Une dernière colonne impossible à remplir = deux actes trop semblables : les fusionner ou les
+   différencier.
+2. **Plusieurs fichiers** : `scenario.txt` (ligne Joueur, `#SCENARIO`, premiers actes), puis
+   `scenario-1.txt`, `scenario-2.txt`… (§1). Un acte par fichier si le contexte est très serré.
+   Chaque fichier commence par un titre `# ...` de premier niveau. Actes indépendants : un acte par
+   fichier. Scènes qui partagent un texte commun : un chapitre `#` et ses `##` dans le même fichier
+   (§2.3).
+3. **Écrire un fichier à la fois**, avec en contexte : sa ligne du tableau, la ligne de l'acte
+   précédent, les fiches personnage. Ne pas relire les fichiers déjà écrits. Écrire d'abord les
+   fiches (test du §3 sur chaque phrase), puis les actes.
+4. **À rappeler dans chaque fichier** : 3e personne dans les `[...]` et le texte d'acte ; une ligne
+   `Quand écrire [NEXT ACT]` sur tous les actes sauf le dernier ; premier acte qui nomme tous les PNJ.
+5. **Vérifier** avec le script du §5 : nombre d'actes = nombre de lignes du tableau. Puis jouer et
+   utiliser 🔍.
+
+### 7.4 Pièges connus
+
+| Piège | Symptôme | Parade côté auteur |
+|---|---|---|
+| Fuite de la fiche | « Puisque je suis timide… » dans une réplique | Décrire des comportements observables, pas des étiquettes (§3) |
+| Scénario dans la fiche | Le PNJ anticipe un événement ou le révèle trop tôt ; un autre PNJ en parle | Test du §3 : seul ce qui est vrai et su dès le tour 1 va dans la fiche ; le reste dans l'acte |
+| Langue hésitante | Le modèle passe sa réflexion à choisir entre français et anglais | Écrire `Langue :` dans l'en-tête (§2.1) |
+| Mirroring | Le PNJ décrit les sensations ou actions du joueur | Ne pas écrire de pensées ou d'actions du joueur dans le scénario |
+| Spoil | Le PNJ anticipe un événement scripté | Écrire l'événement dans l'acte où il arrive (§7.1) |
+| PNJ jamais présenté | Un PNJ tiré au hasard réfléchit longtemps et répond vide | Nommer tous les PNJ dans le premier acte (§2.4) |
+| Négation absolue | Boucle de réflexion, réponse vide | « Dès que… » (§7.2) |
+| Émotion jouée comme preuve | Le PNJ sur-joue sa colère pour déclencher l'acte | Ancrer la condition sur le comportement du joueur |
+| Acte sauté | `[NEXT ACT]` dès le premier tour | Marqueur unique, fait d'ancrage (§7.2) |
+| Commande citée en exemple | Chargement refusé : `{npc-starts}` « doit être seul sur sa ligne », ou `{pick …}` mal formé | Une commande écrite entre accolades est toujours exécutée ou validée, même dans une note : décrire la commande avec des mots (`npc-starts`) sans les accolades (§2.9) |
+| Style qui parle d'histoire | Le style annonce ou impose des événements, tous les PNJ le lisent à chaque tour | `style.txt` ne décrit que la manière d'écrire (§2.10) ; les événements vont dans les actes |
+| Secret dans le texte de l'acte | Un autre PNJ réagit à une information privée | Écrire l'information privée avec `{delta-pnj secret nom : …}` (§2.8), jamais dans le corps de l'acte, lu par tous |
+| Échange coupé | `[NEXT ACT]` en plein dialogue | Condition qui laisse de la marge ; un filet existe dans le prompt |
+| Saut de scène | Le `[...]` du nouvel acte ne raccorde pas à la scène précédente | Un `[...]` n'est pas généré par le modèle : l'écrire en lien avec l'état précédent |
+| Tirade d'interjection | Un PNJ secondaire fait un discours | Fiche à la voix courte ; un filet existe dans le prompt |
+| Longueur uniforme | Toutes les réponses font la même taille | Un exemple de réplique courte et un de longue dans la fiche |
+| Actes fusionnés | Un seul acte au lieu de deux | Même niveau `#` / `#` (§2.3) |
+| Titres non détectés | Aucun acte, tout en prémisse | Pas de `#` parasite en début de ligne ; fichier en UTF-8 |
+| Plusieurs `[...]` sans actes | Seul le premier est affiché | Faire de vrais actes (§2.4) |
+| Fiche ignorée | Un PNJ absent de la liste | Première ligne `# Nom` obligatoire (§1, §3) |
+| Modification sans effet | Scénario avec `{pick}` : rien ne change | « Recommencer » (§2.6) |
+| `[NEXT ACT]` entre crochets seul | Pris pour une réplique à afficher | Le garder dans la phrase `Quand écrire [NEXT ACT] : …` |
+| Réponse vide du modèle | Une seule relance puis abandon | Souvent une ambiguïté de mise en scène à corriger (§4.2) |

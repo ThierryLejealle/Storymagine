@@ -69,12 +69,30 @@ it would misfire on an innocuous sentence like "in the next act of her plan...")
 - **The act specifies its own condition** (author wrote `"Quand écrire [NEXT ACT] : ..."` in the
   act's body) → the model is told to use *that* condition, verbatim, never a vague "feels like a
   good time to move on".
+  The conditional rule also carries a bounded escape hatch (2026-10-27) : if the action becomes
+  repetitive *and* the model is close to the condition, it should consider writing the marker now.
+  Added because a looping scene with a condition already met (confirmed by the on-demand readiness
+  check, which is never fed back to the narrator) kept going under the strict "never before" wording.
 - **No condition specified** → falls back to a generic "if you feel this act's events have reached
   their natural conclusion" rule.
 
 When the model's reply contains the `[NEXT ACT]` marker (`NEXT_ACT_MARKER`, case-insensitive), it
 is stripped from `replyText` before the turn is stored or shown to the player, and
 `triggeredNextAct` is reported so `ChatServiceImpl` can call `ChatSession.advanceAct()`.
+
+## Player thoughts : "(...)" (2026-10-27)
+Text between parentheses in a player message is the player character's inner thought. No prompt
+instruction asks the model to ignore it (a small model cannot reliably unread what it has seen) :
+`ChatPromptBuilder.transcript()` removes it via `PlayerThoughts.strip()` for PLAYER turns, so the
+narrator, `ChatSummarizer`, `NextActReadinessAnalyst` and `NpcMindStateAnalyst` (all sharing
+`transcript()`) never see it. Stored and displayed history is untouched. A player turn made only of
+thoughts is left out of the transcript.
+
+## Style advice : "style.txt"
+When the scenario has an optional `style.txt` (`ScenarioStyle`, non blank), `ChatPromptBuilder` adds a
+`STYLE ADVICE:` block with its text after `STORY SO FAR` and before the formatting rules, so the format
+conventions keep the last word. No file, no block : the prompt is unchanged. The summarizer and the
+analysts never receive it.
 
 ## What this agent does NOT do
 Session mutation (appending turns, advancing the act, compaction, persistence) stays in
@@ -83,3 +101,9 @@ as every other agent in the project. It also does not compute the context-usage 
 compaction threshold ; those reuse `ChatPromptBuilder` directly from `ChatServiceImpl` to size a
 *hypothetical* prompt without spending an LLM call, which is a Service-level concern, not this
 agent's.
+
+**Language (2026-10-27)** : the system prompt (`ChatPromptBuilder`) states the scenario's `Langue :`
+once ("Write every reply in French, even though these instructions are in English.") instead of
+asking the model to infer it from the character and scenario, which small models spent part of their
+reasoning on. Without a `Langue :` line the former "same language as the character and scenario"
+sentence is kept. The rule is stated once, never repeated further down the prompt.

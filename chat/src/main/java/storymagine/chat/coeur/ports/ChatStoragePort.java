@@ -1,6 +1,8 @@
 package storymagine.chat.coeur.ports;
 
+import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.validation.ScenarioReport;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.Compaction;
 import storymagine.chat.coeur.domaine.session.SavePoint;
@@ -21,9 +23,21 @@ public interface ChatStoragePort {
 
     /**
      * Throws IllegalStateException if the scenario directory still has the old layout (session files
-     * next to the scenario, characters not in characters/) — the message tells to run migration.bat.
+     * next to the scenario, characters not in characters/) — the message says the old format is not supported.
      */
     ChatScenario loadScenario(Path chatScenariosRoot, String name);
+
+    /**
+     * The paragraphs drawn for this run's {pick} commands, in order of appearance in the
+     * scenario ; empty for a scenario without tags, and for a run started before draws were recorded.
+     */
+    PickDraws pickDraws(Path chatScenariosRoot, ChatScenario scenario);
+
+    /**
+     * Static validation of a scenario as written (see ScenarioValidator) : every error listed, then the
+     * warnings. Read only : no run is created, no pick draw is fixed.
+     */
+    ScenarioReport validateScenario(Path chatScenariosRoot, String name);
 
     /** The run as it stands (state just after its last turn), or a fresh session if nothing was persisted yet. */
     ChatSession loadSession(Path chatScenariosRoot, ChatScenario scenario);

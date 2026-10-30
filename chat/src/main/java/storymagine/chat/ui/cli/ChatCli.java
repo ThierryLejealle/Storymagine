@@ -79,12 +79,13 @@ public class ChatCli {
         ChatScenario scenario;
         try {
             scenario = service.loadScenario(root, names.get(idx));
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             System.err.println("ERREUR : " + e.getMessage());
             System.exit(1);
             return;
         }
         System.out.println(">> Chatscenario : " + scenario.name());
+        service.scenarioWarnings(scenario).forEach(w -> System.out.println("   " + w));
         // Aucun log sur disque par defaut : seule l'option --logs active FileLogAdapter (qui
         // ignore toutes les ecritures tant qu'on ne lui a pas donne de repertoire).
         Path logsDir = root.resolve(scenario.name()).resolve("run").resolve("logs");

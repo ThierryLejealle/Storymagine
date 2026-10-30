@@ -13,6 +13,8 @@ public class ScenarioContinuityReviewer {
 
     private static final String AGENT_NAME  = "ScenarioContinuityReviewer";
     private static final double TEMPERATURE = 0.3;
+    /** Replaced in SYSTEM by the scenario's language (see ScenarioLanguage.phrase). */
+    private static final String LANGUAGE_PLACEHOLDER = "{LANGUAGE}";
 
     private final ModelCallPort llm;
 
@@ -28,7 +30,9 @@ public class ScenarioContinuityReviewer {
             + "\n\nSTORY SO FAR:\n" + emptyIfBlank(input.storySoFar())
             + "\n\nCURRENT ACT (" + input.actNumber().display() + " " + input.actTitle() + "):\n" + input.actText();
 
-        String raw = llm.generate(SYSTEM, user, TEMPERATURE,
+        String system = SYSTEM.replace(LANGUAGE_PLACEHOLDER,
+            input.language().phrase("the same language as the scenario text above"));
+        String raw = llm.generate(system, user, TEMPERATURE,
             LlmCallContext.of(agentName(), input.actNumber().display())).text();
         ReviewOutputParser.Review review = ReviewOutputParser.parse(raw);
         return new ScenarioContinuityReviewerOutput(review.issues(), review.suggestions());
@@ -60,7 +64,7 @@ public class ScenarioContinuityReviewer {
         Each issue must name the act it conflicts with (e.g. "act 2 says...").
 
         OUTPUT FORMAT
-        Write your findings in the same language as the scenario text above. Write exactly these
+        Write your findings in {LANGUAGE}. Write exactly these
         two sections, nothing before or after:
         ISSUES:
         SUGGESTIONS:

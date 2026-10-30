@@ -28,8 +28,8 @@ text in the accumulated "story so far" — accepted duplication, not a bug (see 
   vague impressions.
 - Two worked examples — one with a real inconsistency, one with nothing to report ("[RIEN]" on
   both sections) — a single example biases a small model toward always finding something to say.
-- Output language is not hardcoded: "write in the same language as the scenario text above",
-  matching the rest of the module's dynamic-language convention (see `ChatSummarizer`).
+- Output language comes from the scenario's `Langue :` line ("write in French, even though these instructions are in English"); "the same language as the scenario text above" is only the fallback without one,
+  see `ScenarioLanguage.phrase` and `ChatSummarizer`.
 
 ## What this agent does NOT do
 Does not see later acts (anti-spoiler is irrelevant here, but ordering still matters: it reviews

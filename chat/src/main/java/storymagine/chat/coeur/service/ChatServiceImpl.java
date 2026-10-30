@@ -1,11 +1,17 @@
 package storymagine.chat.coeur.service;
 
 import storymagine.chat.coeur.domaine.agent.chatsummarizer.ChatSummarizer;
+import storymagine.chat.coeur.domaine.pick.PickDraws;
+import storymagine.chat.coeur.domaine.validation.ScenarioIssue;
+import storymagine.chat.coeur.domaine.validation.ScenarioValidator;
 import storymagine.chat.coeur.domaine.agent.chatsummarizer.ChatSummarizerInput;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalyst;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalystInput;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalyst;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalyst;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalystInput;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystInput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarrator;
@@ -18,6 +24,7 @@ import storymagine.chat.coeur.domaine.session.ChatContextBudget;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder.ChatPrompt;
 import storymagine.chat.coeur.domaine.session.ChatSession;
+import storymagine.chat.coeur.domaine.session.ReplyTrace;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.Compaction;
 import storymagine.chat.coeur.domaine.session.PlayerMessage;
@@ -56,6 +63,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatSummarizer             summarizer;
     private final NextActReadinessAnalyst    nextActReadinessAnalyst;
     private final NpcMindStateAnalyst        npcMindStateAnalyst;
+    private final ReplyOriginAnalyst         replyOriginAnalyst;
     private final LogPort                    log;
     private final Random                     random;
 
@@ -74,6 +82,14 @@ public class ChatServiceImpl implements ChatService {
     public ChatServiceImpl(ChatStoragePort storage, RoleplayNarrator roleplayNarrator, ChatSummarizer summarizer,
                             NextActReadinessAnalyst nextActReadinessAnalyst, NpcMindStateAnalyst npcMindStateAnalyst,
                             LogPort log, Random random) {
+        this(storage, roleplayNarrator, summarizer, nextActReadinessAnalyst, npcMindStateAnalyst, null, log, random);
+    }
+
+    /** replyOriginAnalyst may be null : the "where does this reply come from" debug button is then unavailable. */
+    public ChatServiceImpl(ChatStoragePort storage, RoleplayNarrator roleplayNarrator, ChatSummarizer summarizer,
+                            NextActReadinessAnalyst nextActReadinessAnalyst, NpcMindStateAnalyst npcMindStateAnalyst,
+                            ReplyOriginAnalyst replyOriginAnalyst, LogPort log, Random random) {
+        this.replyOriginAnalyst      = replyOriginAnalyst;
         this.storage                 = storage;
         this.roleplayNarrator        = roleplayNarrator;
         this.summarizer              = summarizer;
@@ -102,7 +118,7 @@ public class ChatServiceImpl implements ChatService {
     public ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset) {
         if (reset) {
             storage.resetSession(chatScenariosRoot, scenario);
-            // Loaded again AFTER the reset : a scenario with [PICK: ...] tags draws its paragraphs
+            // Loaded again AFTER the reset : a scenario with {pick ...} commands draws its paragraphs
             // for the new run, the instance received here holds the previous run's draws.
             return ChatSession.fresh(storage.loadScenario(chatScenariosRoot, scenario.name()));
         }
@@ -119,7 +135,7 @@ public class ChatServiceImpl implements ChatService {
                                        ExchangeProgressListener listener) {
         PlayerMessage input = PlayerMessage.parse(rawPlayerInput);
         int playerTurnIndex = session.turns().size();
-        // Un "DO:" vide au debut d'une histoire ou d'un acte ou l'auteur a ecrit [NPC STARTS] :
+        // Un "DO:" vide au debut d'une histoire ou d'un acte ou l'auteur a ecrit {npc-starts} :
         // c'est un PNJ qui ouvre (voir NpcOpening), le calcul doit preceder l'ajout du tour joueur.
         NpcOpening opening = input.isEmptyHandoff() ? session.npcOpeningAt(playerTurnIndex) : NpcOpening.NONE;
         ChatTurn playerTurn = new ChatTurn(ChatTurn.Speaker.PLAYER, input.formattedLine());
@@ -324,6 +340,10 @@ public class ChatServiceImpl implements ChatService {
 
             ChatTurn replyTurn = new ChatTurn(ChatTurn.Speaker.LLM, reply.replyText(), reply.thinking(), npcId);
             session.append(replyTurn);
+            if (reply.prompt() != null) {
+                session.rememberReplyTrace(new ReplyTrace(npcId, reply.prompt().system(), reply.prompt().user(),
+                    reply.replyText(), reply.thinking()));
+            }
             storage.saveSession(chatScenariosRoot, session); // un tour est ecrit des qu'il existe
             replyTurns.add(replyTurn);
             listener.onTurnReady(replyTurn);
@@ -502,6 +522,16 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public ReplyOriginAnalystOutput analyzeLastReplyOrigin(Path chatScenariosRoot, ChatSession session) {
+        if (replyOriginAnalyst == null) {
+            throw new IllegalStateException("Analyse de l'origine d'une reponse non disponible.");
+        }
+        ReplyTrace trace = session.lastReplyTrace().orElseThrow(() -> new IllegalStateException(
+            "Aucune reponse recente a analyser (partie rechargee, ou derniere reponse annulee)."));
+        return replyOriginAnalyst.call(new ReplyOriginAnalystInput(session.scenario(), trace, session.generationSettings()));
+    }
+
+    @Override
     public SavePoint save(Path chatScenariosRoot, ChatSession session) {
         storage.saveSession(chatScenariosRoot, session); // le zip prend la partie telle qu'elle est sur disque
         return storage.createSavePoint(chatScenariosRoot, session);
@@ -519,7 +549,7 @@ public class ChatServiceImpl implements ChatService {
         // confirmation avant d'appeler ce point d'entree (voir chat.html) — l'ecrasement est donc
         // toujours un choix explicite du joueur, pas un accident a rattraper.
         ChatSession loaded = storage.loadSavePoint(chatScenariosRoot, session.scenario(), saveId);
-        session.reloadScenario(loaded.scenario()); // the save's own [PICK: ...] draws
+        session.reloadScenario(loaded.scenario()); // the save's own {pick ...} draws
         session.restoreFrom(loaded);
         storage.saveSession(chatScenariosRoot, session);
     }
@@ -558,7 +588,7 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public void restartSession(Path chatScenariosRoot, ChatSession session) {
-        // Reset BEFORE loading : the load of a new run is what draws its [PICK: ...] paragraphs.
+        // Reset BEFORE loading : the load of a new run is what draws its {pick ...} paragraphs.
         storage.resetSession(chatScenariosRoot, session.scenario());
         ChatScenario freshScenario = storage.loadScenario(chatScenariosRoot, session.scenario().name());
         session.reloadScenario(freshScenario);
@@ -566,6 +596,25 @@ public class ChatServiceImpl implements ChatService {
         session.restore(fresh.summary(), fresh.turns(), fresh.currentAct(), fresh.presentNpcIds(),
             fresh.interjectingNpcIds());
         storage.saveSession(chatScenariosRoot, session);
+    }
+
+    @Override
+    public PickDraws pickDraws(Path chatScenariosRoot, ChatSession session) {
+        return storage.pickDraws(chatScenariosRoot, session.scenario());
+    }
+
+    @Override
+    public List<String> scenarioWarnings(ChatScenario scenario) {
+        return ScenarioValidator.checkScenario(scenario).warnings().stream().map(ScenarioIssue::display).toList();
+    }
+
+    @Override
+    public ScenarioPromptView scenarioPrompt(ChatSession session) {
+        ChatScenario scenario = session.scenario();
+        int currentAct = session.currentAct();
+        boolean actActive = currentAct > 0 && currentAct <= scenario.acts().size();
+        return new ScenarioPromptView(scenario.premise(), currentAct, scenario.acts().size(),
+            actActive ? scenario.acts().get(currentAct - 1).text() : "", scenario.style().text(), scenarioWarnings(scenario));
     }
 
     @Override
@@ -588,7 +637,8 @@ public class ChatServiceImpl implements ChatService {
         List<ChatTurn> toKeep = turns.subList(turns.size() - keepCount, turns.size());
 
         String newSummary = summarizer.call(new ChatSummarizerInput(session.summary(),
-            ChatPromptBuilder.transcript(toFold, session.scenario().cast(), playerName))).summary();
+            ChatPromptBuilder.transcript(toFold, session.scenario().cast(), playerName),
+            session.scenario().language())).summary();
         if (newSummary == null || newSummary.isBlank()) {
             log.warn("ChatSummarizer a renvoyé un résumé vide — compactage ignoré ce tour-ci, historique conservé");
             return false;

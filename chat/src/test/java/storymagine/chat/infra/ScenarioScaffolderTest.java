@@ -63,7 +63,7 @@ class ScenarioScaffolderTest {
 
         ChatScenario scenario = adapter.loadScenario(root, "auberge");
 
-        assertTrue(scenario.premise().contains("[NPC STARTS: Nom]"), "la consigne doit etre lisible dans la graine");
+        assertTrue(scenario.premise().contains("npc-starts"), "la consigne doit etre lisible dans la graine");
         assertTrue(scenario.storyOpening().isNone(), "expliquer le mot-cle ne doit pas le declencher");
     }
 

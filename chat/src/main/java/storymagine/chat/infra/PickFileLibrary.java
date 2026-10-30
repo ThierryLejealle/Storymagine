@@ -25,7 +25,7 @@ final class PickFileLibrary implements PickLibrary {
     public PickParagraphs paragraphs(PickTag tag) {
         Path file = picksDir.resolve(tag.name() + ".txt");
         if (!Files.isRegularFile(file)) {
-            throw new IllegalStateException("[PICK: " + tag + "] : fichier introuvable " + file);
+            throw new IllegalStateException("{pick ... " + tag + "} : fichier introuvable " + file);
         }
         PickParagraphs paragraphs;
         try {
@@ -34,7 +34,7 @@ final class PickFileLibrary implements PickLibrary {
             throw new UncheckedIOException("Lecture impossible : " + file, e);
         }
         if (paragraphs.size() == 0) {
-            throw new IllegalStateException("[PICK: " + tag + "] : aucun paragraphe dans " + file);
+            throw new IllegalStateException("{pick ... " + tag + "} : aucun paragraphe dans " + file);
         }
         return paragraphs;
     }

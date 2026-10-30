@@ -1,4 +1,5 @@
 Joueur : Alex
+Langue : français
 #SCENARIO
 Monde : Une université ordinaire, au fil d'une année scolaire — du début du printemps aux
 premiers jours de l'été suivant. Pas de fantastique, pas de danger : le terrain de jeu est

@@ -5,6 +5,7 @@ import storymagine.chat.coeur.domaine.agent.clarityreviewer.ScenarioClarityRevie
 import storymagine.chat.coeur.domaine.agent.continuityreviewer.ScenarioContinuityReviewer;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalyst;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalyst;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalyst;
 import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarrator;
 import storymagine.chat.coeur.ports.ChatStoragePort;
 import storymagine.chat.coeur.service.ChatService;
@@ -34,8 +35,9 @@ public class ChatModule {
         var summarizer              = new ChatSummarizer(llm);
         var nextActReadinessAnalyst = new NextActReadinessAnalyst(llm);
         var npcMindStateAnalyst     = new NpcMindStateAnalyst(llm);
+        var replyOriginAnalyst      = new ReplyOriginAnalyst(llm);
         return new ChatServiceImpl(storage, roleplayNarrator, summarizer, nextActReadinessAnalyst,
-            npcMindStateAnalyst, log);
+            npcMindStateAnalyst, replyOriginAnalyst, log, new java.util.Random());
     }
 
     public static ScenarioTesterService assembleTester(ModelCallPort llm, LogPort log) {

@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.agent.continuityreviewer;
 
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.commun.coeur.ports.LlmCallContext;
@@ -19,7 +20,7 @@ class ScenarioContinuityReviewerTest {
 
         ScenarioContinuityReviewerOutput output = reviewer.call(new ScenarioContinuityReviewerInput(
             "A grumpy innkeeper.", "A stormy night.", "Act 1 — Arrival:\nThey arrive at the inn.\n\n",
-            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof."));
+            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof.", ScenarioLanguage.UNSPECIFIED));
 
         assertEquals(java.util.List.of("Act 1 contradicts this act"), output.issues());
         assertEquals(java.util.List.of("Introduce the fact earlier"), output.suggestions());
@@ -32,7 +33,7 @@ class ScenarioContinuityReviewerTest {
 
         reviewer.call(new ScenarioContinuityReviewerInput(
             "A grumpy innkeeper.", "A stormy night.", "Act 1 — Arrival:\nThey arrive at the inn.\n\n",
-            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof."));
+            ActNumber.of(1, 2), "The storm breaks", "Lightning strikes the roof.", ScenarioLanguage.UNSPECIFIED));
 
         assertTrue(llm.lastUserPrompt.contains("A grumpy innkeeper."));
         assertTrue(llm.lastUserPrompt.contains("A stormy night."));
@@ -48,7 +49,7 @@ class ScenarioContinuityReviewerTest {
 
         reviewer.call(new ScenarioContinuityReviewerInput(
             "A grumpy innkeeper.", "A stormy night.", "",
-            ActNumber.of(1), "Arrival", "They arrive at the inn."));
+            ActNumber.of(1), "Arrival", "They arrive at the inn.", ScenarioLanguage.UNSPECIFIED));
 
         assertTrue(llm.lastUserPrompt.contains("first act"));
     }

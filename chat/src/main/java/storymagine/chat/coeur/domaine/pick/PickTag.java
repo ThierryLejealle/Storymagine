@@ -1,7 +1,7 @@
 package storymagine.chat.coeur.domaine.pick;
 
 /**
- * The name of a pick library, as written in a "[PICK: name]" tag : also the file name (without
+ * The name of a pick library, as written in a "{pick mode name}" command : also the file name (without
  * ".txt") inside the scenario's picks/ directory. Letters, digits, '_' and '-' only, so a tag can
  * never point outside picks/.
  */

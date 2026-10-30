@@ -15,9 +15,21 @@ import java.util.List;
  * repeat its beats) — this is why beats can't simply be re-derived from text via Teaser.extractAll
  * at the point of use, unlike before. opening is who speaks first when this leaf becomes current
  * (see NpcOpening) : like beats, it comes from the leaf's own body or from an ancestor entered for
- * the first time by this transition ; the marker line itself is already cut out of text.
+ * the first time by this transition ; the marker line itself is already cut out of text. deltas are
+ * the "{delta-pnj ...}" changes (see CharacterDelta) written in this leaf or in an ancestor entered
+ * for the first time by this transition, lines already cut out of text : the sheets in force at act
+ * N are the Cast's plus the deltas of acts 1..N in order (see ChatScenario.sheetAt).
  */
-public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening) {
+public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
+                          List<CharacterDelta> deltas) {
+
+    public ScenarioAct {
+        deltas = deltas == null ? List.of() : List.copyOf(deltas);
+    }
+
+    public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening) {
+        this(number, title, text, beats, opening, List.of());
+    }
 
     public ScenarioAct(ActNumber number, String title, String text, List<String> beats) {
         this(number, title, text, beats, NpcOpening.NONE);

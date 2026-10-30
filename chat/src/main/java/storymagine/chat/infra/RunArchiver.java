@@ -25,7 +25,7 @@ final class RunArchiver {
 
     private static final Pattern TURN_ENTRY  = Pattern.compile("turns/(\\d{6,})(?:-compaction-f\\d{6,})?\\.md");
     /** The scenario with its PICK tags resolved for this run — kept in saves so a loaded save replays the same draws. */
-    private static final Pattern RESOLVED_ENTRY = Pattern.compile("resolved/scenario(?:-\\d+)?\\.txt");
+    private static final Pattern RESOLVED_ENTRY = Pattern.compile("resolved/(?:scenario(?:-\\d+)?|picks)\\.txt");
     private static final Pattern PLAIN_TURN_ENTRY = Pattern.compile("turns/(\\d{6,})\\.md");
 
     private RunArchiver() {}

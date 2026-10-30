@@ -21,3 +21,21 @@
 - passer les directives de séquences (type imperative, non vides) aux 3 agents critiques de plan (PlanNarrativeCritic, PlanCoherenceCritic, GoalPlanChecker) : afficher avant les beats avec label "Directives :", + note de cadrage dans le prompt user : "Le plan peut enrichir librement ces directives. Signale uniquement les violations de CONTRAINTE ou LIMITE explicites."
 - Pour le plan on demande exactement 6 lignes par sequence. C'est trop limitant
 - Vérifier s'il ne faudrait pas numéroter les séquences S1 à Sn comme dans les retours en cas d'erreur
+
+## Chat - idees (point au 2026-10-28)
+
+Realise le 2026-10-28 (voir evols/2026-10-28-*) : commandes de scenario entre accolades
+`{commande sous-type argument : texte}` (pick random / unique / all / N, npc-starts, delta-pnj),
+`[...]` et `[NEXT ACT]` inchanges, tableau des tirages Fichier / Type / Valeur, delta-pnj public / secret
+calcule depuis les actes, validation du scenario a chaque chargement (+ `validation-scenarios.bat`),
+migration de la syntaxe (faite, programme supprime ensuite). Fiches "lore" : remplacees par `{pick all nom}`.
+
+Reste a faire / a decider :
+
+- `{pick ...}` utilisable dans le texte d'un `{delta-pnj ...}` (aujourd'hui interdit : un paragraphe tire
+  peut contenir des sauts de ligne ou des accolades).
+- Deltas decides en cours de partie par un agent : imposerait de les stocker (comme les compactions) au
+  lieu de les recalculer depuis les actes.
+- Les deltas s'accumulent et pesent sur le budget de contexte du PNJ : a surveiller sur un long scenario.
+- Validation : verifications possibles en plus (premier acte qui ne presente pas tous les PNJ de facon plus
+  fine, blocs `[...]` mal fermes, fiches sans section attendue, personnages jamais utilises).

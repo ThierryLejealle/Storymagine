@@ -3,8 +3,10 @@ package storymagine.chat.coeur.domaine.session;
 import org.junit.jupiter.api.Test;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.chat.coeur.domaine.scenario.Cast;
+import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder.ChatPrompt;
 
@@ -301,6 +303,88 @@ class ChatPromptBuilderTest {
 
         assertTrue(prompt.system().contains("tells you exactly when to write"));
         assertFalse(prompt.system().contains("you feel this act's events have reached their natural conclusion"));
+    }
+
+    @Test
+    void transcriptHidesPlayerThoughtsButNotNpcParentheses() {
+        Cast cast = scenarioWithActs.cast();
+        List<ChatTurn> turns = List.of(
+            new ChatTurn(ChatTurn.Speaker.PLAYER, "(she's lying) *I nod* \"I see.\""),
+            new ChatTurn(ChatTurn.Speaker.LLM, "\"Yes.\" (she smiles)", "", "character"),
+            new ChatTurn(ChatTurn.Speaker.PLAYER, "(I should leave)"));
+
+        String transcript = ChatPromptBuilder.transcript(turns, cast, "Alex");
+
+        assertFalse(transcript.contains("lying"));
+        assertFalse(transcript.contains("should leave"));
+        assertTrue(transcript.contains("Alex: *I nod* \"I see.\""));
+        assertTrue(transcript.contains("(she smiles)"));
+        assertEquals(2, transcript.lines().count());
+    }
+
+    @Test
+    void styleAdviceComesAfterTheStoryAndBeforeTheFormattingRules() {
+        Npc npc = new Npc("character", "", "A grumpy innkeeper.", "");
+        ChatScenario withStyle = new ChatScenario("test", new Cast(List.of(npc)), "A stormy night.", List.of(), null,
+            NpcOpening.NONE, storymagine.chat.coeur.domaine.scenario.ScenarioLanguage.UNSPECIFIED,
+            storymagine.chat.coeur.domaine.scenario.ScenarioStyle.of("\nShort sentences. Plain words.\n"));
+
+        String system = ChatPromptBuilder.build(withStyle, sceneFor(withStyle), 0, "They met at the market.", List.of()).system();
+
+        int story = system.indexOf("STORY SO FAR:");
+        int style = system.indexOf("STYLE ADVICE:\nShort sentences. Plain words.\n\n");
+        int formatting = system.indexOf("FORMATTING");
+        assertTrue(story >= 0 && story < style && style < formatting, system);
+    }
+
+    @Test
+    void withoutStyleThePromptHasNoStyleBlockAtAll() {
+        String system = ChatPromptBuilder.build(scenario, sceneFor(scenario), 0, "", List.of()).system();
+
+        assertFalse(system.contains("STYLE"), system);
+    }
+
+    @Test
+    void deltasReachTheRightSheetsAtTheRightAct() {
+        Npc elena = new Npc("elena", "Elena", "A merchant.", "She hides a debt.");
+        Npc marcus = new Npc("marcus", "Marcus", "A soldier.", "");
+        List<CharacterDelta> deltas = List.of(
+            new CharacterDelta(CharacterDelta.Visibility.PUBLIC, "Elena", "She lost an eye."),
+            new CharacterDelta(CharacterDelta.Visibility.SECRET, "Elena", "She plans to leave the group."));
+        ChatScenario scenarioWithDeltas = new ChatScenario("test", new Cast(List.of(elena, marcus)), "Premise.", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
+            new ScenarioAct(ActNumber.of(2), "", "Act two.", List.of(), NpcOpening.NONE, deltas)));
+
+        // Marcus parle, Elena est presente : Elena n'apparait que par sa fiche PUBLIQUE.
+        Scene marcusSpeaks = new Scene(marcus, List.of(elena), List.of(), false);
+        String atActTwo = ChatPromptBuilder.build(scenarioWithDeltas, marcusSpeaks, 2, "", List.of()).system();
+        assertTrue(atActTwo.contains("She lost an eye."), "un delta public est connu des autres");
+        assertFalse(atActTwo.contains("plans to leave"), "un delta secret ne sort jamais vers un autre PNJ");
+
+        // Elena parle : sa fiche complete, secret compris.
+        Scene elenaSpeaks = new Scene(elena, List.of(marcus), List.of(), false);
+        String elenaAtActTwo = ChatPromptBuilder.build(scenarioWithDeltas, elenaSpeaks, 2, "", List.of()).system();
+        assertTrue(elenaAtActTwo.contains("She lost an eye.") && elenaAtActTwo.contains("She plans to leave the group."));
+
+        // A l'acte 1, rien n'a encore change.
+        String elenaAtActOne = ChatPromptBuilder.build(scenarioWithDeltas, elenaSpeaks, 1, "", List.of()).system();
+        assertFalse(elenaAtActOne.contains("lost an eye") || elenaAtActOne.contains("plans to leave"));
+    }
+
+    @Test
+    void repetitionEscapeHatchIsOnlyInTheConditionalNextActRule() {
+        String escapeHatch = "starts to become repetitive and you are close to this act's condition";
+        ChatScenario conditional = scenarioWith("sheet", "premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Quand écrire [NEXT ACT] : quand la porte s'ouvre."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
+        ChatScenario defaultRule = scenarioWith("sheet", "premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
+            ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
+
+        assertTrue(ChatPromptBuilder.build(conditional, sceneFor(conditional), 1, "", List.of())
+            .system().contains(escapeHatch));
+        assertFalse(ChatPromptBuilder.build(defaultRule, sceneFor(defaultRule), 1, "", List.of())
+            .system().contains(escapeHatch));
     }
 
     @Test

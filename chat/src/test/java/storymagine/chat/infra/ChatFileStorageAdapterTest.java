@@ -44,7 +44,7 @@ class ChatFileStorageAdapterTest {
 
         assertEquals(List.of("old"), adapter.listScenarioNames(root));
         IllegalStateException e = assertThrows(IllegalStateException.class, () -> adapter.loadScenario(root, "old"));
-        assertTrue(e.getMessage().contains("migration.bat"));
+        assertTrue(e.getMessage().contains("format non pris en charge"));
     }
 
     @Test
@@ -53,7 +53,7 @@ class ChatFileStorageAdapterTest {
         Files.writeString(root.resolve("inn/history.md"), "### PLAYER\nHi.\n", StandardCharsets.UTF_8);
 
         IllegalStateException e = assertThrows(IllegalStateException.class, () -> adapter.loadScenario(root, "inn"));
-        assertTrue(e.getMessage().contains("migration.bat"));
+        assertTrue(e.getMessage().contains("format non pris en charge"));
     }
 
     @Test
@@ -96,6 +96,34 @@ class ChatFileStorageAdapterTest {
 
         assertEquals("Kael", scenario.playerName());
         assertEquals("A stormy night.", scenario.premise());
+    }
+
+    @Test
+    void loadScenarioReadsTheLanguageLineNextToThePlayerLineInAnyOrder(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "Langue : français\nJoueur : Kael\n\n#SCENARIO\nA stormy night.");
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals("French", scenario.language().englishName());
+        assertEquals("Kael", scenario.playerName());
+        assertEquals("A stormy night.", scenario.premise(), "les deux lignes d'en-tete sont retirees de la premisse");
+    }
+
+    @Test
+    void loadScenarioLeavesTheLanguageUnspecifiedWithoutALanguageLine(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "Joueur : Kael\nA stormy night.");
+
+        assertFalse(adapter.loadScenario(root, "inn").language().isSpecified());
+    }
+
+    @Test
+    void aLanguageLineAfterTheHeaderEndedIsJustPremiseText(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "Joueur : Kael\nA stormy night.\nLangue : français");
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertFalse(scenario.language().isSpecified());
+        assertTrue(scenario.premise().contains("Langue : français"));
     }
 
     @Test

@@ -46,10 +46,10 @@ public class ScenarioTesterServiceImpl implements ScenarioTesterService {
         for (ScenarioAct act : scenario.acts()) {
             ScenarioContinuityReviewerOutput continuity = continuityReviewer.call(new ScenarioContinuityReviewerInput(
                 characterSheet, scenario.premise(), storySoFar.toString(),
-                act.number(), act.title(), act.text()));
+                act.number(), act.title(), act.text(), scenario.language()));
 
             ScenarioClarityReviewerOutput clarity = clarityReviewer.call(new ScenarioClarityReviewerInput(
-                characterSheet, scenario.premise(), act.number(), act.title(), act.text()));
+                characterSheet, scenario.premise(), act.number(), act.title(), act.text(), scenario.language()));
 
             List<String> suggestions = Stream.concat(
                     continuity.suggestions().stream().map(s -> "[Continuité] " + s),

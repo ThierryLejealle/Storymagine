@@ -17,6 +17,8 @@ import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.Scene;
 import storymagine.chat.coeur.domaine.session.TurnNumber;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalyst;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalystOutput;
 import storymagine.chat.infra.ChatFileStorageAdapter;
 import storymagine.commun.coeur.ports.GenerationCancelledException;
 import storymagine.commun.coeur.ports.GenerationOptions;
@@ -78,6 +80,63 @@ class ChatServiceImplTest {
         StubModelCallPort summarizerLlm = new StubModelCallPort(32_768, "FOLDED SUMMARY", 0);
         return new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
             new ChatSummarizer(summarizerLlm), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
+    }
+
+    // ── Pistes sur l'origine de la derniere reponse ────────────────────────────
+
+    private ChatServiceImpl newServiceWithOriginAnalyst(RecordingModelCallPort analysisLlm) {
+        StubModelCallPort roleplayLlm = new StubModelCallPort(32_768, "grunts and nods slowly", 0);
+        return new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm),
+            new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED SUMMARY", 0)),
+            new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm),
+            new ReplyOriginAnalyst(analysisLlm), LogPort.NOOP, new Random(1));
+    }
+
+    @Test
+    void theOriginOfTheLastReplyIsMappedFromThePromptActuallySent(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        RecordingModelCallPort analysisLlm = new RecordingModelCallPort(
+            "TRACED:\n- a nod -> YOUR CHARACTER : \"grumpy\" [indirect]\nUNTRACED:\n[RIEN]\nREADING:\nThe sheet weighs most.");
+        ChatServiceImpl service = newServiceWithOriginAnalyst(analysisLlm);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        service.sendMessage(root, session, "Hello there.");
+        ReplyOriginAnalystOutput out = service.analyzeLastReplyOrigin(root, session);
+
+        assertTrue(out.traced().contains("YOUR CHARACTER"));
+        assertTrue(analysisLlm.lastUserPrompt.contains("A grumpy innkeeper."), "le prompt reellement envoye au personnage");
+        assertTrue(analysisLlm.lastUserPrompt.contains("===== REPLY =====\ngrunts and nods slowly"));
+        assertTrue(analysisLlm.lastUserPrompt.contains("Hello there."));
+        assertEquals(2, session.turns().size(), "lecture seule : aucun tour ajoute");
+    }
+
+    @Test
+    void withoutAnyReplyOrOnceItIsUndoneThereIsNothingToLookAt(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newServiceWithOriginAnalyst(
+            new RecordingModelCallPort("TRACED:\n[RIEN]\nUNTRACED:\n[RIEN]\nREADING:\n-"));
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        assertThrows(IllegalStateException.class, () -> service.analyzeLastReplyOrigin(root, session));
+
+        service.sendMessage(root, session, "Hello there.");
+        service.analyzeLastReplyOrigin(root, session); // ok : une reponse existe
+        service.undo(root, session, 1);
+
+        assertThrows(IllegalStateException.class, () -> service.analyzeLastReplyOrigin(root, session));
+    }
+
+    @Test
+    void withoutTheAnalystWiredTheButtonSaysSoInsteadOfFailingObscurely(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "Hello there.");
+
+        assertThrows(IllegalStateException.class, () -> service.analyzeLastReplyOrigin(root, session));
     }
 
     @Test
@@ -1115,7 +1174,7 @@ class ChatServiceImplTest {
         assertEquals(Set.of("character"), session.presentNpcIds());
     }
 
-    // ── [NPC STARTS] : un PNJ ouvre l'histoire ou l'acte ───────────────────────
+    // ── {npc-starts} : un PNJ ouvre l'histoire ou l'acte ───────────────────────
 
     private static GenerationSettings alwaysInterject() {
         return new GenerationSettings(null, null, null, null, null, null, null, 1.0, null);
@@ -1124,7 +1183,7 @@ class ChatServiceImplTest {
     @Test
     void emptyDoOpensTheStoryWithTheNpcNamedByTheMarkerAndNobodyElse(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
-        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
         session.updateGenerationSettings(alwaysInterject()); // sans le garde-fou, Elena interviendrait a coup sur
@@ -1138,9 +1197,25 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void aGameOpenedByANpcIsOfferedForResumingAfterARestart(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, false);
+        assertFalse(service.hasSavedSession(root, scenario), "avant l'ouverture : rien a reprendre");
+
+        service.sendMessage(root, session, "DO:");
+
+        assertTrue(service.hasSavedSession(root, scenario), "l'ouverture par le PNJ est une partie a reprendre");
+        ChatSession reopened = newService(32_768).openSession(root, scenario, false);
+        assertTrue(reopened.pendingNpcOpening().isNone(), "reprise : le PNJ ne rouvre pas l'histoire une 2e fois");
+    }
+
+    @Test
     void retryOfTheOpeningGivesTheWordToTheSameNamedNpcAgain(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
-        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
         service.sendMessage(root, session, "DO:");
@@ -1154,7 +1229,7 @@ class ChatServiceImplTest {
     @Test
     void anOpeningWithoutNameStillMakesExactlyOnePresentNpcSpeak(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
-        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS]\n", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
         session.updateGenerationSettings(alwaysInterject());
@@ -1181,7 +1256,7 @@ class ChatServiceImplTest {
     @Test
     void aRealPlayerMessageOnAFreshStoryIsNotAnOpening(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
-        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
 
@@ -1195,7 +1270,7 @@ class ChatServiceImplTest {
     void theMarkerOfAnActOpensThatActWhenItBegins(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         Files.writeString(root.resolve("inn/scenario.txt"),
-            "A stormy night.\n\n# One\nThe door is shut.\n\n# Two\n[NPC STARTS: Elena]\nThe door bursts open.\n",
+            "A stormy night.\n\n# One\nThe door is shut.\n\n# Two\n{npc-starts Elena}\nThe door bursts open.\n",
             StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
@@ -1216,7 +1291,7 @@ class ChatServiceImplTest {
     @Test
     void aNamedNpcMutedByThePlayerDoesNotOpenInsteadOfSomeoneElsePresent(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
-        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n[NPC STARTS: Marcus]\n", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
         service.setNpcPresent(root, session, "marcus", false);
@@ -1224,6 +1299,25 @@ class ChatServiceImplTest {
         ChatTurnResult result = service.sendMessage(root, session, "DO:");
 
         assertEquals("elena", result.replyTurns().get(0).npcId());
+    }
+
+    /** Fixed answer, remembers the last user prompt it was given. */
+    private static class RecordingModelCallPort implements ModelCallPort {
+        private final String responseText;
+        String lastUserPrompt;
+
+        RecordingModelCallPort(String responseText) {
+            this.responseText = responseText;
+        }
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+            this.lastUserPrompt = userPrompt;
+            return LlmResult.of(responseText);
+        }
+
+        @Override
+        public int contextWindow() { return 32_768; }
     }
 
     private static class StubModelCallPort implements ModelCallPort {

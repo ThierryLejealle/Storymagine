@@ -71,3 +71,9 @@ the player can end up folded into the summary, which is later reinjected into th
 prompt — a possible metagaming leak around the "no reacting to private thoughts" rule in
 `ChatPromptBuilder`. Left out of scope for the first version; add a `Drop:` line for private
 thoughts here if it turns out to matter in practice.
+
+**Language (2026-10-27)** : when the scenario declares `Langue : ...` (`ScenarioLanguage`), the prompt
+states it ("Write factual prose in French, even though these instructions are in English.") and the
+former "same language as the turns" wording is only the fallback for a scenario without a language.
+The input carries the scenario's language. Same convention in every chat agent
+(`ScenarioLanguage.phrase`).

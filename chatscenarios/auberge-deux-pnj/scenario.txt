@@ -1,4 +1,5 @@
 Joueur : Alex
+Langue : français
 #SCENARIO
 Monde : Une auberge isolée sur une route de montagne, un soir d'orage. Pas de fantastique, juste
 des voyageurs bloqués par le mauvais temps.

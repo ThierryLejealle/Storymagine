@@ -9,7 +9,7 @@ import java.util.Properties;
 import java.util.Scanner;
 
 /**
- * What every chat CLI (ChatCli, ScenarioTesterCli, InitChatCli, MigrateScenarioLayoutCli) shares :
+ * What every chat CLI (ChatCli, ScenarioTesterCli, InitChatCli, ValidateScenarioCli) shares :
  * loading storymagine.properties + chat.properties, and the interactive choice of the directory
  * that holds the chatscenarios.
  */

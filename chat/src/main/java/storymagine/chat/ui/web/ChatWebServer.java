@@ -81,6 +81,9 @@ public class ChatWebServer {
         server.createContext("/previous-act", this::handlePreviousAct);
         server.createContext("/analyze-next-act", this::handleAnalyzeNextAct);
         server.createContext("/analyze-mind-state", this::handleAnalyzeMindState);
+        server.createContext("/analyze-reply-origin", this::handleAnalyzeReplyOrigin);
+        server.createContext("/picks",     this::handlePicks);
+        server.createContext("/scenario-prompt", this::handleScenarioPrompt);
         server.createContext("/save",      this::handleSave);
         server.createContext("/saves",     this::handleListSaves);
         server.createContext("/load-save", this::handleLoadSave);
@@ -94,7 +97,10 @@ public class ChatWebServer {
         server.createContext("/reload-scenario", this::handleReloadScenario);
         server.createContext("/restart", this::handleRestart);
         server.createContext("/stop",     this::handleStop);
-        server.setExecutor(Executors.newFixedThreadPool(2));
+        // Un pool qui grandit, pas un pool fixe : un appel LLM long (reponse, analyse) occupe un fil pendant
+        // des minutes, et avec 2 fils seulement le clic suivant, meme un simple affichage (🐞, 🎲, /stop),
+        // restait en attente sans rien afficher. La concurrence reste bornee par l'interface (boutons grises).
+        server.setExecutor(Executors.newCachedThreadPool());
         server.start();
         return boundPort;
     }
@@ -394,6 +400,51 @@ public class ChatWebServer {
         }
     }
 
+    /**
+     * Pas de mutation de session (voir ReplyOriginAnalyst.md) : la derniere reponse du dernier PNJ,
+     * mise en regard du prompt qui l'a produite. 409 s'il n'y a rien a analyser.
+     */
+    private void handleAnalyzeReplyOrigin(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        beginGeneration();
+        try {
+            writeJson(ex, 200, service.analyzeLastReplyOrigin(chatScenariosRoot, session));
+        } catch (IllegalStateException e) {
+            writeJson(ex, 409, new ErrorView(e.getMessage()));
+        } catch (GenerationCancelledException e) {
+            clearInterruptFlag();
+            writeJson(ex, 200, new StoppedView(true, 0));
+        } catch (Exception e) {
+            writeJson(ex, 500, new ErrorView(e.getMessage()));
+        } finally {
+            endGeneration();
+        }
+    }
+
+    /** Lecture seule : le tableau des tirages {pick} du run (vide pour un run sans tirage enregistre). */
+    private void handlePicks(HttpExchange ex) throws IOException {
+        if (!"GET".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        try {
+            List<PickRow> rows = service.pickDraws(chatScenariosRoot, session).values().stream()
+                .map(draw -> new PickRow(draw.tag().name(), draw.mode().label(), String.join("\n", draw.paragraphs())))
+                .toList();
+            writeJson(ex, 200, rows);
+        } catch (Exception e) {
+            writeJson(ex, 500, new ErrorView(String.valueOf(e)));
+        }
+    }
+
+    /** Debug, lecture seule : le texte de scenario que recoit un personnage (voir ScenarioPromptView). */
+    private void handleScenarioPrompt(HttpExchange ex) throws IOException {
+        if (!"GET".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        try {
+            writeJson(ex, 200, service.scenarioPrompt(session));
+        } catch (Exception e) {
+            // sans ca, une exception ferme la connexion et la page n'affiche qu'un "Failed to fetch" muet
+            writeJson(ex, 500, new ErrorView(String.valueOf(e)));
+        }
+    }
+
     private void handleSave(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
         writeJson(ex, 200, service.save(chatScenariosRoot, session));
@@ -508,6 +559,9 @@ public class ChatWebServer {
     }
 
     private record ErrorView(String error) {}
+
+    /** Une ligne du tableau des tirages (une par commande pick) : fichier, type (random, unique, all, N), valeur (un paragraphe par ligne). */
+    private record PickRow(String file, String type, String value) {}
 
     /** removedTurnCount tells the client how many already-shown bubbles are now stale — see /stop. */
     private record StoppedView(boolean stopped, int removedTurnCount) {}

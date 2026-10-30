@@ -11,18 +11,21 @@ import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
- * Replaces every "[PICK: name]" and "[PICK-UNIQUE: name]" of a scenario's texts with a paragraph
- * drawn from the library "name". PICK draws independently each time ; PICK-UNIQUE never returns a
- * paragraph already handed out for that tag during the same resolution, by a PICK-UNIQUE or by a
- * plain PICK, and fails when the library has nothing left. A drawn paragraph is inserted as is :
- * a tag inside it is not resolved. Pure : same library and same draws, same result.
+ * Replaces every "{pick mode name}" command of a scenario's texts with paragraphs drawn from the
+ * library "name" (see PickMode : random, unique, all, or a number N). Whatever the mode, what a
+ * command hands out counts as "already drawn" for a later "unique" on the same library, which fails
+ * when nothing is left. Several paragraphs are joined by a blank line. A drawn paragraph is inserted
+ * as is : a command inside it is not resolved. Pure : same library and same draws, same result.
  */
 public final class PickResolver {
 
-    private static final Pattern TAG = Pattern.compile(
-        "\\[(PICK(?:-UNIQUE)?)\\s*:\\s*([\\p{L}\\p{N}_-]+)\\s*\\]", Pattern.CASE_INSENSITIVE);
+    /** Any "{pick ...}" — a malformed one is reported by draw(), never silently left in the text. */
+    private static final Pattern COMMAND = Pattern.compile("\\{\\s*pick(?![\\p{L}\\p{N}_-])([^}]*)}", Pattern.CASE_INSENSITIVE);
+
+    private static final String PARAGRAPH_SEPARATOR = "\n\n";
 
     private final PickLibrary library;
     private final RandomnessPort randomness;
@@ -33,7 +36,7 @@ public final class PickResolver {
     }
 
     public static boolean containsTag(String text) {
-        return TAG.matcher(text).find();
+        return COMMAND.matcher(text).find();
     }
 
     /**
@@ -41,30 +44,68 @@ public final class PickResolver {
      * sharing the "already drawn" memory between them.
      */
     public List<String> resolveAll(List<String> texts) {
-        Map<PickTag, Set<Integer>> drawn = new HashMap<>();
-        List<String> resolved = new ArrayList<>();
-        for (String text : texts) {
-            resolved.add(TAG.matcher(text).replaceAll(match -> Matcher.quoteReplacement(draw(match, drawn))));
-        }
-        return resolved;
+        return resolve(texts).texts();
     }
 
-    private String draw(MatchResult match,Map<PickTag, Set<Integer>> drawn) {
-        boolean unique = match.group(1).equalsIgnoreCase("PICK-UNIQUE");
-        PickTag tag = new PickTag(match.group(2));
+    /** Same as resolveAll, and keeps the draws made, in the order of the commands. */
+    public PickResolution resolve(List<String> texts) {
+        Map<PickTag, Set<Integer>> drawn = new HashMap<>();
+        List<PickDraw> draws = new ArrayList<>();
+        List<String> resolved = new ArrayList<>();
+        for (String text : texts) {
+            resolved.add(COMMAND.matcher(text).replaceAll(match -> Matcher.quoteReplacement(draw(match, drawn, draws))));
+        }
+        return new PickResolution(resolved, new PickDraws(draws));
+    }
+
+    private String draw(MatchResult match, Map<PickTag, Set<Integer>> drawn, List<PickDraw> draws) {
+        String[] words = match.group(1).strip().split("\\s+");
+        if (words.length != 2 || words[0].isEmpty()) {
+            throw new IllegalArgumentException("Commande pick invalide : " + match.group()
+                + " (attendu : {pick random|unique|all|N nom})");
+        }
+        PickMode mode = PickMode.parse(words[0]);
+        PickTag tag = new PickTag(words[1]);
         PickParagraphs paragraphs = library.paragraphs(tag);
         Set<Integer> alreadyDrawn = drawn.computeIfAbsent(tag, t -> new HashSet<>());
 
-        List<Integer> candidates = new ArrayList<>();
-        for (int i = 0; i < paragraphs.size(); i++) {
-            if (!unique || !alreadyDrawn.contains(i)) candidates.add(i);
+        List<Integer> chosen = choose(mode, tag, paragraphs.size(), alreadyDrawn);
+        alreadyDrawn.addAll(chosen);
+        List<String> handedOut = chosen.stream().map(paragraphs::get).toList();
+        draws.add(new PickDraw(mode, tag, handedOut));
+        return String.join(PARAGRAPH_SEPARATOR, handedOut);
+    }
+
+    private List<Integer> choose(PickMode mode, PickTag tag, int size, Set<Integer> alreadyDrawn) {
+        List<Integer> everything = IntStream.range(0, size).boxed().toList();
+        switch (mode.kind()) {
+            case ALL:
+                return everything;
+            case RANDOM:
+                return drawFrom(everything, 1);
+            case UNIQUE:
+                List<Integer> notYet = everything.stream().filter(i -> !alreadyDrawn.contains(i)).toList();
+                if (notYet.isEmpty()) {
+                    throw new IllegalStateException("{pick unique " + tag + "} : les " + size
+                        + " paragraphe(s) de picks/" + tag + ".txt ont deja tous ete tires.");
+                }
+                return drawFrom(notYet, 1);
+            default:
+                if (mode.count() > size) {
+                    throw new IllegalStateException("{pick " + mode.count() + " " + tag + "} : picks/" + tag
+                        + ".txt ne contient que " + size + " paragraphe(s).");
+                }
+                return drawFrom(everything, mode.count());
         }
-        if (candidates.isEmpty()) {
-            throw new IllegalStateException("[PICK-UNIQUE: " + tag + "] : les " + paragraphs.size()
-                + " paragraphe(s) de picks/" + tag + ".txt ont deja tous ete tires.");
+    }
+
+    /** count different candidates, each drawn at random among the ones left. */
+    private List<Integer> drawFrom(List<Integer> candidates, int count) {
+        List<Integer> left = new ArrayList<>(candidates);
+        List<Integer> chosen = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            chosen.add(left.remove(randomness.nextInt(left.size())));
         }
-        int index = candidates.get(randomness.nextInt(candidates.size()));
-        alreadyDrawn.add(index);
-        return paragraphs.get(index);
+        return chosen;
     }
 }

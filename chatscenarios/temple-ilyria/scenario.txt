@@ -1,4 +1,5 @@
 Joueur : Alex
+Langue : français
 
 #SCENARIO
 Monde : Fantastique tropical. Ambaya, un village caché au cœur d'une jungle dense, vit depuis des

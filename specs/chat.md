@@ -25,7 +25,7 @@ chatscenarios/{nom}/
   scenario-1.txt ...    optionnel — suite des actes, un fichier par tranche (voir plus bas)
   characters/           obligatoire — un fichier .txt par personnage
     {pnj}.txt           première ligne "# Nom" obligatoire
-  picks/{nom}.txt       optionnel — paragraphes pour [PICK: nom] (voir « Contenu aléatoire »)
+  picks/{nom}.txt       optionnel — paragraphes pour {pick type nom} (voir « Contenu aléatoire »)
   run/                  généré par l'appli — voir « Le run »
 ```
 
@@ -37,19 +37,21 @@ chatscenarios/{nom}/
 - **Fichiers du scénario** (`scenario*.txt`, `characters/*.txt`) : jamais réécrits ni compactés par
   l'appli.
 - **Scénario listé** : `scenario.txt` présent et au moins un PNJ valide dans `characters/`. Un scénario
-  encore à l'ancien format est listé aussi, pour que le choisir affiche le message de migration.
+  encore à l'ancien format est listé aussi, pour que le choisir affiche le message « format non pris en charge ».
 - **Scénario en plusieurs fichiers** : `scenario-1.txt`, `scenario-2.txt`… sont concaténés après
   `scenario.txt`, numéros consécutifs (arrêt au premier manquant). Chacun doit commencer par un
   titre `# ...` de premier niveau, sinon le chargement échoue explicitement.
 - **Ancien format** : si un fichier de session de l'ancienne structure est détecté à la racine du
   scénario (`history.md`, `summary.md`, `act.txt`, `present.txt`, `interject.txt`, `full-history.md`,
   ou un dossier `saves/`, `archive/`, `logs/`, `tests/`), ou un PNJ à la racine au lieu de
-  `characters/`, le chargement échoue avec un message qui demande de lancer `migration.bat` (jamais de
+  `characters/`, le chargement échoue avec un message « format non pris en charge » (jamais de
   perte silencieuse d'une ancienne partie).
 
 # Format de `scenario.txt`
 
-1. Ligne optionnelle `Joueur : Prénom` (défaut `Alex`) — nom du joueur dans la transcription.
+1. En-tête optionnel, lignes consécutives en tête de fichier : `Joueur : Prénom` (défaut `Alex`) — nom
+   du joueur dans la transcription ; `Langue : français` (ou `fr`, `en`…) — langue de tous les appels du module (réponses des
+   PNJ, résumé, analyses, testeur ; `ScenarioLanguage`, absente = non précisée). Sans cette ligne, la langue est non précisée.
 2. Prémisse : `#SCENARIO` optionnel + `Monde :` / `Prémisse :` / `Ton :`. Envoyée à chaque tour à
    chaque PNJ, jamais montrée telle quelle au joueur. **3e personne obligatoire.**
 3. Actes : plan Markdown (`#`, `##`…). **Seules les feuilles sont des actes jouables** (un titre
@@ -84,9 +86,9 @@ ne reçoivent que la fiche publique des autres (le secret ne fuit jamais).
   analyse sans rien persister où en est la condition (voir son `.md`). Bouton d'analyse d'état
   d'esprit : `NpcMindStateAnalyst`.
 
-# Ouverture par un PNJ — `[NPC STARTS]`
+# Ouverture par un PNJ — `{npc-starts}`
 
-Une ligne seule `[NPC STARTS]` ou `[NPC STARTS: Nom]`, dans l'en-tête du scénario (ouverture de
+Une ligne seule `{npc-starts}` ou `{npc-starts Nom}`, dans l'en-tête du scénario (ouverture de
 l'histoire, valeur `ChatScenario.storyOpening`) ou dans un acte (`ScenarioAct.opening`, ouverture de
 cet acte). Concepts : `NpcOpening` (aucune / un PNJ au hasard / un PNJ nommé), `NpcOpeningMarker`
 (détection tolérante comme `NextActMarker`, mais la ligne doit être **seule** ; elle est retirée du
@@ -109,7 +111,7 @@ texte avant que le LLM ou `Teaser` ne le voie).
   erreur ; une pression sur Stop pendant l'ouverture retire le `DO:` et la relancera au prochain
   chargement de la page.
 
-# Contenu aléatoire — `[PICK: nom]` et `[PICK-UNIQUE: nom]`
+# Contenu aléatoire — `{pick type nom}`
 
 Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-redaction-chat.md` §2.6. Ici, la mécanique.
 
@@ -117,15 +119,25 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   `PickParagraphs` (contenu d'un fichier coupé sur les lignes `---` ou plus ; CRLF toléré, paragraphes
   vides ignorés), `PickLibrary` (nom → paragraphes ; `PickFileLibrary` lit `picks/`), `PickResolver`
   (domaine, pur), port `RandomnessPort` (`JavaRandomnessAdapter` ; un test branche un tirage scripté).
-- **Règles** : `PICK` tire indépendamment. `PICK-UNIQUE` exclut tout paragraphe déjà distribué pour ce
-  tag pendant la résolution — par un `PICK-UNIQUE` ou un `PICK` ; un `PICK` ignore l'historique. La
-  mémoire couvre tous les fichiers du scénario, lus dans l'ordre (`scenario.txt`, `scenario-1.txt`…).
-  Plus aucun candidat : `IllegalStateException` nommant le tag. Un tag dans un paragraphe tiré n'est
-  pas résolu. Insensible à la casse (`[pick-unique: x]`).
+- **Règles** : `PickMode` = `random` (un, indépendant), `unique` (un, hors déjà distribués), `all`
+  (tous, ordre du fichier, sans hasard) ou N (N différents entre eux, tirés parmi tous). Ce que
+  distribue une commande, quel que soit son mode, est exclu d'un `unique` ultérieur sur le même
+  fichier ; `random` et N ignorent l'historique. La mémoire couvre tous les fichiers du scénario, lus
+  dans l'ordre (`scenario.txt`, `scenario-1.txt`…). Plus aucun candidat pour un `unique`, ou N supérieur
+  à la taille du fichier : `IllegalStateException` nommant le fichier. Commande mal formée (type
+  manquant ou inconnu) : `IllegalArgumentException`, jamais laissée dans le texte. Plusieurs paragraphes
+  sont joints par une ligne vide. Une commande dans un paragraphe tiré n'est pas résolue. Insensible à
+  la casse. L'ancienne écriture `[PICK: x]` est refusée (`LegacyCommandSyntax`, voir « Validation »).
 - **Quand** : `ChatFileStorageAdapter.loadScenario` → `scenarioTextDir`. Si `run/current/resolved/
   scenario.txt` existe, il est lu (les tirages sont figés pour la durée du run). Sinon, si un fichier
   du scénario contient un tag, tout est résolu en une fois puis écrit dans `resolved/` (écriture
   atomique) ; sans tag, rien n'est écrit et le scénario est lu en place.
+- **Tirages affichés** : `PickResolver.resolve` renvoie aussi les `PickDraws` (un `PickDraw` = type, `PickTag`,
+  paragraphe, dans l'ordre des tags), écrits dans `resolved/picks.txt` **avant** les `scenario*.txt`.
+  `ChatStoragePort.pickDraws` les relit (vide pour un run ancien) ; `ChatService.pickDraws` →
+  `GET /picks` → bouton 🎲 (tableau Fichier / Type / Valeur, une ligne par commande `pick`).
+- **Debug 🐞** : `ChatService.scenarioPrompt` → `GET /scenario-prompt` : la prémisse et le texte de l'acte
+  courant tels que `ChatPromptBuilder` les insère (aucune requête LLM, pas d'historique).
 - **Cycle de vie** : `resolved/` fait partie de `current/` — supprimé par `resetSession` (donc tirage
   neuf au chargement suivant), zippé dans les sauvegardes et archives (`RunArchiver`), restauré avec
   elles. Pour que le scénario en mémoire corresponde toujours au run : `openSession(reset=true)` et
@@ -186,9 +198,15 @@ pas accumulés) et **cumulative** : le nouveau résumé reçoit l'ancien en entr
 `ChatCli` démarre un serveur HTTP local minimal (`ChatWebServer`, JDK `HttpServer`, pas de
 framework) servant `chat.html` (vanilla JS/CSS). Endpoints JSON : `/history`, `/message`, `/retry`,
 `/undo`, `/rollback`, `/stop`, `/restart`, `/settings`, `/next-act`, `/previous-act`,
-`/analyze-next-act`, `/analyze-mind-state`, `/set-present`, `/set-interjecting`,
-`/reload-scenario`, `/save`, `/saves`, `/load-save`, `/delete-save`. Les réponses sont streamées
-(texte + réflexion). Un seul thread traite les requêtes — pas d'accès concurrent. Chaque tour est
+`/analyze-next-act`, `/analyze-mind-state`, `/analyze-reply-origin`, `/picks`, `/scenario-prompt`,
+`/set-present`, `/set-interjecting`, `/reload-scenario`, `/save`, `/saves`, `/load-save`, `/delete-save`.
+Les réponses sont streamées (texte + réflexion). Les requêtes sont traitées par un pool de fils qui
+grandit (`newCachedThreadPool`) : un appel LLM long ne retient jamais un simple affichage (🐞, 🎲, `/stop`)
+— avec un pool fixe de 2 fils, deux appels longs laissaient le clic suivant sans réponse. La session
+n'est pas protégée contre deux écritures simultanées : l'interface grise les boutons pendant une
+génération. Les points d'accès de debug (`/scenario-prompt`, `/picks`) renvoient une erreur JSON
+lisible, et leur pop-up affiche le statut HTTP et le début de la réponse quand elle n'est pas le JSON
+attendu ou que le rendu est vide (jamais un cadre muet). Chaque tour est
 écrit sur disque dès qu'il existe ; sauvegardes manuelles illimitées ; ⟳ recharge scénario et
 fiches sans toucher à la conversation. Chaque bulle affiche son numéro `#N` et un bouton ↩ qui
 appelle `/rollback` (`/undo` et `/retry` en sont des cas particuliers).
@@ -199,7 +217,7 @@ appelle `/rollback` (`/undo` et `/retry` en sont des cas particuliers).
 `ChatService.hasSavedSession` — sinon il démarre une nouvelle partie directement), `ScenarioTesterCli` (revue d'un scénario par agents reviewers,
 `test-scenario.bat`), `InitChatCli` (nouveau scénario : dossier, nom, nombre et noms des PNJ, puis
 `ScenarioScaffolder` crée `scenario.txt` et `characters/*.txt` à remplir, `init-chat.bat`),
-`MigrateScenarioLayoutCli` (migration de l'ancienne structure, `migration.bat`, voir « Le run »).
+`ValidateScenarioCli` (validation des scénarios, `validation-scenarios.bat`).
 Lancés par des `.bat` minimaux qui transmettent leurs arguments ; la classe lancée par `exec:java`
 vient de la propriété `exec.mainClass` du `pom.xml` du module (défaut `ChatCli`). Le choix du dossier
 des scénarios et le chargement des propriétés sont partagés dans `ChatCliSupport`. Option commune `--logs` : active l'écriture des
@@ -233,7 +251,8 @@ run/
       {n:6}.md                          un tour
       {R:6}-compaction-f{F:6}.md        une compaction
     state.txt                           présence et interjection
-    resolved/scenario[-N].txt           scénario dont les [PICK] sont tirés (absent sans tag)
+    resolved/scenario[-N].txt           scénario dont les {pick} sont tirés (absent sans pick)
+    resolved/picks.txt                  les tirages dans l'ordre : "@@ mode fichier" puis les paragraphes (séparés par "@@ --")
   saves/{yyyy-MM-dd-HHmmss-SSS}.zip     zip de current/ (sauvegarde manuelle)
   archive/{yyyy-MM-dd-HHmmss-SSS}.zip   zip de current/ (archivage par « Recommencer »)
   logs/                                 seulement avec --logs
@@ -274,7 +293,7 @@ virgules. Fichier absent, ou clé absente : tous les PNJ présents / éligibles 
 réglages de génération ne sont pas persistés. Écrit après chaque `saveSession`, de façon atomique
 (fichier temporaire puis renommage).
 
-**Zips** : `turns/`, `state.txt` et `resolved/` de `current/`, chemins relatifs à `current/`. Fichiers immuables,
+**Zips** : `turns/`, `state.txt` et `resolved/` (dont `picks.txt`) de `current/`, chemins relatifs à `current/`. Fichiers immuables,
 écrits via `java.util.zip`. Charger un zip remplace entièrement `current/`.
 
 ## Ordre
@@ -366,21 +385,76 @@ Retour au #12 : suppression de 000013.md, 000013-compaction-f000012.md, 000014.m
 `report.html` dans `run/tests/{horodatage}/` (c'est son produit) ; ses logs d'appels suivent
 `--logs`. `clean-logs.bat` nettoie `run/logs/` et `run/tests/`.
 
-## Migration depuis l'ancienne structure
+## Ancienne structure
 
-`migration.bat` (qui ne fait que lancer `MigrateScenarioLayoutCli`) ne **convertit pas** les anciennes
-parties : il garde le scénario et jette le reste.
+Un scénario à l'ancienne structure (fichiers de session ou dossiers générés à la racine, fiches personnage hors de `characters/`) est refusé au chargement avec un message « format non pris en charge » ; il n'y a plus de programme de conversion.
 
-- Pour chaque dossier de scénario : déplacer les fiches personnage (`.txt` dont la première ligne est
-  `# Nom`, hors `scenario.txt` et `scenario-N.txt`) vers `characters/` ; les `.txt` sans cette ligne
-  sont laissés en place et signalés.
-- Supprimer `history.md`, `summary.md`, `act.txt`, `present.txt`, `interject.txt`, `full-history.md`
-  et les dossiers `saves/`, `archive/`, `logs/`, `tests/`.
-- Racines traitées : `chatscenarios/` du projet, le dossier `chatscenarios.root.default` de
-  `chat.properties`, ou un chemin donné en argument (le programme n'est jamais lancé par l'assistant
-  sur un dossier hors projet).
-- `--dry-run` : liste les déplacements et suppressions (avec les tailles) sans rien modifier.
-  Sans `--dry-run`, une confirmation explicite est demandée.
-- Idempotent : un scénario déjà migré est ignoré. Un résumé final compte les scénarios migrés, déjà
-  à jour et en conflit (par exemple `characters/` existe déjà avec un fichier du même nom : le
-  scénario est ignoré avec un message, rien n'est écrasé).
+# Évolution d'un personnage — `{delta-pnj public|secret nom : texte}`
+
+Syntaxe et usage : `chatscenarios/guide-redaction-chat.md` §2.8. Ici, la mécanique.
+
+- **Concepts** : `CharacterDelta` (visibilité `PUBLIC`/`SECRET`, nom, texte), `CharacterDeltaMarker`
+  (extrait les lignes seules et complètes ; toute occurrence restante de `{delta-pnj` est une erreur),
+  `ScenarioAct.deltas` (deltas des nœuds nouvellement entrés, comme les beats et l'ouverture),
+  `ChatScenario.sheetAt(npc, acte)`.
+- **Chargement** : `ScenarioOutlineParser` retire les lignes du corps de chaque titre (le texte d'acte va à
+  tous les PNJ : un secret ne doit pas y rester). Dans la prémisse : refusé. Nom inconnu du `Cast` :
+  `ChatScenario` refuse le scénario.
+- **Calcul** : `sheetAt` cumule, dans l'ordre, les deltas des actes 1..N qui visent le PNJ ; `PUBLIC`
+  ajoute une ligne à `Npc.publicInfo`, `SECRET` à `Npc.secretInfo` (créé si absent). Rien n'est stocké
+  dans le run : l'acte courant est déjà restauré par undo, rollback, « Précédent », sauvegarde et
+  redémarrage, donc les fiches suivent. Appliqué au moment de construire le prompt
+  (`ChatPromptBuilder`, `NextActReadinessPromptBuilder`, `NpcMindStatePromptBuilder`), jamais gravé dans
+  le `Cast` : ⟳ recharge les fiches sans perdre les deltas. Aucune chaîne de prompt n'est modifiée : les
+  lignes s'ajoutent à la fiche comme si l'auteur les y avait écrites.
+
+# Validation du scénario
+
+Syntaxe des erreurs : guide §2.9. Ici, la mécanique.
+
+- **Concepts** : `ScenarioValidator` (domaine, pur) → `ScenarioReport` de `ScenarioIssue`
+  (`ERROR` / `WARNING`, lieu `fichier:ligne` ou acte, message). `ScenarioValidationException`
+  (`IllegalStateException`) liste toutes les erreurs.
+- **`checkSources`** (erreurs, sur le texte écrit par l'auteur, ligne par ligne) : ancienne syntaxe,
+  commande inconnue ou mal écrite, `npc-starts` / `delta-pnj` pas seuls sur leur ligne, personnage
+  inconnu, bibliothèque `picks/` absente ou trop courte, `unique` plus nombreux que les paragraphes.
+- **`checkScenario`** (avertissements, sur le scénario analysé) : acte non final sans `[NEXT ACT]`, PNJ
+  jamais cité dans la prémisse ni le premier acte.
+- **Quand** : `ChatFileStorageAdapter.scenarioTextDir` valide les textes à chaque lecture depuis le
+  répertoire source (un run déjà résolu a été validé à son démarrage). `validateScenario` (port
+  `ChatStoragePort`) le fait à la demande **sans effet de bord** : tirage en mémoire, copie temporaire
+  supprimée, aucun run créé. CLI : `ValidateScenarioCli` / `validation-scenarios.bat`. Les avertissements
+  s'affichent au lancement de la CLI de chat et dans le bouton 🐞.
+- **Ancienne syntaxe** : `[PICK: x]`, `[NPC STARTS]` sont refusés au chargement (`LegacyCommandSyntax`).
+  La conversion des scénarios a été faite une fois ; il n'y a plus de programme de migration.
+
+# Style commun — `style.txt`
+
+Syntaxe et conseils d'écriture : `chatscenarios/guide-redaction-chat.md` §2.10. Ici, la mécanique.
+
+- **Concept** : `ScenarioStyle` (texte nettoyé, `NONE` si absent ou vide), 8e composant de `ChatScenario`
+  (les constructeurs plus courts restent, avec `NONE`).
+- **Lecture** : `ChatFileStorageAdapter.readStyle` lit `style.txt` à la racine du dossier du scénario, **à
+  chaque chargement** (jamais copié dans `resolved/`, absent des sauvegardes : ⟳ relit le fichier).
+  `LegacyLayout` l'exclut de la détection des anciennes fiches (un `style.txt` peut commencer par `# Titre`).
+- **Prompt** : `ChatPromptBuilder` insère `STYLE ADVICE:` + le texte entre `STORY SO FAR` et les règles de
+  format, seulement si le style est présent. Seul le prompt du personnage qui joue le reçoit ; ni le
+  résumeur, ni `NextActReadinessAnalyst`, ni `NpcMindStateAnalyst`.
+- **Validation** : `ScenarioValidator.checkStyleText` refuse l'ancienne syntaxe et toute commande entre
+  accolades (erreur au chargement) ; `checkScenario` avertit au-delà de 1 200 caractères.
+- **Debug** : `ScenarioPromptView.style`, affiché par le bouton 🐞.
+
+# Origine d'une réponse — bouton ❓
+
+Usage et limites côté auteur : `chatscenarios/guide-redaction-chat.md` §4.3 bis. Ici, la mécanique.
+
+- **Concepts** : `ReplyTrace` (id du PNJ, prompt système et utilisateur tels qu'envoyés, réponse,
+  réflexion), `ReplyOriginAnalyst` (entrée, sortie `traced` / `untraced` / `reading`, constructeur de
+  prompt, fiche `.md`).
+- **Capture** : `RoleplayNarratorOutput.prompt` porte le prompt réellement construit ;
+  `ChatServiceImpl` le garde avec la réponse (`ChatSession.rememberReplyTrace`), **en mémoire seulement**.
+  `ChatSession.lastReplyTrace()` ne le rend que si cette réponse est encore le dernier tour LLM
+  (undo, rollback, redémarrage, chargement : rien).
+- **Service** : `ChatService.analyzeLastReplyOrigin` (lecture seule, `IllegalStateException` s'il n'y a
+  rien à analyser ou si l'agent n'est pas branché) → `POST /analyze-reply-origin` → pop-up d'analyse.
+- Aucun appel au LLM dans les tests : un faux port répond.

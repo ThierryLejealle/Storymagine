@@ -17,6 +17,16 @@ public record Npc(String id, String name, String publicInfo, String secretInfo) 
         return secretInfo.isBlank() ? publicInfo : publicInfo + "\n\n" + secretInfo;
     }
 
+    /** The same Npc with one more line on its public sheet (see CharacterDelta). */
+    public Npc withPublicAddition(String line) {
+        return new Npc(id, name, publicInfo.isBlank() ? line : publicInfo + "\n" + line, secretInfo);
+    }
+
+    /** The same Npc with one more line on its secret sheet (see CharacterDelta). */
+    public Npc withSecretAddition(String line) {
+        return new Npc(id, name, publicInfo, secretInfo.isBlank() ? line : secretInfo + "\n" + line);
+    }
+
     /** Display label : name if declared, the storage id otherwise (always unique, unlike a possibly-empty name). */
     public String label() {
         return name == null || name.isBlank() ? id : name;

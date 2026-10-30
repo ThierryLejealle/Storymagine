@@ -20,6 +20,9 @@ public final class NpcMindStatePromptBuilder {
 
     public record MindStatePrompt(String system, String user) {}
 
+    /** Replaced in SYSTEM by the scenario's language (see ScenarioLanguage.phrase). */
+    private static final String LANGUAGE_PLACEHOLDER = "{LANGUAGE}";
+
     private static final String SYSTEM = """
         You are analyzing this roleplay session as its author — not as the character itself. Do
         not write narration, dialogue, or actions. Your only job is to describe the character's
@@ -27,7 +30,7 @@ public final class NpcMindStatePromptBuilder {
         only to the person running the story.
 
         OUTPUT FORMAT
-        Write your answer in the same language as the scenario text below. Write exactly these
+        Write your answer in {LANGUAGE}. Write exactly these
         three sections, nothing before or after:
         SITUATION:
         THOUGHTS:
@@ -51,7 +54,7 @@ public final class NpcMindStatePromptBuilder {
     public static MindStatePrompt build(ChatScenario scenario, Npc speaker, int currentAct, String summary,
                                          List<ChatTurn> recentTurns) {
         StringBuilder user = new StringBuilder();
-        user.append("CHARACTER SHEET:\n").append(speaker.fullSheet()).append("\n\n");
+        user.append("CHARACTER SHEET:\n").append(scenario.sheetAt(speaker, currentAct).fullSheet()).append("\n\n");
         user.append("PREMISE:\n").append(scenario.premise()).append("\n\n");
         List<ScenarioAct> acts = scenario.acts();
         if (currentAct > 0 && currentAct <= acts.size()) {
@@ -67,6 +70,8 @@ public final class NpcMindStatePromptBuilder {
                 .append(ChatPromptBuilder.transcript(recentTurns, scenario.cast(), scenario.playerName()));
         }
 
-        return new MindStatePrompt(SYSTEM, user.toString());
+        return new MindStatePrompt(
+            SYSTEM.replace(LANGUAGE_PLACEHOLDER, scenario.language().phrase("the same language as the scenario text below")),
+            user.toString());
     }
 }

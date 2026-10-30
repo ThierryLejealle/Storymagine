@@ -3,6 +3,7 @@ package storymagine.chat.coeur.domaine.session;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 /**
  * Who is speaking this turn, who else is present in the story right now, and which teammates are
@@ -17,4 +18,10 @@ import java.util.List;
  * normal, fully-addressed turn.
  */
 public record Scene(Npc speaker, List<Npc> otherPresent, List<Npc> absentTeammates, boolean interjecting) {
+
+    /** The same scene with every Npc passed through f (e.g. their sheets at the current act, see ChatScenario.sheetAt). */
+    public Scene mapNpcs(UnaryOperator<Npc> f) {
+        return new Scene(f.apply(speaker), otherPresent.stream().map(f).toList(),
+            absentTeammates.stream().map(f).toList(), interjecting);
+    }
 }

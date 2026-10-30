@@ -24,6 +24,7 @@ final class RunLayout {
     static final String TURNS_DIR   = "turns";
     static final String STATE_FILE  = "state.txt";
     static final String RESOLVED_DIR = "resolved";
+    static final String PICKS_FILE  = "picks.txt";
     static final String SAVES_DIR   = "saves";
     static final String ARCHIVE_DIR = "archive";
     static final String LOGS_DIR    = "logs";
@@ -58,6 +59,11 @@ final class RunLayout {
     /** The scenario files with their PICK tags replaced — written once per run, see ChatFileStorageAdapter.scenarioTextDir. */
     static Path resolvedDir(Path chatScenariosRoot, String scenarioName) {
         return currentDir(chatScenariosRoot, scenarioName).resolve(RESOLVED_DIR);
+    }
+
+    /** The draws behind the resolved files (see PickDrawsFile) — absent for a run started before they were recorded. */
+    static Path picksFile(Path chatScenariosRoot, String scenarioName) {
+        return resolvedDir(chatScenariosRoot, scenarioName).resolve(PICKS_FILE);
     }
 
     static Path savesDir(Path chatScenariosRoot, String scenarioName) {

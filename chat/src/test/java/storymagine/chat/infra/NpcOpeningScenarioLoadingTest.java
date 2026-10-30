@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
+import storymagine.chat.coeur.domaine.validation.ScenarioValidationException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** How "[NPC STARTS]" travels from scenario.txt to ChatScenario : story level, act level, errors. */
+/** How "{npc-starts}" travels from scenario.txt to ChatScenario : story level, act level, errors. */
 class NpcOpeningScenarioLoadingTest {
 
     private static void write(Path root, String scenarioText) throws IOException {
@@ -32,33 +33,33 @@ class NpcOpeningScenarioLoadingTest {
 
     @Test
     void storyLevelMarkerIsReadAndCutOutOfThePremise(@TempDir Path root) throws IOException {
-        write(root, "Joueur : Alex\n\n#SCENARIO\nMonde : un chateau.\n[NPC STARTS: elena]\nTon : sombre.\n\n# Acte un\nCorps.\n");
+        write(root, "Joueur : Alex\n\n#SCENARIO\nMonde : un chateau.\n{npc-starts elena}\nTon : sombre.\n\n# Acte un\nCorps.\n");
 
         ChatScenario scenario = load(root);
 
         assertEquals("elena", scenario.storyOpening().npcName());
-        assertFalse(scenario.premise().contains("NPC STARTS"));
+        assertFalse(scenario.premise().contains("npc-starts"));
         assertTrue(scenario.openingOfAct(1).isNamed(), "l'ouverture de l'histoire est aussi celle du 1er acte");
         assertTrue(scenario.openingOfAct(2).isNone());
     }
 
     @Test
     void actLevelMarkerBelongsToThatActOnlyAndIsNotATeaserBeat(@TempDir Path root) throws IOException {
-        write(root, "Monde.\n\n# Un\nCorps un.\n\n# Deux\n[NPC STARTS: Marcus]\n[Un bruit dans la nuit.]\nCorps deux.\n");
+        write(root, "Monde.\n\n# Un\nCorps un.\n\n# Deux\n{npc-starts Marcus}\n[Un bruit dans la nuit.]\nCorps deux.\n");
 
         ChatScenario scenario = load(root);
 
         assertTrue(scenario.storyOpening().isNone());
         assertTrue(scenario.openingOfAct(1).isNone());
         assertEquals("Marcus", scenario.openingOfAct(2).npcName());
-        assertFalse(scenario.acts().get(1).text().contains("NPC STARTS"));
+        assertFalse(scenario.acts().get(1).text().contains("npc-starts"));
         assertEquals(java.util.List.of("Un bruit dans la nuit."), scenario.acts().get(1).beats());
         assertEquals(java.util.List.of("Un bruit dans la nuit."), Teaser.extractAll(scenario.acts().get(1).text()));
     }
 
     @Test
     void aMarkerOnAParentActIsInheritedByTheFirstLeafOnly(@TempDir Path root) throws IOException {
-        write(root, "Monde.\n\n# Parent\n[NPC STARTS]\nCorps parent.\n\n## Feuille A\nA.\n\n## Feuille B\nB.\n");
+        write(root, "Monde.\n\n# Parent\n{npc-starts}\nCorps parent.\n\n## Feuille A\nA.\n\n## Feuille B\nB.\n");
 
         ChatScenario scenario = load(root);
 
@@ -68,9 +69,9 @@ class NpcOpeningScenarioLoadingTest {
 
     @Test
     void anUnknownNpcNameFailsLoudlyAtLoading(@TempDir Path root) throws IOException {
-        write(root, "Monde.\n[NPC STARTS: Zorglub]\n");
+        write(root, "Monde.\n{npc-starts Zorglub}\n");
 
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> load(root));
+        ScenarioValidationException e = assertThrows(ScenarioValidationException.class, () -> load(root));
 
         assertTrue(e.getMessage().contains("Zorglub"));
     }

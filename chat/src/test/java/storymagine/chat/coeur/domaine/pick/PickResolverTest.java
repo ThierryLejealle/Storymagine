@@ -24,26 +24,40 @@ class PickResolverTest {
     void pickReplacesTheTagWithTheDrawnParagraphAndKeepsTheRestOfTheText() {
         PickResolver resolver = new PickResolver(PLACES, scripted(1));
 
-        List<String> out = resolver.resolveAll(List.of("Alex arrives. [PICK: place] The end."));
+        List<String> out = resolver.resolveAll(List.of("Alex arrives. {pick random place} The end."));
 
         assertEquals(List.of("Alex arrives. Night market. The end."), out);
+    }
+
+    @Test
+    void drawsAreReportedInTheOrderOfTheCommandsAcrossTheTextsWithTheirMode() {
+        // Les valeurs sont des indices parmi les candidats restants : 2e tirage = [0, 2][1], 3e = [0][0].
+        PickResolver resolver = new PickResolver(PLACES, scripted(1, 1, 0));
+
+        PickResolution resolution = resolver.resolve(List.of("{pick random place} / {pick unique place}", "{pick unique place}"));
+
+        assertEquals(List.of(
+            new PickDraw(PickMode.RANDOM, new PickTag("place"), List.of("Night market.")),
+            new PickDraw(PickMode.UNIQUE, new PickTag("place"), List.of("Empty town.")),
+            new PickDraw(PickMode.UNIQUE, new PickTag("place"), List.of("Foggy harbor."))),
+            resolution.draws().values());
     }
 
     @Test
     void plainPickMayReturnTheSameParagraphTwice() {
         PickResolver resolver = new PickResolver(PLACES, scripted(2, 2));
 
-        List<String> out = resolver.resolveAll(List.of("[PICK: place] / [PICK: place]"));
+        List<String> out = resolver.resolveAll(List.of("{pick random place} / {pick random place}"));
 
         assertEquals(List.of("Empty town. / Empty town."), out);
     }
 
     @Test
     void aParagraphCanSpanSeveralLinesAndItsOwnTagsAreNotResolved() {
-        PickLibrary library = library(Map.of("hook", "Line one.\nLine two [PICK: hook].\n----\nOther."));
+        PickLibrary library = library(Map.of("hook", "Line one.\nLine two {pick random hook}.\n----\nOther."));
         PickResolver resolver = new PickResolver(library, scripted(0));
 
-        assertEquals(List.of("Line one.\nLine two [PICK: hook]."), resolver.resolveAll(List.of("[PICK: hook]")));
+        assertEquals(List.of("Line one.\nLine two {pick random hook}."), resolver.resolveAll(List.of("{pick random hook}")));
     }
 
     // ── PICK-UNIQUE ─────────────────────────────────────────────────────────
@@ -53,7 +67,7 @@ class PickResolverTest {
         // Toujours 0 : sans l'exclusion on aurait trois fois "Foggy harbor."
         PickResolver resolver = new PickResolver(PLACES, scripted(0, 0, 0));
 
-        List<String> out = resolver.resolveAll(List.of("[PICK-UNIQUE: place] | [PICK-UNIQUE: place] | [PICK-UNIQUE: place]"));
+        List<String> out = resolver.resolveAll(List.of("{pick unique place} | {pick unique place} | {pick unique place}"));
 
         assertEquals(List.of("Foggy harbor. | Night market. | Empty town."), out);
     }
@@ -62,7 +76,7 @@ class PickResolverTest {
     void pickUniqueExcludesWhatAPlainPickAlreadyHandedOut() {
         PickResolver resolver = new PickResolver(PLACES, scripted(0, 0));
 
-        List<String> out = resolver.resolveAll(List.of("[PICK: place] | [PICK-UNIQUE: place]"));
+        List<String> out = resolver.resolveAll(List.of("{pick random place} | {pick unique place}"));
 
         assertEquals(List.of("Foggy harbor. | Night market."), out);
     }
@@ -71,7 +85,7 @@ class PickResolverTest {
     void aPlainPickIgnoresWhatPickUniqueAlreadyHandedOut() {
         PickResolver resolver = new PickResolver(PLACES, scripted(0, 0));
 
-        List<String> out = resolver.resolveAll(List.of("[PICK-UNIQUE: place] | [PICK: place]"));
+        List<String> out = resolver.resolveAll(List.of("{pick unique place} | {pick random place}"));
 
         assertEquals(List.of("Foggy harbor. | Foggy harbor."), out);
     }
@@ -80,7 +94,7 @@ class PickResolverTest {
     void pickUniqueMemoryIsSharedBetweenTheTextsOfOneScenario() {
         PickResolver resolver = new PickResolver(PLACES, scripted(0, 0));
 
-        List<String> out = resolver.resolveAll(List.of("[PICK-UNIQUE: place]", "[PICK-UNIQUE: place]"));
+        List<String> out = resolver.resolveAll(List.of("{pick unique place}", "{pick unique place}"));
 
         assertEquals(List.of("Foggy harbor.", "Night market."), out);
     }
@@ -90,7 +104,7 @@ class PickResolverTest {
         PickLibrary library = library(Map.of("place", "A\n---\nB", "mood", "Gloomy\n---\nCheerful"));
         PickResolver resolver = new PickResolver(library, scripted(0, 0));
 
-        assertEquals(List.of("A Gloomy"), resolver.resolveAll(List.of("[PICK-UNIQUE: place] [PICK-UNIQUE: mood]")));
+        assertEquals(List.of("A Gloomy"), resolver.resolveAll(List.of("{pick unique place} {pick unique mood}")));
     }
 
     @Test
@@ -99,24 +113,88 @@ class PickResolverTest {
         PickResolver resolver = new PickResolver(library, scripted(0, 0, 0));
 
         IllegalStateException e = assertThrows(IllegalStateException.class,
-            () -> resolver.resolveAll(List.of("[PICK-UNIQUE: place] [PICK-UNIQUE: place] [PICK-UNIQUE: place]")));
+            () -> resolver.resolveAll(List.of("{pick unique place} {pick unique place} {pick unique place}")));
 
         assertTrue(e.getMessage().contains("place"), e.getMessage());
     }
 
-    // ── Reconnaissance des tags ─────────────────────────────────────────────
+    // ── Modes all et N ──────────────────────────────────────────────────────
 
     @Test
-    void containsTagRecognisesBothFormsAndIgnoresOrdinaryBrackets() {
-        assertTrue(PickResolver.containsTag("x [PICK: place] y"));
-        assertTrue(PickResolver.containsTag("[pick-unique:place]"));
+    void allHandsOutEveryParagraphInFileOrderWithoutAnyRandomness() {
+        PickResolver resolver = new PickResolver(PLACES, scripted());
+
+        PickResolution resolution = resolver.resolve(List.of("{pick all place}"));
+
+        assertEquals(List.of("Foggy harbor.\n\nNight market.\n\nEmpty town."), resolution.texts());
+        assertEquals(List.of("Foggy harbor.", "Night market.", "Empty town."), resolution.draws().values().get(0).paragraphs());
+    }
+
+    @Test
+    void aNumberHandsOutThatManyDifferentParagraphs() {
+        // Indices parmi les candidats restants : [0,1,2][2] = Empty town, puis [0,1][0] = Foggy harbor.
+        PickResolver resolver = new PickResolver(PLACES, scripted(2, 0));
+
+        PickDraw draw = resolver.resolve(List.of("{pick 2 place}")).draws().values().get(0);
+
+        assertEquals(PickMode.ofCount(2), draw.mode());
+        assertEquals(List.of("Empty town.", "Foggy harbor."), draw.paragraphs());
+    }
+
+    @Test
+    void aNumberLargerThanTheLibraryFailsClearly() {
+        PickResolver resolver = new PickResolver(PLACES, scripted(0, 0, 0, 0));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> resolver.resolveAll(List.of("{pick 4 place}")));
+
+        assertTrue(e.getMessage().contains("place") && e.getMessage().contains("3"), e.getMessage());
+    }
+
+    @Test
+    void whatANumberHandedOutIsExcludedFromALaterUnique() {
+        // {pick 2} tire Foggy puis Night (indices 0 puis 0 parmi les restants) ; il ne reste que Empty pour unique.
+        PickResolver resolver = new PickResolver(PLACES, scripted(0, 0, 0));
+
+        List<String> out = resolver.resolveAll(List.of("{pick 2 place} | {pick unique place}"));
+
+        assertEquals(List.of("Foggy harbor.\n\nNight market. | Empty town."), out);
+    }
+
+    @Test
+    void afterAnAllNothingIsLeftForAUnique() {
+        PickResolver resolver = new PickResolver(PLACES, scripted(0));
+
+        assertThrows(IllegalStateException.class, () -> resolver.resolveAll(List.of("{pick all place} {pick unique place}")));
+    }
+
+    // ── Commandes mal ecrites ───────────────────────────────────────────────
+
+    @Test
+    void aMalformedPickCommandIsAnErrorNeverLeftInTheText() {
+        PickResolver resolver = new PickResolver(PLACES, scripted(0, 0, 0));
+
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolveAll(List.of("{pick place}")));
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolveAll(List.of("{pick sometimes place}")));
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolveAll(List.of("{pick random}")));
+    }
+
+    // ── Reconnaissance des commandes ────────────────────────────────────────
+
+    @Test
+    void containsTagRecognisesPickCommandsInAnyCaseAndIgnoresOtherBraces() {
+        assertTrue(PickResolver.containsTag("x {pick random place} y"));
+        assertTrue(PickResolver.containsTag("{PICK Unique place}"));
+        assertTrue(PickResolver.containsTag("{pick place}"));
+        assertFalse(PickResolver.containsTag("{picking flowers}"));
         assertFalse(PickResolver.containsTag("[Alex enters the room.]"));
         assertFalse(PickResolver.containsTag("[NEXT ACT]"));
     }
 
     @Test
-    void aTagNamingAPathIsNeverTreatedAsATag() {
-        assertFalse(PickResolver.containsTag("[PICK: ../secret]"));
+    void aLibraryNamedLikeAPathIsRejected() {
+        PickResolver resolver = new PickResolver(PLACES, scripted(0));
+
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolveAll(List.of("{pick random ../secret}")));
         assertThrows(IllegalArgumentException.class, () -> new PickTag("../secret"));
     }
 

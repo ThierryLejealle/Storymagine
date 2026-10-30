@@ -81,12 +81,13 @@ public final class ScenarioScaffolder {
     private static String scenarioText(List<String> npcNames) {
         return """
             Joueur : Alex
+            Langue : français
 
             #SCENARIO
             Monde : (où et quand se déroule l'histoire)
             Prémisse : (la situation de départ, à la 3e personne : "Alex arrive...")
             Ton : (l'ambiance voulue)
-            (Optionnel : pour qu'un PNJ prenne la parole en premier à la place d'Alex, écrire [NPC STARTS] seul sur une ligne, ou [NPC STARTS: Nom] pour choisir lequel. Ici pour ouvrir l'histoire, ou dans un acte pour ouvrir cet acte. Supprimer cette consigne sinon.)
+            (Optionnel : pour qu'un PNJ prenne la parole en premier à la place d'Alex, voir la commande npc-starts dans le guide de rédaction (une ligne seule entre accolades, avec ou sans nom). Ici pour ouvrir l'histoire, ou dans un acte pour ouvrir cet acte. Supprimer cette consigne sinon.)
 
             # Premier acte
             [(Qui est Alex et où se trouve-t-il, à la 3e personne.) %s (Le but général d'Alex.)]

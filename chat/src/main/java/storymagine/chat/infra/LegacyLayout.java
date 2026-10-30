@@ -12,8 +12,7 @@ import java.util.regex.Pattern;
 /**
  * Knows what a scenario directory looked like BEFORE the characters/ + run/ structure : session
  * files and generated directories sitting next to scenario.txt, character sheets at the root. Used
- * to refuse loading such a directory with a clear message (ChatFileStorageAdapter) and by the
- * migration that cleans it up (ScenarioLayoutMigrator).
+ * to refuse loading such a directory with a clear message (ChatFileStorageAdapter).
  */
 final class LegacyLayout {
 
@@ -25,6 +24,8 @@ final class LegacyLayout {
     static final Set<String> GENERATED_DIRS = Set.of("saves", "archive", "logs", "tests");
 
     private static final String SCENARIO_FILE = "scenario.txt";
+    /** The optional style advice, a root file that may well start with a "# Title" without being a character sheet. */
+    static final String STYLE_FILE = "style.txt";
     private static final Pattern SCENARIO_CONTINUATION = Pattern.compile("scenario-(\\d+)\\.txt");
 
     private LegacyLayout() {}
@@ -47,6 +48,7 @@ final class LegacyLayout {
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(".txt"))
                 .filter(f -> !f.getFileName().toString().equals(SCENARIO_FILE))
+                .filter(f -> !f.getFileName().toString().equals(STYLE_FILE))
                 .filter(f -> !SCENARIO_CONTINUATION.matcher(f.getFileName().toString()).matches())
                 .filter(LegacyLayout::startsWithNameHeading)
                 .sorted()

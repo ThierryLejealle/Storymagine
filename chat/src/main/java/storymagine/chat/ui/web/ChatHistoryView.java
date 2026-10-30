@@ -30,7 +30,7 @@ import java.util.List;
  * counting back from it (the displayed bubbles are always consecutive turns ending there), so
  * individual turns never need to carry their number over the wire.
  * npcOpeningPending is true when the story or the current act has just begun and its author asked
- * for an Npc to speak first ("[NPC STARTS]", see NpcOpening) : the page then sends an empty "DO:"
+ * for an Npc to speak first ("{npc-starts}", see NpcOpening) : the page then sends an empty "DO:"
  * by itself, exactly as if the player had clicked DO.
  */
 public record ChatHistoryView(String scenarioName, List<ChatTurn> turns, List<ChatTurn> newTurns,

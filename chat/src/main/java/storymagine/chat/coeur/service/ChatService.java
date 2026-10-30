@@ -2,6 +2,8 @@ package storymagine.chat.coeur.service;
 
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutput;
+import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalystOutput;
+import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.SavePoint;
@@ -109,6 +111,14 @@ public interface ChatService {
     NpcMindStateAnalystOutput analyzeMindState(Path chatScenariosRoot, ChatSession session, String npcId);
 
     /**
+     * On-demand debug look at where the last Npc reply comes from : maps its elements onto the prompt
+     * that produced it (see ReplyOriginAnalyst) — read only, same guarantees as analyzeMindState.
+     * Throws IllegalStateException when there is no such reply to look at (nothing said yet, game
+     * reloaded, last reply undone).
+     */
+    ReplyOriginAnalystOutput analyzeLastReplyOrigin(Path chatScenariosRoot, ChatSession session);
+
+    /**
      * Player-triggered snapshot of the session's current turns/summary/currentAct — distinct from
      * the automatic save that overwrites the same slot after every exchange.
      */
@@ -154,6 +164,15 @@ public interface ChatService {
      * Callers (the chat UI) confirm with the player first, same guarantee as loadSavePoint.
      */
     void restartSession(Path chatScenariosRoot, ChatSession session);
+
+    /** The draws of this run's {pick} commands, in order — empty for a run without any recorded (see ChatStoragePort.pickDraws). */
+    PickDraws pickDraws(Path chatScenariosRoot, ChatSession session);
+
+    /** Warnings about a loaded scenario (an act without a [NEXT ACT] condition, a character never mentioned...). */
+    List<String> scenarioWarnings(ChatScenario scenario);
+
+    /** Debug : the scenario text a character's prompt receives right now (no history), see ScenarioPromptView. */
+    ScenarioPromptView scenarioPrompt(ChatSession session);
 
     /** Max tokens the model can process in one call — for the UI's context-usage gauge. */
     int contextWindow();

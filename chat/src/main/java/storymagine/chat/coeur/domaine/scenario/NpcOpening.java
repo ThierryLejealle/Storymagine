@@ -3,7 +3,7 @@ package storymagine.chat.coeur.domaine.scenario;
 /**
  * Who speaks first when a story or an act begins : nobody in particular (NONE — the player opens
  * as usual), any present Npc picked at random (ANY), or one Npc named by the author (named). Set by
- * the author with "[NPC STARTS]" / "[NPC STARTS: Name]" (see NpcOpeningMarker) ; the Npc then
+ * the author with "{npc-starts}" / "{npc-starts Name}" (see NpcOpeningMarker) ; the Npc then
  * answers as if the player had clicked DO with nothing to say (see ChatServiceImpl.sendMessage).
  * npcName is only meaningful for a named opening, null otherwise.
  */
