@@ -36,26 +36,24 @@ main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--
 .turn.streaming .bubble::after{content:'▍';margin-left:2px;opacity:.6;animation:stream-blink 1s infinite}
 @keyframes stream-blink{0%,50%{opacity:.6}51%,100%{opacity:0}}
 footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w))}
-form{width:80%;margin:0 auto;display:flex;gap:.6rem}
-textarea{flex:1;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
+form{width:90%;margin:0 10% 0 0;display:flex;gap:.6rem}
+textarea{flex:1;min-width:12rem;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
          font-size:.95rem;line-height:1.4;height:2.8rem}
 textarea:focus{outline:none;border-color:#2563eb}
 button{border:none;background:#2563eb;color:#fff;padding:0 1.3rem;border-radius:8px;font-size:.92rem;
        font-weight:600;cursor:pointer}
 button:disabled{background:#9ca3af;cursor:default}
-#doBtn{background:#fff;color:#2563eb;border:1px solid #2563eb;padding:0 1rem}
-#doBtn:disabled{background:#fff;color:#9ca3af;border-color:#e5e7eb}
 #undoBtn,#retryBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:0 .8rem;font-size:.85rem}
 #undoBtn:disabled,#retryBtn:disabled{background:#fff;color:#d1d5db;border-color:#f3f4f6}
 .undo-group{display:flex;flex:none}
 .undo-group #undoBtn{border-radius:8px 0 0 8px}
 #undoStepsInput{width:2.8rem;flex:none;border:1px solid #e5e7eb;border-left:none;border-radius:0 8px 8px 0;
                  padding:0 .3rem;font:inherit;font-size:.85rem;text-align:center;color:#6b7280;background:#fff}
-.hint{width:80%;margin:.5rem auto 0;font-size:.75rem;color:#9ca3af}
+.hint{width:90%;margin:.5rem 10% 0 0;font-size:.75rem;color:#9ca3af}
 #settingsBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:0 .8rem;font-size:.95rem}
 #stopBtn{background:#fff;color:#dc2626;border:1px solid #fecaca;padding:0 .8rem;font-size:.85rem;display:none}
 #stopBtn.visible{display:inline-block}
-.settings-panel{width:80%;margin:.6rem auto 0;padding:.7rem 1rem;border-top:1px solid #e5e7eb;display:flex;
+.settings-panel{width:90%;margin:.6rem 10% 0 0;padding:.7rem 1rem;border-top:1px solid #e5e7eb;display:flex;
                  gap:1.6rem;align-items:flex-end;flex-wrap:wrap;font-size:.8rem;color:#374151}
 .settings-panel.hidden{display:none}
 .presets-row{width:100%;display:flex;gap:.5rem;margin-bottom:.2rem}
@@ -130,14 +128,19 @@ button:disabled{background:#9ca3af;cursor:default}
             padding:.1rem .4rem;cursor:pointer;color:#6b7280}
 #reloadScenarioBtn:hover{border-color:#2563eb;color:#2563eb}
 .npc-row{display:flex;gap:.3rem;margin-bottom:.4rem;align-items:center}
-.npc-vignette{display:block;flex:1;min-width:0;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:6px;
-            padding:.5rem .4rem;font-size:.72rem;text-align:left;font-weight:600;line-height:1.2}
+.npc-vignette{display:flex;align-items:center;gap:.5rem;flex:1;min-width:0;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:6px;
+            padding:.3rem .4rem;font-size:.72rem;text-align:left;font-weight:600;line-height:1.2}
 .npc-vignette:hover{border-color:#2563eb;color:#2563eb}
-.npc-vignette.absent{background:#f3f4f6;color:#9ca3af;font-weight:400;text-decoration:line-through}
-.npc-interject-btn{flex:none;width:1.7rem;height:1.7rem;padding:0;display:flex;align-items:center;justify-content:center;
-            background:#fff;color:#c7cbd1;border:1px solid #e5e7eb;border-radius:6px;font-size:.8rem;cursor:pointer}
-.npc-interject-btn:hover{border-color:#2563eb;color:#2563eb}
-.npc-interject-btn.active{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.npc-vignette.absent{background:#f3f4f6;color:#9ca3af;font-weight:400}
+.npc-vignette.absent .npc-name{text-decoration:line-through}
+/* Pastille sombre + point d'etat dans le coin : blanc = explicite, gris = implicite, rouge = force par le joueur. */
+.npc-badge{position:relative;flex:none;width:1.9rem;height:1.9rem;border-radius:50%;background:#2b2e35;
+            display:inline-flex;align-items:center;justify-content:center;font-size:1.05rem;line-height:1}
+.npc-badge::after{content:"";position:absolute;right:-1px;bottom:-1px;width:.6rem;height:.6rem;border-radius:50%;
+            border:2px solid #2b2e35;background:#9ca3af}
+.npc-badge.explicit::after{background:#fff}
+.npc-badge.forced::after{background:#ef4444}
+.npc-badge.implicit{opacity:.8}
 .cast-empty{font-size:.72rem;color:#9ca3af;font-style:italic}
 .speaker-label{font-size:.72rem;font-weight:700;color:#6b7280;margin-bottom:.25rem}
 .speaker-row{display:flex;align-items:center;gap:.35rem}
@@ -238,7 +241,8 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
       <input type="number" id="undoStepsInput" min="1" max="50" value="1" title="Nombre d'échanges à annuler">
     </div>
     <button id="retryBtn" type="button" title="Régénérer la dernière réponse">↻ Régénérer</button>
-    <button id="doBtn" type="button" title="Envoyer en confiant la narration au personnage pour ce tour">DO</button>
+    <button id="doBtn" type="button" title="Envoyer en confiant la narration au personnage pour ce tour">▶▶ DO</button>
+    <button id="continueBtn" type="button" title="Les personnages continuent comme si le joueur n'avait rien répondu (aucun message du joueur, aucune consigne en plus)">▶ Continue</button>
     <button id="send" type="submit">Répondre</button>
     <button id="stopBtn" type="button" title="Arrêter la génération en cours">⏹ Stop</button>
     <button id="settingsBtn" type="button" title="Réglages de génération">⚙</button>
@@ -269,7 +273,7 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
       <input type="number" id="repeatPenaltyInput" min="1" max="1.3" step="0.01" placeholder="1.08">
     </label>
     <label>💬 Chance d'interjection
-      <input type="number" id="interjectionChanceInput" min="0" max="1" step="0.05" placeholder="0.50" title="Probabilité, pour chaque PNJ présent éligible (icône 💬 activée) non visé, de réagir quand même quand un seul autre PNJ est nommé par son nom">
+      <input type="number" id="interjectionChanceInput" min="0" max="1" step="0.05" placeholder="1.00" title="Chance totale que des PNJ non visés réagissent brièvement, partagée entre eux (un PNJ présent compte double d'un passif) : plus ils sont nombreux, plus chacun réagit rarement">
     </label>
     <label class="checkbox-label">
       <input type="checkbox" id="showThinkingInput"> 🧠 Afficher la réflexion
@@ -298,6 +302,7 @@ const undoBtnEl  = document.getElementById('undoBtn');
 const undoStepsInputEl = document.getElementById('undoStepsInput');
 const retryBtnEl = document.getElementById('retryBtn');
 const stopBtnEl = document.getElementById('stopBtn');
+const continueBtnEl = document.getElementById('continueBtn');
 const statusEl = document.getElementById('status');
 const nameEl  = document.getElementById('scenario-name');
 const gaugeEl = document.getElementById('gauge');
@@ -458,10 +463,24 @@ function formatText(raw) {
 // removeTrackedEl des qu'il est remplace par la version autoritaire du serveur.
 const renderedTurnEls = [];
 
-// id -> {id, label, present}, reconstruit a chaque reponse serveur (history.cast rides along on
-// every response, voir ChatHistoryView) — utilise par appendTurn pour resoudre le nom affiche
-// d'un tour LLM a partir de son npcId.
+// id -> {id, label, level, source, scenarioLevel}, reconstruit a chaque reponse serveur (history.cast
+// rides along on every response, voir ChatHistoryView) — utilise par appendTurn pour resoudre le nom
+// affiche d'un tour LLM a partir de son npcId.
 let castById = {};
+
+// Un emoji par niveau d'activite (voir NpcActivity) et ce que chacun veut dire pour le joueur.
+const ACTIVITY_ICONS = { active: '😎', present: '🙂', passive: '🤨', absent: '😴' };
+const ACTIVITY_HELP = {
+  active: 'actif : parle à chaque échange',
+  present: 'présent : répond quand on le nomme',
+  passive: 'passif : réagit brièvement, parfois',
+  absent: 'absent : ne parle jamais'
+};
+const ACTIVITY_SOURCE_HELP = {
+  implicit: 'par défaut',
+  explicit: 'fixé par le scénario',
+  forced: 'forcé par vous (cliquer fait défiler, jusqu\'au retour au scénario)'
+};
 
 function updateCastPanel(cast) {
   castById = {};
@@ -477,38 +496,29 @@ function updateCastPanel(cast) {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'npc-vignette' + (npc.present ? '' : ' absent');
-    btn.textContent = (npc.present ? '🔊 ' : '🔇 ') + npc.label;
-    btn.title = npc.present ? 'Cliquer pour rendre absent de la scène' : 'Cliquer pour rendre présent';
-    btn.disabled = generating; // pas de mute en plein round, voir setControlsDisabled
-    btn.addEventListener('click', () => toggleNpcPresent(npc.id, !npc.present));
+    btn.className = 'npc-vignette' + (npc.level === 'absent' ? ' absent' : '');
+    btn.title = ACTIVITY_HELP[npc.level] + ' — ' + ACTIVITY_SOURCE_HELP[npc.source]
+      + (npc.source === 'forced' ? ' (scénario : ' + npc.scenarioLevel + ')' : '');
+    btn.disabled = generating; // pas de changement en plein round, voir setControlsDisabled
 
-    const interjectBtn = document.createElement('button');
-    interjectBtn.type = 'button';
-    interjectBtn.className = 'npc-interject-btn' + (npc.interjecting ? ' active' : '');
-    interjectBtn.textContent = '💬';
-    interjectBtn.title = npc.interjecting
-      ? 'Peut réagir même sans être visé (cliquer pour désactiver)'
-      : 'Ne réagit que si visé par son nom (cliquer pour activer les interjections)';
-    interjectBtn.disabled = generating;
-    interjectBtn.addEventListener('click', () => toggleNpcInterjecting(npc.id, !npc.interjecting));
+    const badge = document.createElement('span');
+    badge.className = 'npc-badge ' + npc.source;
+    badge.textContent = ACTIVITY_ICONS[npc.level];
+    const name = document.createElement('span');
+    name.className = 'npc-name';
+    name.textContent = npc.label;
+    btn.appendChild(badge);
+    btn.appendChild(name);
+    btn.addEventListener('click', () => cycleNpcActivity(npc.id));
 
     row.appendChild(btn);
-    row.appendChild(interjectBtn);
     castListEl.appendChild(row);
   }
 }
 
-async function toggleNpcPresent(id, present) {
+async function cycleNpcActivity(id) {
   if (generating) return; // defense en profondeur, le bouton desactive devrait deja bloquer le clic
-  const res = await fetch('/set-present?id=' + encodeURIComponent(id) + '&present=' + present, { method: 'POST' });
-  const data = await res.json();
-  updateCastPanel(data.cast);
-}
-
-async function toggleNpcInterjecting(id, interjecting) {
-  if (generating) return;
-  const res = await fetch('/set-interjecting?id=' + encodeURIComponent(id) + '&interjecting=' + interjecting, { method: 'POST' });
+  const res = await fetch('/cycle-activity?id=' + encodeURIComponent(id), { method: 'POST' });
   const data = await res.json();
   updateCastPanel(data.cast);
 }
@@ -819,14 +829,18 @@ function showScenarioPrompt() {
     analysisSection('Prémisse', v.premise || '—')
     + analysisSection(v.currentAct ? 'Acte ' + v.currentAct + ' / ' + v.totalActs : 'Acte courant',
         v.actText || 'Aucun acte actif.')
-    + (v.style ? analysisSection('Conseil stylistique', v.style) : '')
+    + (v.style
+        ? (v.styleReceived && /\{\s*\d+\s*%\s*\}/.test(v.style)
+            ? analysisSection('Conseil stylistique (reçu par ' + v.styleReceived.npcLabel + ' à la dernière réponse)', v.styleReceived.text)
+            : analysisSection('Conseil stylistique', v.style))
+        : '')
     + (v.warnings.length ? analysisSection('Avertissements', v.warnings.join('\n')) : ''));
 }
 
 // Le bouton 🧠 est global (un seul scenario peut avoir plusieurs PNJ presents) : il ouvre d'abord
 // ce petit menu pour choisir LEQUEL analyser, plutot que de deviner (voir ChatServiceImpl.analyzeMindState).
 function openNpcPicker() {
-  const present = Object.values(castById).filter(npc => npc.present);
+  const present = Object.values(castById).filter(npc => npc.level !== 'absent');
   npcPickerEl.innerHTML = '';
   if (!present.length) {
     npcPickerEl.innerHTML = '<p class="npc-picker-empty">Aucun personnage présent.</p>';
@@ -1094,12 +1108,13 @@ function setControlsDisabled(disabled) {
   generating = disabled;
   sendEl.disabled = disabled;
   doBtnEl.disabled = disabled;
+  continueBtnEl.disabled = disabled;
   undoBtnEl.disabled = disabled;
   retryBtnEl.disabled = disabled;
   stopBtnEl.classList.toggle('visible', disabled);
   // pas de mute/interjection pendant un round : voir le commentaire sur "generating" et le fix
   // cote serveur qui saute desormais le tour d'un PNJ mute en cours de round (defense en profondeur).
-  castListEl.querySelectorAll('.npc-vignette, .npc-interject-btn').forEach(b => { b.disabled = disabled; });
+  castListEl.querySelectorAll('.npc-vignette').forEach(b => { b.disabled = disabled; });
 }
 
 function stopGeneration() {
@@ -1111,19 +1126,23 @@ function stopGeneration() {
 // se fige dans sa forme definitive des que le tour est fini (data.speaker) — voir
 // ChatWebServer.handleMessage / ExchangeProgressListener. Le tour joueur optimiste est remplace par
 // la version autoritaire du serveur des la premiere ligne recue.
-async function sendMessage(text) {
+// continuation = true : le bouton "Continue" (voir ChatServiceImpl.continueScene) — aucun message du
+// joueur, donc ni bulle optimiste ni brouillon a restaurer en cas d'arret ou d'erreur.
+async function sendMessage(text, continuation = false) {
   setControlsDisabled(true);
   statusEl.textContent = 'Le personnage réfléchit…';
-  const optimisticTurn = appendTurn('PLAYER', text);
+  const optimisticTurn = continuation ? null : appendTurn('PLAYER', text);
   let typingTurn = showTyping();
-  let playerBubbleReplaced = false;
+  let playerBubbleReplaced = continuation; // rien a remplacer ni a retirer dans ce cas
   let stoppedInfo = null;
   let errorMessage = null;
   let streamingEl = null;
   let streamingNpcId = null;
   let completed = false;
   try {
-    const res = await fetch('/message', { method: 'POST', body: text });
+    const res = continuation
+      ? await fetch('/continue', { method: 'POST' })
+      : await fetch('/message', { method: 'POST', body: text });
     await readNdjsonStream(res, (data) => {
       if (data.textSoFar !== undefined) {
         if (typingTurn) { typingTurn.remove(); typingTurn = null; }
@@ -1159,15 +1178,15 @@ async function sendMessage(text) {
     if (streamingEl) removeTrackedEl(streamingEl); // au cas ou (arret/erreur en plein streaming)
     if (stoppedInfo) {
       removeLastTrackedEls(stoppedInfo.removedTurnCount);
-      inputEl.value = text;
-      statusEl.textContent = 'Génération arrêtée — corrige et renvoie.';
+      if (!continuation) inputEl.value = text;
+      statusEl.textContent = continuation ? 'Génération arrêtée.' : 'Génération arrêtée — corrige et renvoie.';
     } else if (errorMessage) {
       // Les bulles deja recues avant l'erreur restent affichees (elles correspondent a l'etat
       // reel de la session cote serveur) — seul le brouillon joueur, s'il n'a pas ete remplace,
       // doit disparaitre pour laisser le joueur corriger et renvoyer.
       if (!playerBubbleReplaced) removeTrackedEl(optimisticTurn);
-      inputEl.value = text;
-      statusEl.textContent = 'Erreur : ' + errorMessage + ' — corrige et renvoie.';
+      if (!continuation) inputEl.value = text;
+      statusEl.textContent = 'Erreur : ' + errorMessage + (continuation ? '' : ' — corrige et renvoie.');
     } else {
       statusEl.textContent = '';
       completed = true;
@@ -1175,8 +1194,8 @@ async function sendMessage(text) {
   } catch (err) {
     if (typingTurn) typingTurn.remove();
     if (!playerBubbleReplaced) removeTrackedEl(optimisticTurn);
-    inputEl.value = text;
-    statusEl.textContent = 'Erreur réseau : ' + err + ' — corrige et renvoie.';
+    if (!continuation) inputEl.value = text;
+    statusEl.textContent = 'Erreur réseau : ' + err + (continuation ? '' : ' — corrige et renvoie.');
   } finally {
     setControlsDisabled(false);
     inputEl.focus();
@@ -1352,6 +1371,7 @@ saveBtnEl.addEventListener('click', saveNow);
 restartBtnEl.addEventListener('click', restartSession);
 reloadScenarioBtnEl.addEventListener('click', reloadScenario);
 stopBtnEl.addEventListener('click', stopGeneration);
+continueBtnEl.addEventListener('click', () => { if (!generating) sendMessage('', true); });
 
 inputEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {

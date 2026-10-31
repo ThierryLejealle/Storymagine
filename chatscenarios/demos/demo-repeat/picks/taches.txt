@@ -1,0 +1,29 @@
+Arroser les plantes : Alex et Sam doivent arroser les cinq plantes de l'appartement sans en oublier une.
+-
+Sam rassemble l'arrosoir et montre les plantes du salon, de la cuisine et du balcon.
+-
+Dès qu'Alex et Sam ont arrosé toutes les plantes.
+---
+Ranger les livres : Alex et Sam doivent remettre dans la bibliothèque les livres éparpillés sur le canapé, classés par taille.
+-
+Sam pose une pile de livres sur la table basse et demande comment les ranger.
+-
+Dès que les livres sont rangés dans la bibliothèque.
+---
+Faire la vaisselle : Alex lave et Sam essuie les assiettes et les verres du petit-déjeuner.
+-
+Sam remplit l'évier d'eau chaude et tend une éponge à Alex.
+-
+Dès que toute la vaisselle est lavée et essuyée.
+---
+Plier le linge : Alex et Sam doivent plier les serviettes et les t-shirts propres sortis du séchoir.
+-
+Sam vide le panier de linge sur le lit et montre comment il plie les t-shirts.
+-
+Dès que le linge est plié et rangé.
+---
+Trier le courrier : Alex et Sam doivent séparer les lettres utiles des publicités accumulées sur la table de l'entrée.
+-
+Sam apporte une grande pile de courrier et un sac pour le papier à recycler.
+-
+Dès que le courrier est trié et que les publicités sont au recyclage.

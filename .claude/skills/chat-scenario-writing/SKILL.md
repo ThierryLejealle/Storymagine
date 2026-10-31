@@ -11,6 +11,8 @@ selon le fichier.
 
 ## 1. Les fichiers
 
+Un exemple minimal par mécanisme (pick, repeat, actes, PNJ, secret, activité, style…) : `chatscenarios/demos/` (`chat.bat`, choix 3). À compléter à chaque nouveau mécanisme.
+
 Pour démarrer un scénario : `init-chat.bat` crée le squelette (`scenario.txt` et une fiche par PNJ),
 chaque champ est une consigne entre parenthèses à remplacer.
 
@@ -21,7 +23,7 @@ chatscenarios/mon-scenario/
   characters/
     elena.txt        un fichier par PNJ, nom simple sans espace ni accent
   picks/
-    lieu.txt         optionnel, paragraphes séparés par `---` pour {pick random lieu} (voir plus bas)
+    lieu.txt         optionnel, paragraphes séparés par `---` pour {pick random lieu} ou {repeat order lieu} (voir plus bas)
 ```
 Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/guide-redaction-chat.md` §1).
 Ne jamais créer ni éditer à la main le dossier `run/` (partie en cours, sauvegardes, archives, logs :
@@ -89,6 +91,12 @@ Règles non négociables :
 6. `Joueur : X` en première ligne (défaut `Alex`).
 7. `scenario-N.txt` : numéros consécutifs, chaque fichier commence par un titre `# ...` de premier
    niveau.
+8. **Pas de synthèse de la suite avant les parties où elle se joue.** Sous un titre qui a des sous-parties
+   (`#` puis `##`, `##` puis `###`…), ne pas écrire « ce qui va se passer = … » : le texte du parent est
+   relu à chaque tour de chaque sous-partie par tous les PNJ, et le modèle ne comprend pas qu'il n'a pas le
+   droit d'utiliser ce qu'il a sous les yeux : il anticipe et saute des étapes. Un vrai plan des
+   personnages s'écrit comme un plan (« les personnages mettent en place le plan : … ») ; qu'un petit
+   modèle comprenne qu'il peut échouer reste à vérifier. Guide §7.1.
 
 ## 5. Le mécanisme `[NEXT ACT]`
 
@@ -138,11 +146,22 @@ distribué), `{pick 3 nom}` (3 différents), `{pick all nom}` (tous, dans l'ordr
 « Recommencer ». Sur une ligne `[...]`, les paragraphes doivent tenir sur une seule ligne. Exemple et
 détails : `chatscenarios/guide-redaction-chat.md` §2.6.
 
+### Répéter une séquence : `{repeat mode nom}`
+
+Un bloc `{repeat order|random [N] nom}` … `{end-repeat}` (chaque commande seule sur sa ligne) est un gabarit
+recopié une fois par paragraphe de `picks/nom.txt` (tout le fichier sans N). `{n}` = numéro de la copie,
+`{item}` = paragraphe entier, `{item1}`, `{item2}`… = morceaux d'un paragraphe, séparés par une ligne qui ne
+contient qu'un `-`. Tous les paragraphes doivent avoir autant de morceaux que le plus grand `{itemK}` du
+gabarit. Déplié une fois par partie, avant `pick`. Exemple : `chatscenarios/demos/demo-repeat/`. Détails :
+`chatscenarios/guide-redaction-chat.md` §2.6 bis.
+
 ### Style commun à tous les personnages : `style.txt`
 
 Fichier optionnel à la racine du scénario, donné à chaque personnage sous `STYLE ADVICE:`. Décrire la
-manière d'écrire (voix, rythme, ton), en positif et court (moins de 1 200 caractères), jamais des
-événements ni des commandes `{...}`. Absent ou vide : aucun effet. Guide §2.10.
+manière d'écrire (voix, rythme, ton), en positif et court (moins de 1 500 caractères), jamais des
+événements ni des commandes `{...}`. Absent ou vide : aucun effet. Une ligne rare s'écrit avec `{20%}`
+n'importe où dans la ligne : elle n'est donnée au modèle que dans 20 % des réponses (tirage à chaque
+réponse), sinon elle disparaît entière. Guide §2.10.
 
 ### Faire évoluer un personnage : `{delta-pnj public|secret nom : texte}`
 
@@ -150,6 +169,20 @@ Une ligne seule dans un acte ajoute une ligne à la fiche du personnage à parti
 `public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel objectif,
 découverte gardée pour soi). La visibilité est obligatoire. La ligne est retirée du texte de l'acte,
 donc un secret ne fuit pas. Détails : `chatscenarios/guide-redaction-chat.md` §2.8.
+
+### Qui parle dans une scène : `{npc-active|present|passive|absent noms}`, `{npc-reset}`
+
+Quatre niveaux d'activité par PNJ : **active** 😎 (parle à chaque échange), **present** 🙂 (défaut : répond
+si nommé), **passive** 🤨 (réaction brève occasionnelle, ne répond pas parce qu'on le nomme), **absent** 😴
+(ne parle jamais). Une ligne seule dans un titre fixe le niveau des PNJ nommés (séparés par des espaces) pour
+ce titre et dessous ; sans nom, la commande ne touche que les PNJ dont le niveau n'est pas encore
+explicite (jamais nommés). `{npc-active *}` (idem autres niveaux) vise tous les PNJ en nommage explicite ;
+un nom du même titre l'emporte, `*` seul et une fois par titre. Le plus profond gagne ; `{npc-reset}`
+remet tout le monde en present, explicite.
+Interdit dans la prémisse ; nom inconnu, PNJ nommé deux fois dans un titre ou scène sans personne = erreur.
+Le joueur peut forcer un niveau en cliquant la vignette (point rouge). Guide §2.11 et §4.1.
+Bouton **▶ Continue** (joueur) : un tour de PNJ sans message du joueur, prompt habituel, sans interjection
+(guide §4.9).
 
 Outils de diagnostic en jeu : 🔍 (analyse où en est la condition, sans écrire dans l'historique),
 ❓ (pistes : quels passages du prompt correspondent à la dernière réponse, lesquels de ses éléments

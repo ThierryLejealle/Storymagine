@@ -44,6 +44,17 @@ public interface ChatService {
                                 ExchangeProgressListener listener);
 
     /**
+     * A round without any player message, as if the player had answered nothing : the usual
+     * speaker selection (active Npcs, those named in the last replies, continuity, random pick) runs
+     * with an empty message, no interjection is rolled, and nothing is appended for the player.
+     * The prompt is the usual one ; its last line is simply the previous Npc reply. ChatTurnResult
+     * has a null playerTurn. Retry and undo are unchanged : they go back to the last real player
+     * message, so a continuation counts as part of the round that follows it.
+     * Throws IllegalStateException when nothing has been said yet.
+     */
+    ChatTurnResult continueScene(Path chatScenariosRoot, ChatSession session, ExchangeProgressListener listener);
+
+    /**
      * Regenerates the last exchange's reply, keeping the same player line and context. Requires
      * the last turn to be an LLM reply that did NOT itself trigger an act advance — retrying past
      * an act transition isn't supported (unwinding the act state cleanly isn't worth the
@@ -138,17 +149,11 @@ public interface ChatService {
     void deleteSavePoint(Path chatScenariosRoot, ChatScenario scenario, String saveId);
 
     /**
-     * Mutes/unmutes one Cast member (a scene "vignette"). Returns false (no-op) if this would mute
-     * the last present Npc, or if the Npc was already in the requested state — see ChatSession.
+     * Steps one Cast member (a scene "vignette" click) to the next forced activity level, then back
+     * to the scenario's own level — see ChatSession.cycleActivity. Returns false (no-op) for an
+     * unknown Npc.
      */
-    boolean setNpcPresent(Path chatScenariosRoot, ChatSession session, String npcId, boolean present);
-
-    /**
-     * Opts one Cast member in/out of unprompted interjections (see SpeakerSelector.rollInterjectors,
-     * ChatSession.setInterjecting). Returns false (no-op) if the Npc was already in the requested
-     * state — unlike setNpcPresent, there is no "keep at least one" guard.
-     */
-    boolean setNpcInterjecting(Path chatScenariosRoot, ChatSession session, String npcId, boolean interjecting);
+    boolean cycleNpcActivity(Path chatScenariosRoot, ChatSession session, String npcId);
 
     /**
      * Re-reads scenario.txt and every character .txt from disk into session, in place — for picking

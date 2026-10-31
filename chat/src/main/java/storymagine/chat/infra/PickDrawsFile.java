@@ -51,7 +51,7 @@ final class PickDrawsFile {
                     paragraphs.add(current.toString().strip());
                     draws.add(new PickDraw(mode, tag, paragraphs));
                 }
-                mode = PickMode.parse(header.group(1));
+                mode = PickMode.parseRecorded(header.group(1));
                 tag = new PickTag(header.group(2));
                 paragraphs = new ArrayList<>();
                 current.setLength(0);

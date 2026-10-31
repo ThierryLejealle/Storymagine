@@ -15,7 +15,7 @@ package storymagine.chat.coeur.domaine.session;
  * loops/mirroring in a long RP session, worth exposing on its own. topP is NOT exposed as its own
  * dial in the settings panel (redundant with minP, same job of truncating the tail — confusing to
  * tune both) : it only ever changes via a preset (see chat.html), never by direct user input.
- * interjectionChance is the independent per-Npc probability (0-1) used by
+ * interjectionChance is the total chance (0-1, shared among the candidates) used by
  * SpeakerSelector.rollInterjectors — null falls back to RoleplayNarrator.INTERJECTION_CHANCE_DEFAULT.
  * contextWindow overrides Ollama's num_ctx (see GenerationOptions.contextWindow) — unlike the other
  * fields here, this is not a lightweight per-call tweak : the adapter adopts it as its new running

@@ -18,7 +18,9 @@ import java.util.stream.IntStream;
  * library "name" (see PickMode : random, unique, all, or a number N). Whatever the mode, what a
  * command hands out counts as "already drawn" for a later "unique" on the same library, which fails
  * when nothing is left. Several paragraphs are joined by a blank line. A drawn paragraph is inserted
- * as is : a command inside it is not resolved. Pure : same library and same draws, same result.
+ * as is : a command inside it is not resolved. The "{repeat}" blocks are unfolded first (see
+ * RepeatExpander), so a "{pick}" written in a block is drawn once per copy. Pure : same library and
+ * same draws, same result.
  */
 public final class PickResolver {
 
@@ -36,7 +38,7 @@ public final class PickResolver {
     }
 
     public static boolean containsTag(String text) {
-        return COMMAND.matcher(text).find();
+        return COMMAND.matcher(text).find() || RepeatExpander.containsTag(text);
     }
 
     /**
@@ -49,10 +51,11 @@ public final class PickResolver {
 
     /** Same as resolveAll, and keeps the draws made, in the order of the commands. */
     public PickResolution resolve(List<String> texts) {
+        RepeatExpansion unfolded = new RepeatExpander(library, randomness).expand(texts);
         Map<PickTag, Set<Integer>> drawn = new HashMap<>();
-        List<PickDraw> draws = new ArrayList<>();
+        List<PickDraw> draws = new ArrayList<>(unfolded.draws());
         List<String> resolved = new ArrayList<>();
-        for (String text : texts) {
+        for (String text : unfolded.texts()) {
             resolved.add(COMMAND.matcher(text).replaceAll(match -> Matcher.quoteReplacement(draw(match, drawn, draws))));
         }
         return new PickResolution(resolved, new PickDraws(draws));
@@ -99,13 +102,7 @@ public final class PickResolver {
         }
     }
 
-    /** count different candidates, each drawn at random among the ones left. */
     private List<Integer> drawFrom(List<Integer> candidates, int count) {
-        List<Integer> left = new ArrayList<>(candidates);
-        List<Integer> chosen = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            chosen.add(left.remove(randomness.nextInt(left.size())));
-        }
-        return chosen;
+        return RandomSelection.draw(randomness, candidates, count);
     }
 }

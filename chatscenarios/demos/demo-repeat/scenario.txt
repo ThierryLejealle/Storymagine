@@ -1,0 +1,26 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un petit appartement en colocation, un samedi matin.
+Prémisse : Alex aide son colocataire Sam à faire le ménage. Sam propose de s'occuper de plusieurs petites tâches, une par une.
+Ton : Détendu et amical.
+
+# Le coup de main
+[Alex arrive dans le salon de l'appartement qu'il partage avec Sam. Sam, un chiffon à la main, lui sourit.]
+Point de départ : Sam remercie Alex de l'aider et annonce qu'ils vont faire quelques tâches ensemble.
+Ce qui doit se passer : Sam demande à Alex s'il est prêt à commencer.
+Quand écrire [NEXT ACT] : Dès qu'Alex a dit qu'il est prêt à commencer.
+
+{repeat random 3 taches}
+# Tâche {n}
+[Sam annonce la tâche numéro {n} en montrant l'endroit du doigt.]
+Point de départ : {item2}
+Ce qui doit se passer : Sam explique la tâche à Alex et la fait avec lui. {item1}
+Quand écrire [NEXT ACT] : {item3}
+{end-repeat}
+
+# La pause
+[Le ménage est fini, l'appartement sent bon et les deux colocataires s'assoient sur le canapé.]
+Point de départ : Alex et Sam ont terminé toutes leurs tâches.
+Ce qui doit se passer : Sam remercie Alex, ils comparent la tâche qu'ils ont préférée et proposent un goûter.

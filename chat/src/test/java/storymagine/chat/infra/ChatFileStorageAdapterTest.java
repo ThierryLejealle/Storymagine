@@ -2,6 +2,9 @@ package storymagine.chat.infra;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import storymagine.chat.coeur.domaine.activity.ActivitySource;
+import storymagine.chat.coeur.domaine.activity.ForcedActivity;
+import storymagine.chat.coeur.domaine.activity.NpcActivity;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
@@ -14,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -639,7 +643,7 @@ class ChatFileStorageAdapterTest {
         writeScenarioFiles(root, "inn", "sheet", "premise");
         writeCharacter(root, "inn", "marcus.txt", "# Marcus\nsoldier");
         ChatScenario scenario = adapter.loadScenario(root, "inn");
-        ChatSession session = new ChatSession(scenario, List.of(), "", 0, Set.of("marcus"));
+        ChatSession session = new ChatSession(scenario, List.of(), "", 0, ChatSession.forcedAbsentFrom(scenario, Set.of("marcus")));
 
         adapter.saveSession(root, session);
         ChatSession reloaded = adapter.loadSession(root, scenario);
@@ -659,16 +663,31 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
-    void saveThenLoadRoundTripsInterjectingNpcIds(@TempDir Path root) throws IOException {
+    void saveThenLoadRoundTripsTheForcedActivityLevels(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn", "sheet", "premise");
         writeCharacter(root, "inn", "marcus.txt", "# Marcus\nsoldier");
         ChatScenario scenario = adapter.loadScenario(root, "inn");
-        ChatSession session = new ChatSession(scenario, List.of(), "", 0, Set.of("character", "marcus"), Set.of("marcus"));
+        ChatSession session = new ChatSession(scenario, List.of(), "", 0,
+            Map.of("marcus", new ForcedActivity(NpcActivity.ACTIVE, "")));
 
         adapter.saveSession(root, session);
         ChatSession reloaded = adapter.loadSession(root, scenario);
 
-        assertEquals(Set.of("marcus"), reloaded.interjectingNpcIds());
+        assertEquals(NpcActivity.ACTIVE, reloaded.activity().levelOf("marcus"));
+        assertEquals(ActivitySource.FORCED, reloaded.activity().stateOf("marcus").source());
+    }
+
+    @Test
+    void aStateFileWrittenBeforeTheActivityLevelsReopensWithTheSamePresence(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        writeCharacter(root, "inn", "marcus.txt", "# Marcus\nsoldier");
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        Files.createDirectories(root.resolve("inn/run/current"));
+        Files.writeString(root.resolve("inn/run/current/state.txt"), "present=marcus\ninterjecting=marcus\n", StandardCharsets.UTF_8);
+
+        ChatSession reloaded = adapter.loadSession(root, scenario);
+
+        assertEquals(Set.of("marcus"), reloaded.presentNpcIds());
     }
 
     @Test

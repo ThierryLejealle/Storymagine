@@ -41,6 +41,25 @@ class ScenarioValidatorTest {
     }
 
     @Test
+    void aRepeatBlockWithItsZonesIsNotReportedAsUnknownCommands() {
+        ScenarioReport report = check("Monde.\n{repeat order lieu}\n# Etape {n}\nLieu : {item}\n{end-repeat}\n");
+
+        assertTrue(report.issues().isEmpty(), report.issues().toString());
+    }
+
+    @Test
+    void repeatProblemsNameTheFileAndTheLineInsideIt() {
+        ScenarioReport report = check("Monde.\n{repeat order lieu}\nLieu : {item2}\n{end-repeat}\n{n}\n");
+
+        // The first problem of the file stops the unfolding : one error, pointing at the line.
+        assertEquals(1, report.errors().size());
+        assertEquals("scenario.txt", report.errors().get(0).where());
+        assertTrue(report.errors().get(0).message().startsWith("ligne 2"), report.errors().get(0).message());
+        assertTrue(check("{repeat random 9 lieu}\n{item}\n{end-repeat}").hasErrors());
+        assertTrue(check("{repeat order inconnu}\n{item}\n{end-repeat}").hasErrors());
+    }
+
+    @Test
     void everyProblemIsListedWithItsFileAndLine() {
         ScenarioReport report = check("Monde.\n[PICK: lieu]\n{pick lieu}\n{pick random inconnu}\n{pick 9 lieu}\n"
             + "{npc-starts Zorglub}\nTexte {npc-starts} au milieu\n{delta-pnj Elena : sans visibilite}\n"
@@ -80,6 +99,17 @@ class ScenarioValidatorTest {
         assertTrue(ScenarioValidator.checkStyleText("Phrases courtes.").issues().isEmpty());
         assertTrue(ScenarioValidator.checkStyleText("Ton : {pick random ton}").hasErrors());
         assertTrue(ScenarioValidator.checkStyleText("[NPC STARTS]").hasErrors());
+    }
+
+    @Test
+    void aChanceMarkerIsAcceptedAnywhereInAStyleLineButMustBeWellFormed() {
+        assertTrue(ScenarioValidator.checkStyleText("- {20%} Un detail sensoriel.").issues().isEmpty());
+        assertTrue(ScenarioValidator.checkStyleText("Un detail sensoriel. {20%}").issues().isEmpty());
+        assertTrue(ScenarioValidator.checkStyleText("{0%} Jamais.").hasErrors(), "0 % : ligne inutile");
+        assertTrue(ScenarioValidator.checkStyleText("{150%} Trop.").hasErrors());
+        assertTrue(ScenarioValidator.checkStyleText("{20%} Un {30%} detail.").hasErrors(), "un seul marqueur par ligne");
+        assertTrue(ScenarioValidator.checkStyleText("- {20%}").hasErrors(), "rien a garder ou ecarter");
+        assertTrue(ScenarioValidator.checkStyleText("{20} Un detail.").hasErrors(), "il manque le %");
     }
 
     @Test

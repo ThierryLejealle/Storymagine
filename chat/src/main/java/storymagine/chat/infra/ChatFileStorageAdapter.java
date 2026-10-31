@@ -7,6 +7,7 @@ import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
+import storymagine.chat.coeur.domaine.activity.ForcedActivity;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.validation.ScenarioIssue;
 import storymagine.chat.coeur.domaine.validation.ScenarioReport;
@@ -35,7 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -356,7 +357,14 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         RunState state = readState(stateFile);
         if (state.act() == null) return atLast;
         return ChatSession.restored(scenario, atLast.summary(), atLast.firstTurnNumber(), atLast.numberedTurns(),
-            state.act(), atLast.presentNpcIds(), atLast.interjectingNpcIds());
+            state.act(), forcedOf(state, scenario));
+    }
+
+    /** The levels the player forced, from state.txt — or, for a file written before the activity levels, its "present" list. */
+    private static Map<String, ForcedActivity> forcedOf(RunState state, ChatScenario scenario) {
+        if (state.forced() != null) return state.forced();
+        if (state.present() != null) return ChatSession.forcedAbsentFrom(scenario, state.present());
+        return Map.of();
     }
 
     @Override
@@ -390,9 +398,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
             : (window.isEmpty() ? readTurn(turnsDir, n) : window.get(window.size() - 1)).act();
 
         RunState state = readState(RunLayout.stateFile(root, scenario.name()));
-        Set<String> present = state.present() != null ? state.present() : ChatSession.allPresent(scenario);
-        Set<String> interjecting = state.interjecting() != null ? state.interjecting() : ChatSession.allPresent(scenario);
-        return ChatSession.restored(scenario, summary, TurnNumber.of(windowStart), window, act, present, interjecting);
+        return ChatSession.restored(scenario, summary, TurnNumber.of(windowStart), window, act, forcedOf(state, scenario));
     }
 
     private static NumberedTurn readTurn(Path turnsDir, int number) {
@@ -416,7 +422,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     }
 
     private static RunState readState(Path stateFile) {
-        return Files.isRegularFile(stateFile) ? RunState.parse(readText(stateFile)) : new RunState(null, null, null);
+        return Files.isRegularFile(stateFile) ? RunState.parse(readText(stateFile)) : new RunState(null, null, null, null);
     }
 
     @Override
@@ -433,7 +439,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
                 TurnFileCodec.format(numbered));
         }
         writeAtomically(RunLayout.stateFile(chatScenariosRoot, name),
-            new RunState(session.currentAct(), session.presentNpcIds(), session.interjectingNpcIds()).format());
+            new RunState(session.currentAct(), null, null, session.forcedActivities()).format());
     }
 
     @Override

@@ -1,0 +1,22 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un immeuble ancien avec un grand palier, un dimanche matin.
+Prémisse : Alex discute avec ses voisins Ana, Ben et Cléo sur le palier de l'immeuble.
+Ton : Convivial et tranquille.
+
+# Les premiers voisins
+{npc-active Ana}
+{npc-passive Ben}
+{npc-absent Cléo}
+[Alex ouvre sa porte et trouve Ana sur le palier, avec Ben qui arrose une plante un peu plus loin. Cléo est partie faire des courses.]
+Point de départ : Ana discute avec Alex. Ben écoute de loin en arrosant sa plante.
+Ce qui doit se passer : Ana demande des nouvelles d'Alex.
+Quand écrire [NEXT ACT] : Dès qu'Alex a dit au revoir à Ana ou que Cléo est revenue.
+
+# Tout le monde est là
+{npc-reset}
+[Cléo remonte l'escalier avec ses sacs de courses et rejoint Ana, Ben et Alex sur le palier.]
+Point de départ : Les quatre voisins sont sur le palier.
+Ce qui doit se passer : Tout le monde bavarde.

@@ -1,0 +1,12 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un petit café de quartier, un mardi matin.
+Prémisse : Alex retrouve deux amis, Iris et Théo, à la terrasse d'un café. Ils bavardent en buvant leur boisson.
+Ton : Décontracté et joyeux.
+
+# Au café
+[Alex s'installe à la table de la terrasse, où Iris et Théo l'attendent avec leurs tasses.]
+Point de départ : Les trois amis se disent bonjour et commandent à boire.
+Ce qui doit se passer : Ils parlent de leurs projets de la semaine.

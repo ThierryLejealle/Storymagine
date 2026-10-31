@@ -1,7 +1,11 @@
 package storymagine.chat.coeur.domaine.validation;
 
+import storymagine.chat.coeur.domaine.activity.ActivityDirective;
+import storymagine.chat.coeur.domaine.activity.ActivityDirectiveMarker;
+import storymagine.chat.coeur.domaine.activity.ActivityResolver;
 import storymagine.chat.coeur.domaine.pick.PickLibrary;
 import storymagine.chat.coeur.domaine.pick.PickResolver;
+import storymagine.chat.coeur.domaine.pick.RepeatExpander;
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
 import storymagine.chat.coeur.domaine.scenario.CharacterDeltaMarker;
@@ -12,6 +16,7 @@ import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
+import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -31,13 +36,17 @@ import java.util.regex.Pattern;
  */
 public final class ScenarioValidator {
 
-    private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "delta-pnj");
+    private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset");
+    private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "delta-pnj", "npc-active", "npc-present",
+        "npc-passive", "npc-absent", "npc-reset", "repeat", "end-repeat", "n", "item");
+    /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
+    private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
     private static final Pattern COMMAND_START = Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
     private static final Pattern COMMAND_TEXT = Pattern.compile("\\{[^}]*}");
 
-    private static final String STYLE_FILE = "style.txt";
+    public static final String STYLE_FILE = "style.txt";
     /** Beyond this many characters the style advice starts to weigh on a small model's context. */
-    static final int STYLE_WARNING_LENGTH = 1200;
+    static final int STYLE_WARNING_LENGTH = 1500;
 
     private ScenarioValidator() {}
 
@@ -50,8 +59,20 @@ public final class ScenarioValidator {
                 checkLine(source.fileName() + ":" + (i + 1), lines[i], cast, library, issues);
             }
         }
+        checkRepeatBlocks(sources, library, issues);
         if (issues.isEmpty()) checkUniqueDoesNotRunOut(sources, library, issues);
         return new ScenarioReport(issues);
+    }
+
+    /** Each file on its own, to name the file : blocks closed, zones inside a block, library long enough, pieces count right. */
+    private static void checkRepeatBlocks(List<ScenarioSource> sources, PickLibrary library, List<ScenarioIssue> issues) {
+        for (ScenarioSource source : sources) {
+            try {
+                new RepeatExpander(library, bound -> 0).expand(List.of(source.text()));
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                issues.add(ScenarioIssue.error(source.fileName(), e.getMessage()));
+            }
+        }
     }
 
     private static void checkLine(String where, String line, Cast cast, PickLibrary library, List<ScenarioIssue> issues) {
@@ -66,11 +87,16 @@ public final class ScenarioValidator {
             Matcher text = COMMAND_TEXT.matcher(line.substring(start.start()));
             String command = text.find() ? text.group() : line.substring(start.start());
             if (!COMMANDS.contains(name)) {
-                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, npc-starts, delta-pnj)"));
+                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, npc-starts, delta-pnj, "
+                    + "npc-active, npc-present, npc-passive, npc-absent, npc-reset)"));
+            } else if (REPEAT_COMMANDS.contains(name)) {
+                continue;
             } else if (name.equals("pick")) {
                 checkPick(where, command, library, issues);
             } else if (name.equals("npc-starts")) {
                 checkNpcStarts(where, line, cast, issues);
+            } else if (ACTIVITY_COMMANDS.contains(name)) {
+                checkActivity(where, line, cast, issues);
             } else {
                 checkDelta(where, line, cast, issues);
             }
@@ -91,6 +117,21 @@ public final class ScenarioValidator {
             issues.add(ScenarioIssue.error(where, "{npc-starts} doit etre seul sur sa ligne : {npc-starts} ou {npc-starts Nom}"));
         } else if (opening.isNamed() && cast.findByName(opening.npcName()).isEmpty()) {
             issues.add(ScenarioIssue.error(where, "{npc-starts " + opening.npcName() + "} : aucun personnage de ce nom dans characters/"));
+        }
+    }
+
+    private static void checkActivity(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+        try {
+            List<ActivityDirective> directives = ActivityDirectiveMarker.extract(line + "\n").directives();
+            if (directives.isEmpty()) {
+                issues.add(ScenarioIssue.error(where, "une commande d'activite doit etre seule sur sa ligne : "
+                    + "{npc-active|present|passive|absent noms} ou {npc-reset}"));
+            }
+            for (ActivityDirective directive : directives) {
+                if (!directive.isReset() && !directive.isUnnamed() && !directive.isAll()) ActivityResolver.resolveNames(cast, directive.namesText());
+            }
+        } catch (IllegalArgumentException e) {
+            issues.add(ScenarioIssue.error(where, e.getMessage()));
         }
     }
 
@@ -123,12 +164,38 @@ public final class ScenarioValidator {
         } catch (IllegalArgumentException e) {
             issues.add(ScenarioIssue.error(STYLE_FILE, e.getMessage()));
         }
+        checkChanceMarkers(text == null ? "" : text, issues);
         Matcher command = COMMAND_START.matcher(text == null ? "" : text);
         if (command.find()) {
             issues.add(ScenarioIssue.error(STYLE_FILE, "les commandes entre accolades ne sont pas prises en charge dans "
                 + STYLE_FILE + " (" + command.group() + " ...) : ecrire le style en texte simple"));
         }
         return new ScenarioReport(issues);
+    }
+
+    /** {N%} chance markers of style.txt : one per line, 1 to 100, with a text to keep or drop. */
+    private static void checkChanceMarkers(String text, List<ScenarioIssue> issues) {
+        for (String line : text.lines().toList()) {
+            Matcher marker = ScenarioStyle.CHANCE_MARKER.matcher(line);
+            int count = 0;
+            while (marker.find()) {
+                count++;
+                int percent = Integer.parseInt(marker.group(1));
+                if (percent < 1 || percent > 100) {
+                    issues.add(ScenarioIssue.error(STYLE_FILE, marker.group() + " : le pourcentage doit etre entre 1 et 100"));
+                }
+            }
+            if (count > 1) {
+                issues.add(ScenarioIssue.error(STYLE_FILE, "plusieurs marqueurs de chance sur la meme ligne : " + line.strip()));
+            }
+            String rest = ScenarioStyle.CHANCE_MARKER.matcher(line).replaceAll("");
+            if (count > 0 && rest.replaceAll("[\\s\\-*]", "").isEmpty()) {
+                issues.add(ScenarioIssue.error(STYLE_FILE, "marqueur de chance sans texte sur sa ligne : " + line.strip()));
+            }
+            if (Pattern.compile("\\{\\s*\\d").matcher(rest).find()) {
+                issues.add(ScenarioIssue.error(STYLE_FILE, "marqueur de chance invalide (attendu {20%}) : " + line.strip()));
+            }
+        }
     }
 
     /** Warnings about the parsed scenario. */

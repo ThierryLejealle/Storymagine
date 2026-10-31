@@ -1,0 +1,12 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un immeuble calme, un jeudi soir.
+Prémisse : Alex croise Bernard, son voisin, sur le palier de l'immeuble.
+Ton : Léger, un peu mystérieux.
+
+# Sur le palier
+[Alex sort de l'ascenseur et rencontre Bernard sur le palier, un grand carton dans les bras.]
+Point de départ : Bernard transporte un carton jusqu'à son appartement.
+Ce qui doit se passer : Alex et Bernard bavardent. Bernard reste discret sur le contenu du carton.

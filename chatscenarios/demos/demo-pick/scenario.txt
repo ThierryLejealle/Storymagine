@@ -1,0 +1,13 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Une cuisine chaleureuse, un mercredi après-midi.
+Prémisse : Alex goûte chez Lou, sa voisine. Lou a préparé une boisson : {pick random boisson}
+Ton : Doux et simple.
+
+# Le goûter
+[Alex s'assoit à la table de la cuisine de Lou. Au menu du goûter : {pick unique gateau}]
+Point de départ : Il reste sur la table une deuxième part, d'un autre gâteau : {pick unique gateau}
+Ce qui doit se passer : Lou propose aussi à Alex deux gourmandises : {pick 2 gourmandise}
+Règles de la maison de Lou : {pick all regles}

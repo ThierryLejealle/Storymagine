@@ -18,6 +18,7 @@ generated/
 # Parties de chat (etat de jeu, sauvegardes, archives, logs, rapports : rien de tout cela n'est du
 # contenu auteur) : tout vit dans chatscenarios/{scenario}/run/
 chatscenarios/*/run/
+chatscenarios/demos/*/run/
 
 # OS
 Thumbs.db

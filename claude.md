@@ -6,6 +6,7 @@ L'outil devra s'adapter aux contraintes des petits modèles, notamment un contex
 
 # Style de codage
 Toujours enregistrer les fichiers texte en UTF-8 sans BOM. Ne jamais utiliser UTF-8 with BOM.
+Fins de ligne "linux style" (LF) pour tout code et texte généré (Java, md, html, txt…), afin que git n'ait pas à convertir les CRLF (avertissements "LF will be replaced by CRLF"). Quand on modifie un fichier existant, conserver ses fins de ligne. Seule exception : les `.bat`/`.cmd`, qui restent en CRLF (voir CLAUDE.md global).
 Le projet est en Anglais.
 Le projet est codé en Java, en architecture hexagonale : privilégier un découpage par modules fonctionnels et des POJO
   - Exemple : un module "commun" (pour l'adapteur ollama), un module "testeur" pour tester les LLM, un module redacteur pour la fonctionnalité de rédaction d'histoire, ..

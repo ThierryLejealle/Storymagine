@@ -1,0 +1,13 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Une cuisine lumineuse, un dimanche midi.
+Prémisse : Alex prépare une salade de fruits avec son grand-père Léo. Les trois étapes de la recette sont chacune dans un fichier.
+Ton : Tendre et simple.
+
+# Préparer les fruits
+[Alex entre dans la cuisine, où Léo sort des pommes, des poires et des bananes du panier.]
+Point de départ : Léo et Alex posent les fruits sur la table.
+Ce qui doit se passer : Ils épluchent et coupent les fruits ensemble.
+Quand écrire [NEXT ACT] : Dès que tous les fruits sont coupés.

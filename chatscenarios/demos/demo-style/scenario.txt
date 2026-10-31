@@ -1,0 +1,12 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un banc devant la mairie, un matin nuageux.
+Prémisse : Alex discute de la météo avec Maya, qu'il croise souvent sur ce banc.
+Ton : Paisible.
+
+# La météo
+[Alex s'assoit à côté de Maya sur le banc, en regardant le ciel gris.]
+Point de départ : Maya et Alex parlent du temps qu'il fait.
+Ce qui doit se passer : Ils se demandent s'il va pleuvoir.

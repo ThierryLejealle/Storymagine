@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -569,7 +570,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
         service.sendMessage(root, session, "Hello Elena.");
-        service.setNpcPresent(root, session, "marcus", false);
+        mute(service, root, session, "marcus");
 
         service.rollbackTo(root, session, TurnNumber.of(1));
 
@@ -905,7 +906,7 @@ class ChatServiceImplTest {
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
         service.sendMessage(root, session, "Hello there.");
-        service.setNpcPresent(root, session, "marcus", false);
+        mute(service, root, session, "marcus");
         assertEquals(Set.of("elena"), session.presentNpcIds());
 
         service.restartSession(root, session);
@@ -965,9 +966,9 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        // sans ca, marcus (present, eligible par defaut) tirerait sa chance d'interjection —
+        // sans ca, marcus (present) tirerait sa chance d'interjection —
         // ce test porte sur SpeakerSelector.select() seul, pas sur rollInterjectors (teste a part).
-        session.setInterjecting("marcus", false);
+        session.updateGenerationSettings(neverInterject());
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
@@ -989,7 +990,7 @@ class ChatServiceImplTest {
             new ExchangeProgressListener() {
                 @Override public void onPartialReply(String npcId, PartialGeneration partial) {}
                 @Override public void onTurnReady(ChatTurn turn) {
-                    if ("elena".equals(turn.npcId())) session.setPresent("marcus", false);
+                    if ("elena".equals(turn.npcId())) muteInSession(session, "marcus");
                 }
             });
 
@@ -1013,6 +1014,41 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void anActiveNpcRepliesAtEveryExchangeEvenWhenSomeoneElseIsNamed(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night.\n\n# Un\nElena and Marcus are at the inn.\n{npc-active Marcus}\n",
+            StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+
+        ChatTurnResult first = service.sendMessage(root, session, "Hello there.");
+        ChatTurnResult second = service.sendMessage(root, session, "Elena, what do you make of this?");
+
+        assertEquals(List.of("marcus"), first.replyTurns().stream().map(ChatTurn::npcId).toList(),
+            "marcus est actif, personne n'est nomme : il parle seul");
+        assertEquals(List.of("elena", "marcus"), second.replyTurns().stream().map(ChatTurn::npcId).toList(),
+            "elena est nommee, puis l'actif marcus parle aussi");
+    }
+
+    @Test
+    void anAbsentNpcOfTheScenarioNeverSpeaksAndAClickBringsItBack(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night.\n\n# Un\nElena is at the inn.\n{npc-absent Marcus}\n",
+            StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        ChatTurnResult before = service.sendMessage(root, session, "Hello there.");
+        service.cycleNpcActivity(root, session, "marcus"); // absent (scenario) -> actif (force)
+        ChatTurnResult after = service.sendMessage(root, session, "Hello again.");
+
+        assertEquals(List.of("elena"), before.replyTurns().stream().map(ChatTurn::npcId).toList());
+        assertTrue(after.replyTurns().stream().anyMatch(t -> "marcus".equals(t.npcId())), "marcus force actif repond");
+    }
+
+    @Test
     void withNoMentionBothPresentNpcsCanReplyViaInterjectionAtCertainChance(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         StubModelCallPort roleplayLlm = new StubModelCallPort(32_768, "grunts and nods slowly", 0);
@@ -1021,7 +1057,7 @@ class ChatServiceImplTest {
             new NpcMindStateAnalyst(roleplayLlm), LogPort.NOOP, new Random(1));
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
+        session.updateGenerationSettings(alwaysInterject());
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
@@ -1037,7 +1073,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.setInterjecting("marcus", false); // isole select() : pas d'interjection ici
+        session.updateGenerationSettings(neverInterject()); // isole select() : pas d'interjection ici
         service.sendMessage(root, session, "Elena, what do you make of this?"); // elena seule a parle
 
         ChatTurnResult result = service.sendMessage(root, session, "Et après ?"); // personne vise
@@ -1052,12 +1088,198 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        service.setNpcPresent(root, session, "marcus", false);
+        mute(service, root, session, "marcus");
 
         ChatTurnResult result = service.sendMessage(root, session, "Hello there.");
 
         assertEquals(1, result.replyTurns().size());
         assertEquals("elena", result.replyTurns().get(0).npcId());
+    }
+
+    // ── continueScene : un tour de PNJ sans message du joueur ──────────────────────────────────────
+
+    @Test
+    void continueScenePlaysARoundWithoutAnyPlayerTurn(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+        service.sendMessage(root, session, "Elena, what do you make of this?");
+        int turnsBefore = session.turns().size();
+        session.updateGenerationSettings(alwaysInterject()); // meme avec une chance certaine : pas d'interjection ici
+
+        ChatTurnResult result = service.continueScene(root, session, ExchangeProgressListener.NOOP);
+
+        assertEquals(null, result.playerTurn());
+        assertEquals(1, result.replyTurns().size(), "un seul PNJ principal, jamais d'interjecteur");
+        assertEquals(turnsBefore + 1, session.turns().size());
+        assertEquals(ChatTurn.Speaker.LLM, session.turns().get(session.turns().size() - 1).speaker());
+        assertEquals(result.replyTurns(), result.newTurns(), "rien d'autre a ajouter cote client");
+    }
+
+    @Test
+    void continueSceneOnAnActiveNpcMakesItSpeakAndNobodyElse(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+        service.sendMessage(root, session, "Hello there.");
+        // present -> passive -> absent -> actif (3 clics, voir mute())
+        for (int click = 0; click < 3; click++) service.cycleNpcActivity(root, session, "marcus");
+        assertEquals(storymagine.chat.coeur.domaine.activity.NpcActivity.ACTIVE, session.activity().levelOf("marcus"));
+
+        ChatTurnResult result = service.continueScene(root, session, ExchangeProgressListener.NOOP);
+
+        assertTrue(result.replyTurns().stream().anyMatch(t -> "marcus".equals(t.npcId())), "l'actif parle toujours");
+    }
+
+    @Test
+    void continueSceneBeforeAnyoneHasSpokenIsRefused(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+
+        assertThrows(IllegalStateException.class,
+            () -> service.continueScene(root, session, ExchangeProgressListener.NOOP));
+    }
+
+    @Test
+    void retryAfterAContinuationGoesBackToTheLastRealPlayerMessage(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+        service.sendMessage(root, session, "Elena, hello.");
+        service.continueScene(root, session, ExchangeProgressListener.NOOP);
+        int replyTurnsBefore = session.turns().size() - 1; // tout sauf le message du joueur
+
+        ChatTurnResult retried = service.retry(root, session);
+
+        assertEquals(replyTurnsBefore, retried.replacedTurnCount(), "le tour et sa continuation sont refaits ensemble");
+        assertEquals(ChatTurn.Speaker.PLAYER, session.turns().get(0).speaker());
+    }
+
+    @Test
+    void theChanceMarkersOfTheStyleNeverReachTheModelAndEachLineIsDrawn(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/style.txt"), """
+            Phrases courtes.
+            - {20%} : un petit geste inconscient et anodin
+            - {100%} : voix douce
+            """, StandardCharsets.UTF_8);
+        List<String> systemPrompts = new ArrayList<>();
+        ModelCallPort capturing = new ModelCallPort() {
+            @Override public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+                systemPrompts.add(systemPrompt);
+                return new LlmResult("grunts and nods slowly", 0, 0, 0, "");
+            }
+            @Override public int contextWindow() { return 32_768; }
+        };
+        StubModelCallPort other = new StubModelCallPort(32_768, "FOLDED", 0);
+        Random drawsAt99Percent = new Random(1) { @Override public double nextDouble() { return 0.999; } };
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(capturing),
+            new ChatSummarizer(other), new NextActReadinessAnalyst(other), new NpcMindStateAnalyst(other),
+            LogPort.NOOP, drawsAt99Percent);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+
+        service.sendMessage(root, session, "Elena, what do you make of this?");
+
+        String system = systemPrompts.get(0);
+        assertFalse(system.contains("%"), system);
+        assertFalse(system.contains("{"), system);
+        assertFalse(system.contains("petit geste"), "tirage a 99.9 % : la ligne a 20 % disparait");
+        assertTrue(system.contains("Phrases courtes."), system);
+        assertTrue(system.contains("- : voix douce"), "la ligne a 100 % reste, sans son marqueur : " + system);
+        // le debug 🐞 montre ce que le modele a vraiment recu, pas le fichier
+        assertEquals("Phrases courtes.\n- : voix douce", service.scenarioPrompt(session).styleReceived().text());
+        assertTrue(service.scenarioPrompt(session).style().contains("{20%}"), "le fichier, lui, garde ses marqueurs");
+    }
+
+    @Test
+    void theDebugViewDoesNotWarnAboutTheLengthOfTheStyleFile(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/style.txt"),
+            "Phrases courtes.\n- {10%} " + "x".repeat(2_000) + "\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+
+        assertTrue(service.scenarioWarnings(scenario).stream().anyMatch(w -> w.contains("style.txt")),
+            "le chargement et la validation avertissent toujours");
+        assertTrue(service.scenarioPrompt(session).warnings().stream().noneMatch(w -> w.contains("style.txt")),
+            "pas dans 🐞 : la taille du fichier n'est pas ce que le modele recoit");
+    }
+
+    @Test
+    void eachSpeakerOfARoundGetsItsOwnDrawOfTheStyleChanceLines(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/style.txt"), "Phrases courtes.\n- {20%} Un petit geste anodin.\n", StandardCharsets.UTF_8);
+        List<String> systemPrompts = new ArrayList<>();
+        ModelCallPort capturing = new ModelCallPort() {
+            @Override public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+                systemPrompts.add(systemPrompt);
+                return new LlmResult("grunts and nods slowly", 0, 0, 0, "");
+            }
+            @Override public int contextWindow() { return 32_768; }
+        };
+        StubModelCallPort other = new StubModelCallPort(32_768, "FOLDED", 0);
+        // nextDouble() dans l'ordre : le jet d'interjection de Marcus (passe), puis le tirage de style
+        // d'Elena (0.0 : la ligne a 20 % reste), puis celui de Marcus (0.999 : elle disparait)
+        double[] draws = {0.0, 0.0, 0.999};
+        int[] next = {0};
+        Random scripted = new Random(1) {
+            @Override public double nextDouble() { return next[0] < draws.length ? draws[next[0]++] : 0.999; }
+        };
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(capturing),
+            new ChatSummarizer(other), new NextActReadinessAnalyst(other), new NpcMindStateAnalyst(other),
+            LogPort.NOOP, scripted);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
+
+        assertEquals(List.of("elena", "marcus"), result.replyTurns().stream().map(ChatTurn::npcId).toList());
+        assertEquals(2, systemPrompts.size());
+        assertTrue(systemPrompts.get(0).contains("Un petit geste anodin."), "Elena : tirage 0.0, la ligne reste");
+        assertFalse(systemPrompts.get(1).contains("petit geste"), "Marcus : tirage 0.999, la ligne disparait");
+    }
+
+    @Test
+    void overManyRoundsTheSpeakersOfOneRoundDrawTheirStyleIndependently(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/style.txt"), "Phrases courtes.\n- {50%} Un petit geste anodin.\n", StandardCharsets.UTF_8);
+        List<String> systemPrompts = new ArrayList<>();
+        ModelCallPort capturing = new ModelCallPort() {
+            @Override public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+                systemPrompts.add(systemPrompt);
+                return new LlmResult("grunts and nods slowly", 0, 0, 0, "");
+            }
+            @Override public int contextWindow() { return 32_768; }
+        };
+        StubModelCallPort other = new StubModelCallPort(32_768, "FOLDED", 0);
+        ChatServiceImpl service = new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(capturing),
+            new ChatSummarizer(other), new NextActReadinessAnalyst(other), new NpcMindStateAnalyst(other),
+            LogPort.NOOP, new Random(42));
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject()); // Elena puis Marcus, a chaque tour
+
+        int rounds = 300;
+        int differ = 0;
+        int firstHasLine = 0;
+        for (int i = 0; i < rounds; i++) {
+            systemPrompts.clear();
+            service.sendMessage(root, session, "Elena, what do you make of this?");
+            assertEquals(2, systemPrompts.size(), "deux locuteurs a chaque tour");
+            boolean first = systemPrompts.get(0).contains("petit geste");
+            boolean second = systemPrompts.get(1).contains("petit geste");
+            if (first != second) differ++;
+            if (first) firstHasLine++;
+            assertFalse(systemPrompts.get(0).contains("%") || systemPrompts.get(1).contains("%"));
+        }
+
+        // deux tirages independants a 50 % : les deux prompts different dans 1 tour sur 2
+        assertEquals(0.5, differ / (double) rounds, 0.08, "tours ou les deux locuteurs n'ont pas la meme consigne");
+        assertEquals(0.5, firstHasLine / (double) rounds, 0.08, "frequence de la ligne chez le premier locuteur");
     }
 
     @Test
@@ -1066,7 +1288,7 @@ class ChatServiceImplTest {
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
+        session.updateGenerationSettings(alwaysInterject());
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
@@ -1085,7 +1307,7 @@ class ChatServiceImplTest {
             new ChatSummarizer(new StubModelCallPort(32_768, "FOLDED", 0)), new NextActReadinessAnalyst(roleplayLlm), new NpcMindStateAnalyst(roleplayLlm));
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
+        session.updateGenerationSettings(alwaysInterject());
 
         ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
 
@@ -1109,26 +1331,12 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void interjectionIsSkippedForANpcThatOptedOutEvenAtCertainChance(@TempDir Path root) throws IOException {
-        writeTwoNpcScenarioFiles(root, "inn");
-        ChatServiceImpl service = newService(32_768);
-        ChatScenario scenario = service.loadScenario(root, "inn");
-        ChatSession session = service.openSession(root, scenario, true);
-        session.updateGenerationSettings(new GenerationSettings(null, null, null, null, null, null, null, 1.0, null));
-        service.setNpcInterjecting(root, session, "marcus", false);
-
-        ChatTurnResult result = service.sendMessage(root, session, "Elena, what do you make of this?");
-
-        assertEquals(1, result.replyTurns().size(), "marcus a opte dehors, meme a chance certaine");
-    }
-
-    @Test
     void reloadScenarioPicksUpFileEditsAndAddsNewNpcsPresentWithoutTouchingTurns(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
-        session.setPresent("marcus", false); // elena present, marcus muted, before the reload
+        muteInSession(session, "marcus"); // elena present, marcus muted, before the reload
         List<ChatTurn> turnsBefore = session.turns();
 
         // Edite elena.txt et ajoute un troisieme PNJ pendant que la session tourne.
@@ -1142,42 +1350,56 @@ class ChatServiceImplTest {
         assertEquals(Set.of("elena", "clara"), session.presentNpcIds(), "marcus reste mute, clara nouvelle donc presente");
         assertEquals(turnsBefore, session.turns());
 
-        ChatSession reloaded = newService(32_768).openSession(root, scenario, false);
+        ChatSession reloaded = newService(32_768).openSession(root, service.loadScenario(root, "inn"), false);
         assertEquals(Set.of("elena", "clara"), reloaded.presentNpcIds(), "la reconciliation est persistee");
     }
 
     @Test
-    void setNpcPresentPersistsAcrossReload(@TempDir Path root) throws IOException {
+    void cyclingAnNpcToAbsentPersistsAcrossReload(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
 
-        boolean changed = service.setNpcPresent(root, session, "marcus", false);
+        mute(service, root, session, "marcus");
 
-        assertTrue(changed);
         assertEquals(Set.of("elena"), session.presentNpcIds());
         ChatSession reloaded = newService(32_768).openSession(root, scenario, false);
         assertEquals(Set.of("elena"), reloaded.presentNpcIds());
     }
 
     @Test
-    void setNpcPresentRefusesToMuteTheLastPresentNpc(@TempDir Path root) throws IOException {
+    void cyclingTheOnlyNpcNeverEmptiesTheScene(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
         ChatScenario scenario = service.loadScenario(root, "inn");
         ChatSession session = service.openSession(root, scenario, true);
 
-        boolean changed = service.setNpcPresent(root, session, "character", false);
-
-        assertFalse(changed);
-        assertEquals(Set.of("character"), session.presentNpcIds());
+        for (int click = 0; click < 6; click++) {
+            service.cycleNpcActivity(root, session, "character");
+            assertEquals(Set.of("character"), session.presentNpcIds(), "clic " + (click + 1));
+        }
     }
 
     // ── {npc-starts} : un PNJ ouvre l'histoire ou l'acte ───────────────────────
 
+    private static GenerationSettings neverInterject() {
+        return new GenerationSettings(null, null, null, null, null, null, null, 0.0, null);
+    }
+
+    /** Two clicks on a present NPC : present -> passive -> absent. */
+    private static void mute(ChatServiceImpl service, Path root, ChatSession session, String npcId) {
+        service.cycleNpcActivity(root, session, npcId);
+        service.cycleNpcActivity(root, session, npcId);
+    }
+
+    private static void muteInSession(ChatSession session, String npcId) {
+        session.cycleActivity(npcId);
+        session.cycleActivity(npcId);
+    }
+
     private static GenerationSettings alwaysInterject() {
-        return new GenerationSettings(null, null, null, null, null, null, null, 1.0, null);
+        return new GenerationSettings(null, null, null, null, null, null, null, 100.0, null);
     }
 
     @Test
@@ -1294,7 +1516,7 @@ class ChatServiceImplTest {
         Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
         ChatServiceImpl service = newService(32_768);
         ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
-        service.setNpcPresent(root, session, "marcus", false);
+        mute(service, root, session, "marcus");
 
         ChatTurnResult result = service.sendMessage(root, session, "DO:");
 

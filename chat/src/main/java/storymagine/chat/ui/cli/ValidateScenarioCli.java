@@ -13,8 +13,8 @@ import java.util.Properties;
 
 /**
  * Validates scenarios on demand, without any LLM and without touching a run (see
- * ChatStoragePort.validateScenario). Without arguments : the project's chatscenarios/ and the
- * directory configured as chatscenarios.root.default ; with paths as arguments : those directories.
+ * ChatStoragePort.validateScenario). Without arguments : the project's chatscenarios/, its demos
+ * and the directory configured as chatscenarios.root.default ; with paths as arguments : those directories.
  * Prints every error and warning, one scenario at a time, and ends with exit code 1 if any scenario
  * has an error. The same checks run at every loading of a scenario.
  */
@@ -61,11 +61,12 @@ public class ValidateScenarioCli {
         return "ok";
     }
 
-    /** The project's chatscenarios/, plus chatscenarios.root.default when it points somewhere else. */
+    /** The project's chatscenarios/ and its demos, plus chatscenarios.root.default when it points somewhere else. */
     private static List<Path> defaultRoots(Properties props) {
         List<Path> roots = new ArrayList<>();
         Path project = Paths.get("chatscenarios").toAbsolutePath();
         roots.add(project);
+        roots.add(project.resolve(ChatCliSupport.DEMOS_DIR));
         String configured = props.getProperty("chatscenarios.root.default", "").trim();
         if (!configured.isEmpty() && !Paths.get(configured).toAbsolutePath().equals(project)) {
             roots.add(Paths.get(configured));

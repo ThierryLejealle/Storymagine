@@ -1,13 +1,20 @@
 package storymagine.chat.coeur.domaine.session;
 
+import storymagine.chat.coeur.domaine.activity.ActivitySource;
+import storymagine.chat.coeur.domaine.activity.CastActivity;
+import storymagine.chat.coeur.domaine.activity.ForcedActivity;
+import storymagine.chat.coeur.domaine.activity.NpcActivity;
+import storymagine.chat.coeur.domaine.activity.NpcActivityState;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,35 +36,30 @@ public class ChatSession {
     private       int              firstTurnNumber;
     private       String           summary;
     private       int              currentAct;
-    private final Set<String>      presentNpcIds;
-    private final Set<String>      interjectingNpcIds;
+    /** Levels the player forced by clicking, by npc id — see activity(), cycleActivity(). */
+    private final Map<String, ForcedActivity> forced = new LinkedHashMap<>();
     private       GenerationSettings generationSettings = GenerationSettings.DEFAULT;
 
-    /** Every Npc in the scenario starts present and interjection-eligible — see setPresent/setInterjecting to opt out. */
+    /** Every Npc starts with the activity the scenario gives it (present, implicit unless a command says otherwise). */
     public ChatSession(ChatScenario scenario, List<ChatTurn> turns, String summary, int currentAct) {
-        this(scenario, turns, summary, currentAct, allNpcIds(scenario));
-    }
-
-    public ChatSession(ChatScenario scenario, List<ChatTurn> turns, String summary, int currentAct,
-                        Set<String> presentNpcIds) {
-        this(scenario, turns, summary, currentAct, presentNpcIds, allNpcIds(scenario));
+        this(scenario, turns, summary, currentAct, Map.of());
     }
 
     /** Numbers turns from 1, each stamped with currentAct — see restored() to rebuild a window from persisted numbers. */
     public ChatSession(ChatScenario scenario, List<ChatTurn> turns, String summary, int currentAct,
-                        Set<String> presentNpcIds, Set<String> interjectingNpcIds) {
-        this(scenario, 1, entriesOf(turns, currentAct), summary, currentAct, presentNpcIds, interjectingNpcIds);
+                        Map<String, ForcedActivity> forced) {
+        this(scenario, 1, entriesOf(turns, currentAct), summary, currentAct, forced);
     }
 
     private ChatSession(ChatScenario scenario, int firstTurnNumber, List<Entry> entries, String summary,
-                         int currentAct, Set<String> presentNpcIds, Set<String> interjectingNpcIds) {
-        this.scenario           = scenario;
-        this.firstTurnNumber    = firstTurnNumber;
-        this.entries            = new ArrayList<>(entries);
-        this.summary            = summary == null ? "" : summary;
-        this.currentAct         = currentAct;
-        this.presentNpcIds      = new LinkedHashSet<>(presentNpcIds);
-        this.interjectingNpcIds = new LinkedHashSet<>(interjectingNpcIds);
+                         int currentAct, Map<String, ForcedActivity> forced) {
+        this.scenario        = scenario;
+        this.firstTurnNumber = firstTurnNumber;
+        this.entries         = new ArrayList<>(entries);
+        this.summary         = summary == null ? "" : summary;
+        this.currentAct      = currentAct;
+        this.forced.putAll(forced);
+        dropStaleForced();
     }
 
     /**
@@ -66,8 +68,7 @@ public class ChatSession {
      * the persisted files are inconsistent and loading fails loudly instead of silently renumbering.
      */
     public static ChatSession restored(ChatScenario scenario, String summary, TurnNumber firstTurnNumber,
-                                        List<NumberedTurn> turns, int currentAct, Set<String> presentNpcIds,
-                                        Set<String> interjectingNpcIds) {
+                                        List<NumberedTurn> turns, int currentAct, Map<String, ForcedActivity> forced) {
         List<Entry> entries = new ArrayList<>();
         int expected = firstTurnNumber.value();
         for (NumberedTurn numbered : turns) {
@@ -78,21 +79,27 @@ public class ChatSession {
             entries.add(new Entry(numbered.turn(), numbered.act()));
             expected++;
         }
-        return new ChatSession(scenario, firstTurnNumber.value(), entries, summary, currentAct,
-            presentNpcIds, interjectingNpcIds);
+        return new ChatSession(scenario, firstTurnNumber.value(), entries, summary, currentAct, forced);
     }
 
     private static List<Entry> entriesOf(List<ChatTurn> turns, int act) {
         return turns.stream().map(turn -> new Entry(turn, act)).toList();
     }
 
-    /** Every id in scenario.cast() — the default presence/interjection-eligibility for a fresh session or a run with no state file. */
-    public static Set<String> allPresent(ChatScenario scenario) {
-        return allNpcIds(scenario);
-    }
-
     private static Set<String> allNpcIds(ChatScenario scenario) {
         return scenario.cast().npcs().stream().map(Npc::id).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Forced levels equivalent to an old "present" list (state.txt before the activity levels) : whoever
+     * is not in it is forced ABSENT from the root, so an old run reopens with the same scene.
+     */
+    public static Map<String, ForcedActivity> forcedAbsentFrom(ChatScenario scenario, Set<String> presentNpcIds) {
+        Map<String, ForcedActivity> forced = new LinkedHashMap<>();
+        for (String id : allNpcIds(scenario)) {
+            if (!presentNpcIds.contains(id)) forced.put(id, new ForcedActivity(NpcActivity.ABSENT, ""));
+        }
+        return forced;
     }
 
     /**
@@ -162,6 +169,14 @@ public class ChatSession {
         return Optional.empty();
     }
 
+    private StyleReceived lastStyleReceived;
+
+    /** Remembers the style the last reply was given (debug 🐞, never persisted). */
+    public void rememberStyleReceived(StyleReceived received) { this.lastStyleReceived = received; }
+
+    /** The style of the last reply that was generated in this run, empty before any reply. */
+    public Optional<StyleReceived> lastStyleReceived() { return Optional.ofNullable(lastStyleReceived); }
+
     public int currentAct() { return currentAct; }
 
     /**
@@ -192,28 +207,72 @@ public class ChatSession {
         return opening;
     }
 
-    public Set<String> presentNpcIds() { return Set.copyOf(presentNpcIds); }
-
     /**
-     * Mutes/unmutes one Cast member. Muting the last present Npc is a no-op (returns false) —
-     * someone always has to be present to answer ; unmuting an unknown id is accepted as-is (the
-     * session doesn't police it against scenario.cast(), callers are expected to).
+     * The activity of every Npc right now : what the scenario's commands give at the current act,
+     * overlaid with the levels the player forced that still hold (see cycleActivity). Computed on
+     * demand, never stored, so a rollback, a save or a reload need no special handling.
      */
-    public boolean setPresent(String npcId, boolean present) {
-        if (present) return presentNpcIds.add(npcId);
-        if (presentNpcIds.size() <= 1) return false;
-        return presentNpcIds.remove(npcId);
+    public CastActivity activity() {
+        CastActivity activity = scenarioActivity();
+        for (Map.Entry<String, ForcedActivity> entry : forced.entrySet()) {
+            if (!holdsHere(entry.getValue())) continue;
+            activity = activity.with(entry.getKey(), new NpcActivityState(entry.getValue().level(), ActivitySource.FORCED));
+        }
+        // Un forcage ne doit jamais vider la scene : quelqu'un doit pouvoir repondre.
+        return activity.inSceneIds().isEmpty() ? scenarioActivity() : activity;
     }
 
-    public Set<String> interjectingNpcIds() { return Set.copyOf(interjectingNpcIds); }
+    /** The activity the scenario alone gives at the current act, without the player's forced levels. */
+    public CastActivity scenarioActivity() { return scenario.activityAt(currentAct); }
+
+    /** Ids of the Npcs in the scene (every level but ABSENT). */
+    public Set<String> presentNpcIds() { return activity().inSceneIds(); }
+
+    /** The forced levels still holding at the current act, by npc id — what gets persisted. */
+    public Map<String, ForcedActivity> forcedActivities() {
+        Map<String, ForcedActivity> holding = new LinkedHashMap<>();
+        forced.forEach((id, f) -> { if (holdsHere(f)) holding.put(id, f); });
+        return holding;
+    }
 
     /**
-     * Opts one Cast member in/out of unprompted interjections (see SpeakerSelector.rollInterjectors)
-     * — unlike setPresent, no "keep at least one" guard : interjection is an optional flourish, not
-     * something the session needs at least one of to keep working.
+     * Steps one Cast member to the next forced level (a click). From the level the scenario gives, it
+     * goes through the other levels in the order active, present, passive, absent, then through the
+     * scenario's own level forced, and a last click removes the forcing. A forced level hangs from the
+     * parent heading of the current act and disappears when the story leaves it. A step that would
+     * leave nobody in the scene is skipped. Returns false (no-op) for an id the Cast does not know.
      */
-    public boolean setInterjecting(String npcId, boolean interjecting) {
-        return interjecting ? interjectingNpcIds.add(npcId) : interjectingNpcIds.remove(npcId);
+    public boolean cycleActivity(String npcId) {
+        if (scenario.cast().find(npcId).isEmpty()) return false;
+        NpcActivity base = scenarioActivity().levelOf(npcId);
+        List<NpcActivity> steps = List.of(base.next(), base.next().next(), base.next().next().next(), base);
+        ForcedActivity current = forced.get(npcId) != null && holdsHere(forced.get(npcId)) ? forced.get(npcId) : null;
+        int position = current == null ? -1 : steps.indexOf(current.level());
+        for (int next = position + 1; next < steps.size(); next++) {
+            if (steps.get(next) == NpcActivity.ABSENT && leavesNobody(npcId)) continue;
+            forced.put(npcId, new ForcedActivity(steps.get(next), current != null ? current.anchor() : parentAnchor()));
+            return true;
+        }
+        return forced.remove(npcId) != null;
+    }
+
+    private boolean leavesNobody(String npcId) {
+        return activity().inSceneIds().stream().noneMatch(id -> !id.equals(npcId));
+    }
+
+    private String parentAnchor() {
+        return currentAct >= 1 && currentAct <= scenario.acts().size() ? scenario.acts().get(currentAct - 1).parentAnchor() : "";
+    }
+
+    /** A forced level holds while the current act is under the heading it hangs from (the root holds everywhere). */
+    private boolean holdsHere(ForcedActivity f) {
+        if (f.anchor().isEmpty()) return true;
+        return currentAct >= 1 && currentAct <= scenario.acts().size() && scenario.acts().get(currentAct - 1).isUnder(f.anchor());
+    }
+
+    /** Leaving the heading a forced level hangs from ends it for good : coming back later does not revive it. */
+    private void dropStaleForced() {
+        forced.values().removeIf(f -> !holdsHere(f));
     }
 
     public GenerationSettings generationSettings() { return generationSettings; }
@@ -232,6 +291,7 @@ public class ChatSession {
     public boolean advanceAct() {
         if (currentAct <= 0 || currentAct >= scenario.acts().size()) return false;
         currentAct++;
+        dropStaleForced();
         for (ChatTurn beat : narratorTurns(scenario.acts().get(currentAct - 1).beats())) append(beat);
         return true;
     }
@@ -246,6 +306,7 @@ public class ChatSession {
     public boolean previousAct() {
         if (currentAct <= 1) return false;
         currentAct--;
+        dropStaleForced();
         return true;
     }
 
@@ -279,39 +340,37 @@ public class ChatSession {
     }
 
     /**
-     * Replaces turns/summary/currentAct/presentNpcIds in place with fresh content (a fresh or
+     * Replaces turns/summary/currentAct/forced levels in place with fresh content (a fresh or
      * restarted run), numbering the turns from 1 — the ChatSession instance itself is kept
      * (callers, e.g. ChatWebServer, hold a single long-lived reference), only its state changes.
      * generationSettings is deliberately untouched : session-only tuning knob, see GenerationSettings.
      */
-    public void restore(String summary, List<ChatTurn> turns, int currentAct, Set<String> presentNpcIds,
-                         Set<String> interjectingNpcIds) {
+    public void restore(String summary, List<ChatTurn> turns, int currentAct, Map<String, ForcedActivity> forced) {
         this.summary = summary == null ? "" : summary;
         this.entries.clear();
         this.entries.addAll(entriesOf(turns, currentAct));
         this.firstTurnNumber = 1;
         this.currentAct = currentAct;
-        this.presentNpcIds.clear();
-        this.presentNpcIds.addAll(presentNpcIds);
-        this.interjectingNpcIds.clear();
-        this.interjectingNpcIds.addAll(interjectingNpcIds);
+        this.forced.clear();
+        this.forced.putAll(forced);
+        dropStaleForced();
     }
 
     /**
      * Replaces the whole run state in place with other's — window with its numbers, summary, act and
-     * presence — for loading a save point. generationSettings stays untouched, as for restore().
+     * forced levels — for loading a save point. generationSettings stays untouched, as for restore().
      */
     public void restoreFrom(ChatSession other) {
         restoreConversationFrom(other);
-        this.presentNpcIds.clear();
-        this.presentNpcIds.addAll(other.presentNpcIds);
-        this.interjectingNpcIds.clear();
-        this.interjectingNpcIds.addAll(other.interjectingNpcIds);
+        this.forced.clear();
+        this.forced.putAll(other.forced);
+        dropStaleForced();
     }
 
     /**
      * Replaces only the conversation (window with its numbers, summary, current act) with other's,
-     * leaving presence/interjection untouched — a rollback rewinds what was said, never the
+     * leaving the player's forced levels untouched (except those that no longer hold at the act it
+     * lands on) — a rollback rewinds what was said, never the
      * settings the player changed himself. A turn already in memory under the same number and
      * content is kept as-is rather than replaced by its reloaded twin, so its (never persisted)
      * thinking text survives.
@@ -331,6 +390,7 @@ public class ChatSession {
         this.firstTurnNumber = other.firstTurnNumber;
         this.summary = other.summary;
         this.currentAct = other.currentAct;
+        dropStaleForced();
     }
 
     private static boolean sameContent(ChatTurn a, ChatTurn b) {
@@ -342,37 +402,15 @@ public class ChatSession {
     /**
      * Re-reads the scenario/cast from disk into this session, without touching turns/summary/
      * currentAct — for editing scenario.txt or a character's .txt file while a session is running
-     * and picking up the change without losing the conversation so far. Presence is reconciled
-     * against the new cast : Npc ids removed from the cast drop out of presentNpcIds, ids newly
-     * added by the edit start present (same default as a fresh session), ids already present or
-     * muted keep their state. Falls back to every new Npc present if that reconciliation would
-     * otherwise leave nobody present (e.g. the whole present cast got renamed).
+     * and picking up the change without losing the conversation so far. The player's forced levels
+     * are reconciled against the new cast : those of Npc ids removed from the cast are dropped, and so
+     * are those that no longer hold under the new act tree. A newly added Npc simply gets the
+     * scenario's activity for it.
      */
     public void reloadScenario(ChatScenario freshScenario) {
         Set<String> freshIds = allNpcIds(freshScenario);
-        Set<String> oldIds = allNpcIds(scenario);
-        // Reconcilie AVANT de vider les champs : reconcile() lit presentNpcIds/interjectingNpcIds
-        // tels qu'ils etaient avant le reload, sinon on reconcilierait depuis un set deja vide.
-        Set<String> reconciledPresent = reconcile(presentNpcIds, oldIds, freshIds);
-        Set<String> reconciledInterjecting = reconcile(interjectingNpcIds, oldIds, freshIds);
-        this.presentNpcIds.clear();
-        this.presentNpcIds.addAll(reconciledPresent);
-        this.interjectingNpcIds.clear();
-        this.interjectingNpcIds.addAll(reconciledInterjecting);
         this.scenario = freshScenario;
-    }
-
-    /**
-     * ids still in freshIds, minus those no longer in the cast, plus any id in freshIds that
-     * wasn't in oldIds yet (a newly added Npc starts opted in) — falls back to every fresh id if
-     * that leaves nothing (e.g. the whole opted-in cast got renamed).
-     */
-    private static Set<String> reconcile(Set<String> current, Set<String> oldIds, Set<String> freshIds) {
-        Set<String> reconciled = new LinkedHashSet<>(current);
-        reconciled.retainAll(freshIds);
-        for (String id : freshIds) {
-            if (!oldIds.contains(id)) reconciled.add(id);
-        }
-        return reconciled.isEmpty() ? freshIds : reconciled;
+        forced.keySet().retainAll(freshIds);
+        dropStaleForced();
     }
 }

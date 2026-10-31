@@ -1,5 +1,8 @@
 package storymagine.chat.coeur.domaine.scenario;
 
+import storymagine.chat.coeur.domaine.activity.ActivityResolver;
+import storymagine.chat.coeur.domaine.activity.CastActivity;
+
 import java.util.List;
 
 /**
@@ -40,7 +43,28 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
                         + " : aucun personnage de ce nom dans characters/.");
                 }
             }
+            requireValidActivity(cast, act);
         }
+    }
+
+    /** An activity command that names nobody known, names someone twice or leaves nobody in the scene fails loudly here. */
+    private static void requireValidActivity(Cast cast, ScenarioAct act) {
+        try {
+            if (ActivityResolver.resolve(cast, act.activityPath()).inSceneIds().isEmpty() && !cast.npcs().isEmpty()) {
+                throw new IllegalArgumentException("plus aucun personnage present dans la scene (tous sont absents).");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("acte " + act.number() + " : " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The activity of every Npc at act `act` (1-based ; 0 = no acts in use), computed from the
+     * commands on the path of headings leading to that act — never stored, like sheetAt.
+     */
+    public CastActivity activityAt(int act) {
+        if (act < 1 || act > acts.size()) return CastActivity.defaults(cast);
+        return ActivityResolver.resolve(cast, acts.get(act - 1).activityPath());
     }
 
     public ChatScenario(String name, Cast cast, String premise, List<ScenarioAct> acts, String playerName,
@@ -59,6 +83,11 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
 
     public ChatScenario(String name, Cast cast, String premise, List<ScenarioAct> acts) {
         this(name, cast, premise, acts, null, NpcOpening.NONE, ScenarioLanguage.UNSPECIFIED);
+    }
+
+    /** The same scenario with another style (the one drawn for a given answer, see ScenarioStyle.drawn). */
+    public ChatScenario withStyle(ScenarioStyle newStyle) {
+        return new ChatScenario(name, cast, premise, acts, playerName, storyOpening, language, newStyle);
     }
 
     /**

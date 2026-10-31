@@ -77,6 +77,7 @@ public class ChatWebServer {
         server.createContext("/",         this::handlePage);
         server.createContext("/history",  this::handleHistory);
         server.createContext("/message",  this::handleMessage);
+        server.createContext("/continue", this::handleContinue);
         server.createContext("/next-act", this::handleNextAct);
         server.createContext("/previous-act", this::handlePreviousAct);
         server.createContext("/analyze-next-act", this::handleAnalyzeNextAct);
@@ -92,8 +93,7 @@ public class ChatWebServer {
         server.createContext("/undo",     this::handleUndo);
         server.createContext("/rollback", this::handleRollback);
         server.createContext("/settings", this::handleSettings);
-        server.createContext("/set-present", this::handleSetPresent);
-        server.createContext("/set-interjecting", this::handleSetInterjecting);
+        server.createContext("/cycle-activity", this::handleCycleActivity);
         server.createContext("/reload-scenario", this::handleReloadScenario);
         server.createContext("/restart", this::handleRestart);
         server.createContext("/stop",     this::handleStop);
@@ -176,6 +176,42 @@ public class ChatWebServer {
                 // retire tout ce tour, y compris le tour joueur ; le client doit faire disparaitre
                 // exactement les tours deja recus via le flux (streamedCount).
                 clearInterruptFlag(); // sinon l'ecriture juste en dessous echoue aussi, voir clearInterruptFlag()
+                out.write(new StoppedView(true, streamedCount[0]));
+            } catch (Exception e) {
+                out.write(new ErrorView(e.getMessage()));
+            }
+        } finally {
+            endGeneration();
+        }
+    }
+
+    /**
+     * Bouton "Continue" : un tour de PNJ sans message du joueur (voir ChatService.continueScene).
+     * Meme flux NDJSON que /message, mais aucun tour joueur n'est cree : si un stop survient avant
+     * toute reponse, il n'y a rien a retirer cote client au-dela des tours deja recus.
+     */
+    private void handleContinue(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        beginGeneration();
+        ex.getResponseHeaders().add("Content-Type", "application/x-ndjson; charset=utf-8");
+        ex.sendResponseHeaders(200, 0);
+        try (var os = ex.getResponseBody()) {
+            NdjsonWriter out = new NdjsonWriter(os);
+            int[] streamedCount = {0};
+            try {
+                ChatTurnResult result = service.continueScene(chatScenariosRoot, session, new ExchangeProgressListener() {
+                    @Override public void onPartialReply(String npcId, PartialGeneration partial) {
+                        out.writeUnchecked(new PartialReplyEvent(npcId, partial.thinkingSoFar(), partial.textSoFar()));
+                    }
+                    @Override public void onTurnReady(ChatTurn turn) {
+                        streamedCount[0]++;
+                        out.writeUnchecked(turn);
+                    }
+                });
+                lastPromptTokens = result.promptTokens();
+                out.write(currentView(List.of(), result.replacedTurnCount(), result.compacted(), result.actAdvanced()));
+            } catch (GenerationCancelledException e) {
+                clearInterruptFlag();
                 out.write(new StoppedView(true, streamedCount[0]));
             } catch (Exception e) {
                 out.write(new ErrorView(e.getMessage()));
@@ -292,23 +328,11 @@ public class ChatWebServer {
 
     private static String nullToEmpty(String s) { return s == null ? "" : s; }
 
-    /** Mutes/unmutes one Cast member (a vignette click). No-op (see ChatSession.setPresent) if it would mute the last present Npc. */
-    private void handleSetPresent(HttpExchange ex) throws IOException {
+    /** Steps one Cast member to its next forced activity level (a vignette click) — see ChatSession.cycleActivity. */
+    private void handleCycleActivity(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
         Map<String, String> fields = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery()));
-        String id = fields.get("id");
-        boolean present = Boolean.parseBoolean(fields.get("present"));
-        service.setNpcPresent(chatScenariosRoot, session, id, present);
-        writeJson(ex, 200, currentView(List.of(), 0, false, false));
-    }
-
-    /** Opts a Cast member in/out of unprompted interjections (a vignette's 💬 icon). No "keep at least one" guard, unlike presence. */
-    private void handleSetInterjecting(HttpExchange ex) throws IOException {
-        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
-        Map<String, String> fields = parseFormBody(nullToEmpty(ex.getRequestURI().getQuery()));
-        String id = fields.get("id");
-        boolean interjecting = Boolean.parseBoolean(fields.get("interjecting"));
-        service.setNpcInterjecting(chatScenariosRoot, session, id, interjecting);
+        service.cycleNpcActivity(chatScenariosRoot, session, fields.get("id"));
         writeJson(ex, 200, currentView(List.of(), 0, false, false));
     }
 
@@ -544,10 +568,13 @@ public class ChatWebServer {
     }
 
     private List<NpcView> castView() {
-        var present = session.presentNpcIds();
-        var interjecting = session.interjectingNpcIds();
+        var activity = session.activity();
+        var scenarioActivity = session.scenarioActivity();
         return session.scenario().cast().npcs().stream()
-            .map(npc -> new NpcView(npc.id(), npc.label(), present.contains(npc.id()), interjecting.contains(npc.id())))
+            .map(npc -> new NpcView(npc.id(), npc.label(),
+                activity.levelOf(npc.id()).keyword(),
+                activity.stateOf(npc.id()).source().name().toLowerCase(java.util.Locale.ROOT),
+                scenarioActivity.levelOf(npc.id()).keyword()))
             .toList();
     }
 

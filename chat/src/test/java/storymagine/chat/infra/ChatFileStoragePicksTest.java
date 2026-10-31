@@ -152,6 +152,26 @@ class ChatFileStoragePicksTest {
         assertTrue(adapter.pickDraws(root, scenario).isEmpty());
     }
 
+    @Test
+    void aRepeatBlockIsUnfoldedIntoActsInTheResolvedCopyAndItsDrawsAreKept(@TempDir Path root) throws IOException {
+        writeScenario(root, "Premise.\n# Intro\n[Go.]\n{repeat random 2 place}\n# Trial {n}\n[Door {n}.]\nStart: {item}\n{end-repeat}\n# End\n[Done.]");
+        randomness.index = 1;
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        // Intro, two trials (each drew the paragraph at index 1 of the candidates left : Night market, then Empty town), End.
+        assertEquals(4, scenario.acts().size());
+        assertTrue(scenario.acts().get(1).text().contains("Start: Night market."), scenario.acts().get(1).text());
+        assertTrue(scenario.acts().get(2).text().contains("Start: Empty town."), scenario.acts().get(2).text());
+        String resolved = Files.readString(root.resolve("inn/run/current/resolved/scenario.txt"));
+        assertFalse(resolved.contains("repeat") || resolved.contains("{n}"), resolved);
+        assertTrue(Files.readString(root.resolve("inn/scenario.txt")).contains("{repeat random 2 place}"));
+        assertEquals(List.of("repeat-random place Night market. / Empty town."), describe(adapter.pickDraws(root, scenario)));
+
+        randomness.index = 0;
+        assertEquals(scenario.acts().get(1).text(), adapter.loadScenario(root, "inn").acts().get(1).text());
+    }
+
     private static List<String> describe(PickDraws draws) {
         return draws.values().stream()
             .map(d -> d.mode().label() + " " + d.tag() + " " + String.join(" / ", d.paragraphs()))

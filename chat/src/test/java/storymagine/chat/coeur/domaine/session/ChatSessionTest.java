@@ -1,13 +1,20 @@
 package storymagine.chat.coeur.domaine.session;
 
 import org.junit.jupiter.api.Test;
+import storymagine.chat.coeur.domaine.activity.ActivityDirective;
+import storymagine.chat.coeur.domaine.activity.ActivitySource;
+import storymagine.chat.coeur.domaine.activity.ForcedActivity;
+import storymagine.chat.coeur.domaine.activity.NpcActivity;
+import storymagine.chat.coeur.domaine.activity.NpcActivityState;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -125,14 +132,12 @@ class ChatSessionTest {
         ChatSession session = ChatSession.fresh(scenario);
         session.append(new ChatTurn(ChatTurn.Speaker.PLAYER, "Current turn, about to be discarded."));
 
-        session.restore("Old summary.", List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "Restored turn.")), 2,
-            Set.of("test-npc"), Set.of("test-npc"));
+        session.restore("Old summary.", List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "Restored turn.")), 2, Map.of());
 
         assertEquals("Old summary.", session.summary());
         assertEquals(List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "Restored turn.")), session.turns());
         assertEquals(2, session.currentAct());
         assertEquals(Set.of("test-npc"), session.presentNpcIds());
-        assertEquals(Set.of("test-npc"), session.interjectingNpcIds());
     }
 
     // ── Numerotation des tours ──────────────────────────────────────────────
@@ -241,26 +246,25 @@ class ChatSessionTest {
             new NumberedTurn(TurnNumber.of(7), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "gap")));
 
         assertThrows(IllegalStateException.class, () -> ChatSession.restored(scenario, "", TurnNumber.of(5), turns, 0,
-            Set.of("test-npc"), Set.of("test-npc")));
+            Map.of()));
     }
 
     @Test
-    void restoreConversationFromReplacesTurnsSummaryAndActButNeverPresence() {
+    void restoreConversationFromReplacesTurnsSummaryAndActButNeverTheForcedLevels() {
         ChatScenario scenario = scenario("premise", List.of(
             ScenarioAct.leaf(ActNumber.of(1), "", "Act one."),
             ScenarioAct.leaf(ActNumber.of(2), "", "Act two.")));
         ChatSession live = new ChatSession(scenario, List.of(new ChatTurn(ChatTurn.Speaker.PLAYER, "now")), "new summary", 2,
-            Set.of("test-npc"), Set.of());
+            Map.of("test-npc", new ForcedActivity(NpcActivity.PASSIVE, "")));
         ChatSession earlier = ChatSession.restored(scenario, "old summary", TurnNumber.of(1),
-            List.of(new NumberedTurn(TurnNumber.of(1), 1, new ChatTurn(ChatTurn.Speaker.PLAYER, "then"))), 1,
-            Set.of("test-npc"), Set.of("test-npc"));
+            List.of(new NumberedTurn(TurnNumber.of(1), 1, new ChatTurn(ChatTurn.Speaker.PLAYER, "then"))), 1, Map.of());
 
         live.restoreConversationFrom(earlier);
 
         assertEquals("old summary", live.summary());
         assertEquals(1, live.currentAct());
         assertEquals("then", live.turns().get(0).text());
-        assertEquals(Set.of(), live.interjectingNpcIds(), "les reglages du joueur ne sont pas rembobines");
+        assertEquals(NpcActivity.PASSIVE, live.activity().levelOf("test-npc"), "les reglages du joueur ne sont pas rembobines");
     }
 
     @Test
@@ -271,7 +275,7 @@ class ChatSessionTest {
         ChatSession reloaded = ChatSession.restored(scenario, "", TurnNumber.of(1), List.of(
             new NumberedTurn(TurnNumber.of(1), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "hi")),
             new NumberedTurn(TurnNumber.of(2), 0, new ChatTurn(ChatTurn.Speaker.LLM, "reply", "", "test-npc"))), 0,
-            Set.of("test-npc"), Set.of("test-npc"));
+            Map.of());
 
         live.restoreConversationFrom(reloaded);
 
@@ -279,19 +283,19 @@ class ChatSessionTest {
     }
 
     @Test
-    void restoreFromReplacesEverythingIncludingNumbersAndPresence() {
+    void restoreFromReplacesEverythingIncludingNumbersAndForcedLevels() {
         ChatScenario scenario = scenario("premise", List.of());
         ChatSession live = sessionWithSixTurns();
         ChatSession saved = ChatSession.restored(scenario, "saved summary", TurnNumber.of(9),
             List.of(new NumberedTurn(TurnNumber.of(9), 0, new ChatTurn(ChatTurn.Speaker.PLAYER, "nine"))), 0,
-            Set.of("test-npc"), Set.of());
+            Map.of("test-npc", new ForcedActivity(NpcActivity.PASSIVE, "")));
 
         live.restoreFrom(saved);
 
         assertEquals("saved summary", live.summary());
         assertEquals(TurnNumber.of(9), live.firstTurnNumber());
         assertEquals(TurnNumber.of(9), live.lastTurnNumber());
-        assertEquals(Set.of(), live.interjectingNpcIds());
+        assertEquals(NpcActivity.PASSIVE, live.activity().levelOf("test-npc"));
     }
 
     @Test
@@ -304,19 +308,131 @@ class ChatSessionTest {
         assertEquals(Set.of("elena", "marcus"), session.presentNpcIds());
     }
 
+    // ── Niveaux d'activite ──────────────────────────────────────────────────
+
+    private static final Cast TWO_NPCS = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
+
+    private static ChatSession twoNpcSession() {
+        return ChatSession.fresh(new ChatScenario("test", TWO_NPCS, "premise", List.of()));
+    }
+
+    /** A leaf act whose path of headings carries these commands (root first). */
+    private static ScenarioAct leafWith(ActNumber number, List<List<ActivityDirective>> path) {
+        return new ScenarioAct(number, "", "Act text.", List.of(), NpcOpening.NONE, List.of(), path);
+    }
+
     @Test
-    void setPresentMutesAndUnmutesButNeverTheLastPresentNpc() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
-        ChatSession session = ChatSession.fresh(new ChatScenario("test", cast, "premise", List.of()));
+    void freshSessionStartsWithEveryCastMemberPresentAndImplicit() {
+        ChatSession session = twoNpcSession();
 
-        assertTrue(session.setPresent("marcus", false));
-        assertEquals(Set.of("elena"), session.presentNpcIds());
-
-        assertFalse(session.setPresent("elena", false), "impossible de retirer le dernier present");
-        assertEquals(Set.of("elena"), session.presentNpcIds());
-
-        assertTrue(session.setPresent("marcus", true));
         assertEquals(Set.of("elena", "marcus"), session.presentNpcIds());
+        assertEquals(NpcActivityState.DEFAULT, session.activity().stateOf("elena"));
+    }
+
+    @Test
+    void aClickStepsThroughEveryForcedLevelThenBackToTheScenarioLevel() {
+        ChatSession session = twoNpcSession(); // marcus : present (scenario)
+
+        // present -> passive -> absent -> active -> present (force) -> plus de forcage
+        assertTrue(session.cycleActivity("marcus"));
+        assertEquals(new NpcActivityState(NpcActivity.PASSIVE, ActivitySource.FORCED), session.activity().stateOf("marcus"));
+        assertTrue(session.cycleActivity("marcus"));
+        assertEquals(NpcActivity.ABSENT, session.activity().levelOf("marcus"));
+        assertEquals(Set.of("elena"), session.presentNpcIds());
+        assertTrue(session.cycleActivity("marcus"));
+        assertEquals(NpcActivity.ACTIVE, session.activity().levelOf("marcus"));
+        assertTrue(session.cycleActivity("marcus"));
+        assertEquals(new NpcActivityState(NpcActivity.PRESENT, ActivitySource.FORCED), session.activity().stateOf("marcus"),
+            "present force n'est pas present par defaut : c'est un verrou, en rouge");
+        assertTrue(session.cycleActivity("marcus"));
+        assertEquals(NpcActivityState.DEFAULT, session.activity().stateOf("marcus"));
+        assertTrue(session.forcedActivities().isEmpty());
+    }
+
+    @Test
+    void aClickNeverLeavesTheSceneEmpty() {
+        ChatSession session = ChatSession.fresh(new ChatScenario("test", new Cast(List.of(new Npc("solo", "Solo", "sheet", ""))),
+            "premise", List.of()));
+
+        // present -> passive -> (absent saute : plus personne) -> active -> present force -> retour
+        session.cycleActivity("solo");
+        session.cycleActivity("solo");
+        assertEquals(NpcActivity.ACTIVE, session.activity().levelOf("solo"), "absent est saute quand c'est le dernier");
+        assertEquals(Set.of("solo"), session.presentNpcIds());
+    }
+
+    @Test
+    void cyclingAnUnknownNpcIsANoOp() {
+        assertFalse(twoNpcSession().cycleActivity("nobody"));
+    }
+
+    @Test
+    void theScenarioCommandsGiveTheActivityOfTheCurrentAct() {
+        List<ActivityDirective> act1 = List.of(ActivityDirective.level(NpcActivity.ABSENT, "Marcus"));
+        List<ActivityDirective> act2 = List.of(ActivityDirective.level(NpcActivity.ACTIVE, "Marcus"));
+        ChatScenario scenario = new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            leafWith(ActNumber.of(1), List.of(act1)), leafWith(ActNumber.of(2), List.of(act2))));
+        ChatSession session = ChatSession.fresh(scenario);
+
+        assertEquals(Set.of("elena"), session.presentNpcIds());
+        session.advanceAct();
+        assertEquals(NpcActivity.ACTIVE, session.activity().levelOf("marcus"));
+        session.previousAct();
+        assertEquals(Set.of("elena"), session.presentNpcIds(), "calcule depuis l'acte, rien n'est stocke : le retour arriere suit");
+    }
+
+    @Test
+    void aForcedLevelWinsOverTheScenarioAndIsFlaggedForced() {
+        ChatScenario scenario = new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            leafWith(ActNumber.of(1), List.of(List.of(ActivityDirective.level(NpcActivity.ABSENT, "Marcus"))))));
+        ChatSession session = ChatSession.fresh(scenario);
+
+        session.cycleActivity("marcus"); // scenario : absent -> premier cran : active
+
+        assertEquals(new NpcActivityState(NpcActivity.ACTIVE, ActivitySource.FORCED), session.activity().stateOf("marcus"));
+        assertEquals(NpcActivity.ABSENT, session.scenarioActivity().levelOf("marcus"));
+    }
+
+    @Test
+    void aForcedLevelHangsFromTheParentHeadingAndDiesWhenTheStoryLeavesIt() {
+        // 1.1, 1.2 sous le titre 1 ; 2 est un autre titre racine.
+        ChatScenario scenario = new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1, 1), "", "a"), ScenarioAct.leaf(ActNumber.of(1, 2), "", "b"),
+            ScenarioAct.leaf(ActNumber.of(2), "", "c")));
+        ChatSession session = ChatSession.fresh(scenario);
+        session.cycleActivity("marcus"); // force sous le titre 1
+
+        session.advanceAct(); // 1.2 : meme parent, le forcage tient
+        assertEquals(NpcActivity.PASSIVE, session.activity().levelOf("marcus"));
+
+        session.advanceAct(); // 2 : on sort du titre 1
+        assertEquals(NpcActivity.PRESENT, session.activity().levelOf("marcus"));
+
+        session.previousAct(); // retour a 1.2 : le forcage ne ressuscite pas
+        assertEquals(NpcActivity.PRESENT, session.activity().levelOf("marcus"));
+        assertTrue(session.forcedActivities().isEmpty());
+    }
+
+    @Test
+    void aForcedLevelOnATopLevelHeadingHoldsForTheWholeStory() {
+        ChatScenario scenario = new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", "a"), ScenarioAct.leaf(ActNumber.of(2), "", "b")));
+        ChatSession session = ChatSession.fresh(scenario);
+        session.cycleActivity("marcus");
+
+        session.advanceAct();
+
+        assertEquals(NpcActivity.PASSIVE, session.activity().levelOf("marcus"));
+    }
+
+    @Test
+    void aSceneWithEveryoneAbsentNeverReachesTheSelector() {
+        ChatScenario scenario = new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            leafWith(ActNumber.of(1), List.of(List.of(ActivityDirective.level(NpcActivity.PASSIVE, ""))))));
+
+        assertEquals(Set.of("elena", "marcus"), ChatSession.fresh(scenario).presentNpcIds());
+        assertThrows(IllegalArgumentException.class, () -> new ChatScenario("test", TWO_NPCS, "premise", List.of(
+            leafWith(ActNumber.of(1), List.of(List.of(ActivityDirective.level(NpcActivity.ABSENT, ""))))))); // tous absents
     }
 
     @Test
@@ -334,68 +450,24 @@ class ChatSessionTest {
     }
 
     @Test
-    void reloadScenarioDropsRemovedNpcsKeepsExistingPresenceAndAddsNewNpcsAsPresent() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
-        ChatSession session = ChatSession.fresh(new ChatScenario("test", cast, "premise", List.of()));
-        session.setPresent("marcus", false); // elena present, marcus muted
+    void reloadScenarioDropsTheForcedLevelsOfRemovedNpcsAndKeepsTheOthers() {
+        ChatSession session = twoNpcSession();
+        session.cycleActivity("marcus");
+        session.cycleActivity("marcus"); // marcus force absent
+        session.cycleActivity("elena");  // elena force passif
 
         Cast freshCast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("clara", "Clara", "sheet", "")));
         session.reloadScenario(new ChatScenario("test", freshCast, "premise", List.of()));
 
         assertEquals(Set.of("elena", "clara"), session.presentNpcIds(), "marcus disparu, clara nouvelle donc presente");
+        assertEquals(NpcActivity.PASSIVE, session.activity().levelOf("elena"), "le forcage d'elena est conserve");
     }
 
     @Test
-    void reloadScenarioFallsBackToEveryNewNpcPresentIfReconciliationWouldLeaveNobody() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", "")));
-        ChatSession session = ChatSession.fresh(new ChatScenario("test", cast, "premise", List.of()));
+    void anOldPresentListBecomesForcedAbsences() {
+        Map<String, ForcedActivity> forced = ChatSession.forcedAbsentFrom(
+            new ChatScenario("test", TWO_NPCS, "premise", List.of()), Set.of("elena"));
 
-        Cast freshCast = new Cast(List.of(new Npc("elena-renamed", "Elena", "sheet", "")));
-        session.reloadScenario(new ChatScenario("test", freshCast, "premise", List.of()));
-
-        assertEquals(Set.of("elena-renamed"), session.presentNpcIds());
-    }
-
-    // ── Interjection eligibility ─────────────────────────────────────────────
-
-    @Test
-    void freshSessionStartsWithEveryCastMemberInterjectionEligible() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
-        ChatScenario scenario = new ChatScenario("test", cast, "premise", List.of());
-
-        ChatSession session = ChatSession.fresh(scenario);
-
-        assertEquals(Set.of("elena", "marcus"), session.interjectingNpcIds());
-    }
-
-    @Test
-    void setInterjectingOptsInAndOutWithNoMinimumGuard() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
-        ChatSession session = ChatSession.fresh(new ChatScenario("test", cast, "premise", List.of()));
-
-        assertTrue(session.setInterjecting("marcus", false));
-        assertEquals(Set.of("elena"), session.interjectingNpcIds());
-
-        // contrairement a setPresent, opter tout le monde dehors est un no-op valide, pas bloque
-        assertTrue(session.setInterjecting("elena", false));
-        assertEquals(Set.of(), session.interjectingNpcIds());
-
-        assertFalse(session.setInterjecting("elena", false), "deja hors, rien ne change");
-
-        assertTrue(session.setInterjecting("marcus", true));
-        assertEquals(Set.of("marcus"), session.interjectingNpcIds());
-    }
-
-    @Test
-    void reloadScenarioReconcilesInterjectionEligibilityLikePresence() {
-        Cast cast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("marcus", "Marcus", "sheet", "")));
-        ChatSession session = ChatSession.fresh(new ChatScenario("test", cast, "premise", List.of()));
-        session.setInterjecting("marcus", false); // elena eligible, marcus opte dehors
-
-        Cast freshCast = new Cast(List.of(new Npc("elena", "Elena", "sheet", ""), new Npc("clara", "Clara", "sheet", "")));
-        session.reloadScenario(new ChatScenario("test", freshCast, "premise", List.of()));
-
-        assertEquals(Set.of("elena", "clara"), session.interjectingNpcIds(),
-            "marcus disparu, clara nouvelle donc eligible par defaut");
+        assertEquals(Map.of("marcus", new ForcedActivity(NpcActivity.ABSENT, "")), forced);
     }
 }

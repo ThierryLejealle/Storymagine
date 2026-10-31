@@ -23,7 +23,7 @@ chatscenarios/mon-scenario/
   characters/         obligatoire — un fichier par personnage
     elena.txt
     marcus.txt
-  picks/              optionnel — paragraphes tirés par {pick … nom} (§2.6)
+  picks/              optionnel — paragraphes tirés par {pick … nom} (§2.6) ou déroulés par {repeat … nom} (§2.6 bis)
     lieu.txt
   run/                généré par l'appli, jamais écrit à la main (§6)
 ```
@@ -36,6 +36,12 @@ chatscenarios/mon-scenario/
 | Nombre de PNJ | Un seul fichier suffit : le scénario est alors mono-personnage. |
 | Liste de l'appli | Un scénario y figure s'il a un `scenario.txt` et au moins un personnage valide. |
 | Copier ou partager | Copier le dossier sans `run/`. |
+
+**Démos** : `chatscenarios/demos/` contient un scénario minimaliste par mécanisme (`demo-pick`,
+`demo-repeat`, `demo-actes`, `demo-pnj`…), chacun avec un `README.md` qui dit ce qu'il montre et quoi regarder.
+Au démarrage de `chat.bat`, le choix « 3 - Démos du projet » les ouvre. À consulter comme exemple de
+chaque commande ; à compléter à chaque nouveau mécanisme (une démo par mécanisme, sujet anodin, tous publics,
+personnages adultes).
 
 **Squelette** : `init-chat.bat` demande le dossier (même choix que `chat.bat`), le nom du scénario
 (lettres, chiffres, `-`, `_`), le nombre de PNJ et leurs noms. Il crée `scenario.txt` et une fiche par
@@ -265,6 +271,55 @@ picks/lieu.txt ont deja tous ete tires.`
   sont pas concernées.
 - Fichier `picks/nom.txt` absent ou sans paragraphe : échec du chargement, avec le nom du fichier.
 
+### 2.6 bis Séquence répétée : `{repeat mode nom}`
+
+Pour une série de scènes qui font toutes la même chose (une suite d'épreuves, de visites, d'interrogatoires…),
+on écrit **le gabarit une seule fois** ; il est recopié une fois par paragraphe de `picks/nom.txt`. Le
+fichier est celui d'un `pick` (§2.6) : paragraphes séparés par `---`.
+
+```
+{repeat random 3 defis}
+# Défi {n}
+[Megumin annonce le défi numéro {n} d'un grand geste.]
+Point de départ : {item2}
+Ce qui doit se passer : Megumin explique le défi. {item1}
+Quand écrire [NEXT ACT] : {item3}
+{end-repeat}
+```
+
+| Commande | Comportement |
+|---|---|
+| `{repeat order nom}` | Tout le fichier, dans l'ordre du fichier. |
+| `{repeat order 2 nom}` | Les 2 premiers paragraphes du fichier. |
+| `{repeat random nom}` | Tout le fichier, dans un ordre aléatoire. |
+| `{repeat random 3 nom}` | 3 paragraphes **différents**, tirés au hasard. |
+
+- Le mode est obligatoire ; le nombre est facultatif (sans lui, tout le fichier). Un paragraphe ne sort
+  jamais deux fois dans un même bloc ; deux blocs sur le même fichier sont indépendants. Un nombre
+  supérieur au nombre de paragraphes est une erreur.
+- `{repeat …}` et `{end-repeat}` sont chacun **seuls sur leur ligne**. Les blocs ne s'imbriquent pas. Le
+  gabarit contient en général un titre `#` : chaque copie devient un acte.
+- Zones remplacées dans le gabarit : `{n}` = numéro de la copie (1, 2, 3… dans l'ordre de jeu, pas du
+  fichier) ; `{item}` = le paragraphe entier ; `{item1}`, `{item2}`… = les morceaux du paragraphe. Elles
+  ne valent qu'à l'intérieur d'un bloc.
+- **Morceaux** : une ligne ne contenant qu'un seul `-` coupe un paragraphe en morceaux. Exemple de
+  paragraphe : la description du défi, `-`, la mise en situation, `-`, la condition de fin. Une ligne
+  `- texte` n'est pas un séparateur. Si le gabarit utilise `{itemK}` jusqu'à K = 3, **chaque** paragraphe
+  du fichier doit avoir exactement 3 morceaux, sinon le chargement échoue en nommant le paragraphe.
+  `{item}` n'impose rien (il retire simplement les lignes `-`).
+- La condition de fin `Quand écrire [NEXT ACT] : {item3}` rend chaque copie précise : écrire le morceau
+  comme une phrase complète (« Dès qu'Alex a… »), pas la fin d'une phrase du gabarit (élision, accord).
+- Ne pas mettre `{item…}` dans une ligne `[...]` si le paragraphe tient sur plusieurs lignes (§2.6).
+- Le dépliage se fait **avant** `pick` : un `{pick}` écrit dans le gabarit est tiré une fois par copie, et
+  une commande contenue dans un paragraphe du fichier est exécutée. Les zones, elles, ne sont lues qu'une
+  fois (un `{n}` écrit dans un paragraphe reste tel quel).
+- Comme `pick`, le dépliage se fait **une fois par partie** : `run/current/resolved/` contient le
+  scénario déplié, sans aucune commande `repeat`. Le bouton 🎲 affiche une ligne par bloc (type
+  `repeat-order` ou `repeat-random`) avec les paragraphes dans l'ordre de jeu. « Recommencer » pour voir
+  une modification.
+
+Exemple complet : `chatscenarios/demos/demo-repeat/`.
+
 ### 2.7 Ce que voit chaque PNJ
 
 Prompt système envoyé au PNJ qui parle, à chaque tour, dans cet ordre :
@@ -333,7 +388,9 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 | Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{delta-pnj Elena : …}` (visibilité manquante) |
 | Commande qui doit être seule sur sa ligne | `{npc-starts}` ou `{delta-pnj …}` au milieu d'une phrase |
 | Fichier ou paragraphes manquants | `picks/x.txt` absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
-| Personnage inconnu | `{npc-starts Zorglub}`, `{delta-pnj secret Zorglub : …}` |
+| Bloc `repeat` incorrect | pas de `{end-repeat}`, bloc imbriqué ou vide, `{n}` ou `{item}` hors d'un bloc, `{repeat plain x}` (mode manquant), nombre trop grand, paragraphe qui n'a pas le même nombre de morceaux que les `{itemK}` du gabarit |
+| Personnage inconnu | `{npc-starts Zorglub}`, `{delta-pnj secret Zorglub : …}`, `{npc-active Zorglub}` |
+| Activité incohérente | `{npc-active …}` au milieu d'une phrase ; scène où tout le monde est absent ; même PNJ nommé deux fois dans un titre |
 
 Avertissements (affichés au lancement et dans 🐞, sans bloquer) : un acte non final sans
 `Quand écrire [NEXT ACT]`, un PNJ jamais cité dans la prémisse ni dans le premier acte.
@@ -355,14 +412,97 @@ Humour sec, sans exclamations.
 - Décrire **la manière d'écrire** (voix, rythme, vocabulaire, ton), jamais des événements : le texte
   est lu à chaque tour par tous les personnages, il n'est pas protégé contre les spoilers.
 - Formuler en positif (« phrases courtes ») plutôt qu'en interdits absolus (« jamais de longues phrases »),
-  qui font boucler un petit modèle. Court : au-delà de 1 200 caractères, un avertissement apparaît.
+  qui font boucler un petit modèle. Court : au-delà de 1 500 caractères, un avertissement apparaît au chargement et dans
+  `validation-scenarios.bat` (pas dans 🐞 : avec des lignes `{N%}`, la taille du fichier n'est pas ce que le
+  modèle reçoit).
 - Une consigne de longueur (« réponses très longues ») entre en conflit avec les règles de longueur du
   prompt et avec l'interjection (une ligne courte) : ne pas s'en servir pour la longueur.
-- Même langue que le scénario. Aucune commande entre accolades dans ce fichier : elle serait envoyée telle
-  quelle au modèle, le chargement la refuse.
+- Même langue que le scénario. Aucune commande entre accolades dans ce fichier (sauf la chance `{N%}`
+  ci-dessous) : elle serait envoyée telle quelle au modèle, le chargement la refuse.
+- **Ligne rare : `{N%}`.** Un petit modèle ne sait pas faire « de temps en temps » : il le fait toujours ou
+  jamais. Mettre `{N%}` n'importe où dans une ligne la rend conditionnelle : à **chaque réponse de PNJ**, un
+  tirage aléatoire garde la ligne entière (marqueur retiré, tiret conservé) avec N % de chances, sinon elle
+  disparaît du prompt, tiret compris. Les lignes sans marqueur sont toujours données.
+
+  ```
+  Phrases courtes, vocabulaire simple.
+  - {20%} Mets en valeur la tenue impeccable d'une des filles, en une courte phrase.
+  - {10%} Glisse un détail sensoriel (odeur, lumière, bruit de la rue).
+  ```
+
+  N entier de 1 à 100, un seul marqueur par ligne, avec un texte à garder ou écarter. Le tirage est
+  indépendant à chaque réponse (donc, dans un tour à plusieurs PNJ, plusieurs peuvent tirer la ligne) et
+  non reproductible : un retry ou un retour en arrière peut tirer autrement. Un marqueur mal formé
+  (`{20}`, `{0%}`, `{150%}`, deux sur une ligne) empêche le chargement.
 - Relu à chaque chargement : ⟳ prend en compte une modification en cours de partie. Reçu par les
   personnages qui jouent (dont une interjection ou un `DO:`), pas par le résumé ni par les analyses 🔍 et 🧠.
-  Le bouton 🐞 l'affiche (« Conseil stylistique »).
+  Le bouton 🐞 l'affiche (« Conseil stylistique »). Si le style contient des lignes `{N%}`, 🐞 montre,
+  une fois qu'une réponse a été générée, le style tel que le dernier PNJ l'a réellement reçu après tirage
+  (vide si toutes les lignes ont été écartées), à la place du fichier, pour voir quelles lignes rares sont
+  passées. Avant la première réponse, il montre le fichier.
+
+### 2.11 Qui parle dans une scène : `{npc-active|present|passive|absent noms}` et `{npc-reset}`
+
+Fixent le **niveau d'activité** des personnages (§4.1) pour l'acte où la commande est écrite et tous ceux
+qui sont dessous. Chaque commande tient sur **une ligne seule** ; les noms suivent la commande, séparés
+par des espaces (un nom de plusieurs mots est reconnu, « Céleste Dubois »).
+
+```
+{npc-active Elena}
+{npc-passive Marcus Clara}
+{npc-absent}
+```
+
+| Commande | Effet |
+|---|---|
+| `{npc-active noms}` | parlent à chaque échange |
+| `{npc-present noms}` | répondent quand ils sont nommés (niveau par défaut) |
+| `{npc-passive noms}` | ne réagissent que brièvement, de temps en temps |
+| `{npc-absent noms}` | ne sont pas dans la scène : ne parlent jamais. Attention : à son retour, un PNJ lit tout l'historique, y compris ce qui s'est dit en son absence (il n'est pas « tenu dans l'ignorance ») |
+| `{npc-active *}` (idem `present`, `passive`, `absent`) | **tous** les PNJ d'un coup, comme si chacun était nommé : niveau **explicite** |
+| `{npc-reset}` | tout le monde repasse en present, explicite |
+
+**`*`** (étoile, jamais un nom de personnage) : `{npc-active *}` remet tous les PNJ en actif, y compris ceux
+qu'un titre parent avait rendus absents ou passifs. C'est un nommage **explicite** : une commande sans nom
+écrite ensuite ne les touche pas (contrairement à `{npc-active}` seul, qui ne touche que les PNJ
+implicites). Un nom écrit dans le même titre est plus précis et l'emporte : `{npc-active *}` +
+`{npc-passive Marcus}` = tous actifs sauf Marcus passif. `*` doit être seul dans sa commande (pas
+`{npc-active * Elena}`) et ne peut apparaître qu'une fois par titre.
+
+**Commande sans nom** : elle s'applique à **tous les PNJ dont le niveau n'est pas encore explicite**.
+Avec J1 à J4, `{npc-active J1}`, `{npc-passive J3}` puis `{npc-absent}` laisse J1 actif, J3 passif, et
+met J2 et J4 absents.
+
+**Héritage** : chaque PNJ a un niveau et un statut, *explicite* (nommé par une commande) ou *implicite*
+(par défaut, ou touché par une commande sans nom). On parcourt les titres de la racine à la feuille :
+1. une commande **avec** noms fixe le niveau et le rend explicite ; un titre plus profond peut le changer ;
+2. une commande **sans** nom ne touche que les PNJ implicites, qui le restent ;
+3. dans un même titre, l'ordre d'écriture ne compte pas (les noms d'abord, le sans-nom ensuite) ;
+4. un titre sans commande hérite de son parent ; un acte sans aucune commande sur son chemin laisse tout
+   le monde present, implicite.
+
+Exemple :
+
+```
+# Scène 1
+{npc-active Elena}
+{npc-absent}
+
+## Sous-scène
+{npc-passive Marcus}
+{npc-active}
+```
+
+Scène 1 : Elena active (explicite), les autres absents (implicites). Sous-scène : Marcus passif
+(explicite), la commande sans nom active Clara et tout autre PNJ implicite, Elena reste active.
+
+- Un nom inconnu, un PNJ nommé deux fois dans le même titre, deux commandes sans nom dans le même titre ou
+  une scène où tout le monde est absent empêchent le chargement.
+- Interdit dans la prémisse (aucun acte auquel l'attacher). La ligne est retirée du texte de l'acte.
+- Le niveau se recalcule depuis l'acte : retour arrière, sauvegarde et ⟳ donnent toujours celui de l'acte.
+  Les clics du joueur (§4.1) s'ajoutent par-dessus.
+- Un PNJ **passive** qui est nommé ne répond pas pour autant : c'est ce qui le distingue de **present**.
+  Pour qu'un personnage réponde dès qu'on l'appelle, le laisser present (ou active).
 
 ## 3. Fiche personnage (`characters/nom.txt`)
 
@@ -413,33 +553,73 @@ contredire, fiche non réutilisable.
 
 ## 4. Mécanismes du jeu
 
-### 4.1 Présence (vignette 🔊/🔇)
+### 4.1 Niveaux d'activité (vignette de chaque PNJ)
 
-Chaque PNJ est présent ou absent de la scène. Tous sont présents par défaut. Le dernier PNJ présent ne
-peut pas être rendu absent. Persisté dans `run/current/state.txt` (§6.5).
+Chaque PNJ a un niveau d'activité, affiché par l'emoji de sa vignette :
+
+| Niveau | Emoji | Comportement |
+|---|---|---|
+| active | 😎 | parle à **chaque** échange |
+| present | 🙂 | répond quand il est nommé, reprend la parole en cas de continuité ; peut être tiré au sort et réagir (poids double d'un passive, §4.3). **Niveau par défaut** |
+| passive | 🤨 | ne répond pas parce qu'on le nomme ; peut être tiré au sort et réagir brièvement |
+| absent | 😴 | ne parle jamais et n'est pas dans la scène : le prompt des autres le liste comme « pas dans la scène en ce moment » (ils peuvent le mentionner, jamais parler à sa place) |
+
+Le point dans le coin de la pastille dit d'où vient le niveau : **blanc** = fixé par une commande du
+scénario qui nomme le PNJ (§2.11), **gris** = par défaut ou fixé par une commande sans nom, **rouge** =
+forcé par le joueur. Survoler la vignette donne le détail.
+
+**Cliquer** sur une vignette fait défiler les niveaux forcés : à partir du niveau du scénario, active →
+present → passive → absent (dans cet ordre circulaire, sans le niveau de départ), puis le niveau du
+scénario **forcé** (un verrou que les commandes ne défont plus), puis un dernier clic retire le
+forçage. Un cran qui laisserait la scène vide est sauté. Un niveau forcé s'accroche au **titre parent**
+de l'acte où l'on a cliqué : il tient pour tous les actes sous ce titre et disparaît dès que l'histoire en
+sort (revenir ensuite ne le ressuscite pas). Sur un titre de premier niveau, il tient toute la partie.
+
+Persisté dans `run/current/state.txt` (§6.5).
 
 ### 4.2 Qui répond
 
-Trois étapes, la première qui s'applique décide :
+Étapes dans l'ordre, tous ceux qui sont retenus répondent :
 
-1. **Mention** : le message du joueur nomme un ou plusieurs PNJ présents. Tous répondent, dans l'ordre
-   d'apparition de leur nom dans le message. Détection insensible aux accents et à la casse ; les 5
-   premiers caractères normalisés du nom suffisent (« Cel » vise « Céleste »).
-2. **Continuité** : personne n'est nommé et un seul PNJ a parlé au tour précédent : il reprend la
-   parole (s'il est encore présent).
-3. **Repli** : un seul PNJ est tiré au hasard parmi ceux dont l'icône 💬 est activée. Si aucun ne l'est,
-   tirage parmi tous les présents.
+1. **Les actifs** répondent toujours, dans l'ordre des identifiants.
+2. **Mention** : un PNJ active ou present dont le nom apparaît dans le dernier échange répond aussi. Le
+   dernier échange est le message du joueur **et** les réponses du tour précédent (J1 parle de J2 : J2
+   peut répondre) ; un PNJ ne se « nomme » pas lui-même. Ordre : les noms du message du joueur dans leur
+   ordre d'apparition, puis ceux des réponses ; les nommés passent avant les autres actifs. Détection
+   insensible aux accents et à la casse ; les 5 premiers caractères normalisés du nom suffisent
+   (« Cel » vise « Céleste »).
+3. **Continuité** : personne d'actif ni de nommé, et un seul PNJ a parlé au tour précédent : il reprend la
+   parole (s'il est encore dans la scène).
+4. **Tirage** : sinon, un seul PNJ present ou passive est tiré au hasard, un present deux fois plus
+   probable qu'un passive.
 
 **Réponse vide** : un petit modèle peut épuiser son budget en réflexion sans répondre. L'appli détecte la
 réponse vide et relance une fois avec le même prompt, puis abandonne.
 
-### 4.3 Interjection (icône 💬, réglage « Chance d'interjection »)
+### 4.3 Interjection (réglage « Chance d'interjection »)
 
-Après l'étape 4.2, chaque PNJ présent, éligible (💬 activée, active par défaut, réglable par PNJ) et non
-choisi comme principal tire sa chance de réagir. Le nombre de PNJ principaux ne limite pas les
-interjections. L'interjecteur répond après les principaux, voit leurs réponses ; plusieurs interjecteurs
-répondent dans un ordre aléatoire. Réglage global 0 à 1, défaut 0.5, sans réglage par PNJ. Le prompt de
-l'interjecteur lui demande une réaction courte.
+Après l'étape 4.2, chaque PNJ present ou passive non retenu tire sa chance de réagir **brièvement** (une
+courte phrase ou un geste, jamais mener la scène). Le réglage est une **chance totale**, partagée entre
+tous les candidats : un present pèse **double** d'un passive. Plus il y a de candidats, plus la chance de
+chacun baisse, et le nombre de réactions attendu par tour reste proche du réglage. Un PNJ seul ne dépasse
+jamais 60 % (au-dessus de 1, le plafond monte en proportion). Un actif parle déjà, et un absent ne parle
+jamais. Le nombre de PNJ principaux ne limite pas les interjections. L'interjecteur répond après les
+principaux, voit leurs réponses ; plusieurs interjecteurs répondent dans un ordre aléatoire. Réglage
+global, défaut 1 (environ une réaction par tour), 0 = aucune, sans réglage par PNJ.
+
+| Candidats (hors actifs et principaux) | Chance de chacun, réglage = 1 |
+|---|---|
+| 1 present | 60 % (plafond) |
+| 2 presents | 50 % chacun |
+| 3 presents | 33 % chacun |
+| 4 presents | 25 % chacun |
+| 5 presents | 20 % chacun |
+| 2 presents + 2 passifs | present 33 %, passif 17 % |
+| 1 present + 3 passifs | present 40 %, passif 20 % |
+| 4 passifs | 25 % chacun |
+| 1 passif | 60 % (plafond) |
+
+Pour une scène plus calme, baisser le réglage ou mettre les figurants en `{npc-passive}`.
 
 ### 4.3 bis Comprendre une réponse : le bouton ❓
 
@@ -529,7 +709,8 @@ Chaque bulle porte son numéro `#N` (§6.2). Le bouton ramène la partie à l'é
 - **Destructif** : tout ce qui suit est supprimé définitivement. Confirmation explicite, avec
   proposition de sauvegarde préalable.
 - **Restauré** : les tours, le résumé tel qu'il était à ce moment (§6.6), l'acte courant.
-- **Non restauré** : présence 🔊/🔇, interjection 💬, réglages de génération.
+- **Non restauré** : les niveaux d'activité forcés par vos clics (§4.1), réglages de génération. Les niveaux
+  fixés par le scénario suivent l'acte, donc le retour arrière les rétablit.
 - Le tour suivant reprend le numéro `N+1`. « Annuler » et « Régénérer » sont des retours au dernier tour
   du joueur suivis d'une nouvelle génération.
 
@@ -545,6 +726,7 @@ Injectées dans le prompt de chaque PNJ :
 | `OOC: …` | Instruction hors-jeu, que personne dans l'histoire n'a dite ni entendue. Le PNJ répond en tant que lui-même et s'arrête là : la scène n'avance pas dans cette réponse. |
 | `DO: …` | Le joueur confie la plume du narrateur au PNJ pour une seule réponse : avancer la scène, narrer, agir pour d'autres personnages. Au tour suivant, retour à son seul personnage. |
 | `DO:` vide | Le PNJ parle en premier (`{npc-starts}`, §4.5) |
+| Bouton **▶ Continue** | Aucun message du joueur : les PNJ continuent « comme si le joueur n'avait rien répondu ». Le prompt est le prompt habituel, sans consigne en plus ; sa dernière ligne est simplement la dernière réplique d'un PNJ. Sélection habituelle (actifs, PNJ cités dans les dernières répliques, continuité, tirage), **sans interjection**. Rien n'est ajouté pour le joueur dans l'historique. Refusé tant que personne n'a parlé. Annuler et Régénérer reviennent toujours au dernier vrai message du joueur : un Continue fait partie du tour qui le précède. |
 
 Le message du joueur est présenté au modèle sous le nom du joueur (§2.1). La génération est coupée si le
 modèle dérive vers le tour du joueur ou vers une narration à sa place.
@@ -592,7 +774,7 @@ chatscenarios/mon-scenario/
         000013-compaction-f000012.md             une compaction : un fichier dans la même suite
         000014.md
         ...
-      state.txt                                  présence et interjection des PNJ
+      state.txt                                  acte courant, niveaux d'activité forcés
       resolved/                                  scenario*.txt avec les {pick} tirés (§2.6) ; absent sans pick
         picks.txt                                les tirages dans l'ordre (tableau 🎲) ; absent pour un ancien run
     saves/
@@ -671,21 +853,24 @@ qui existait à ce moment-là.
 Il n'y a pas d'identifiant propre à une compaction : R suffit, il est unique dans une histoire linéaire
 (un retour en arrière supprime toutes les compactions de R supérieur).
 
-### 6.5 `state.txt` : acte courant, présence et interjection
+### 6.5 `state.txt` : acte courant et niveaux forcés
 
 Les seuls réglages de la partie qui ne se déduisent pas des tours :
 
 ```
 act=2
-present=elena,marcus
-interjecting=elena
+forced=elena:active@1.2;marcus:absent@
 ```
 
 - `act` : l'acte en vigueur maintenant. Il peut différer de l'acte écrit sur le dernier tour après un
   « Précédent » manuel (qui ne crée aucun tour) : c'est ce fichier qui le retient.
-- `present`, `interjecting` : un identifiant de PNJ par valeur, séparés par des virgules (les ids sont
-  les noms de fichier de `characters/`, sans `.txt`). Clé absente : tous les PNJ sont présents et
-  éligibles à l'interjection (comme une partie neuve). Voir §4.1 et §4.3.
+- `forced` : les niveaux d'activité que le joueur a forcés en cliquant (§4.1), au format
+  `id:niveau@ancre`, séparés par `;`. L'id est le nom de fichier de `characters/`, sans `.txt`. L'ancre
+  est le numéro du titre parent auquel le forçage s'accroche (`1.2`), vide pour la racine (tient toute
+  la partie). Clé absente : rien n'est forcé, chaque PNJ a le niveau que donne le scénario. Les niveaux
+  fixés par le scénario (§2.11) ne sont **pas** écrits ici : ils se recalculent depuis l'acte.
+- Un fichier d'avant les niveaux (clés `present` / `interjecting`) est encore lu : les PNJ absents de la
+  liste `present` sont rouverts forcés absents.
 
 ### 6.6 Reprendre la partie à un numéro donné
 
@@ -800,6 +985,22 @@ Conséquences de §2.7 :
    moment de l'histoire va dans l'acte.
 4. Le texte commun d'un chapitre parent est renvoyé à chaque tour de chaque scène : le garder court.
    Ce qui ne sert que dans une scène va dans cette scène.
+   **Piège de la synthèse** : sous un titre parent qui contient des sous-parties (par exemple un `#` suivi
+   de `##`, ou un `##` suivi de `###`), ne pas écrire un résumé des événements à venir du type « ce qui
+   va se passer = d'abord A, puis B, enfin C ». Ce texte est lu à chaque tour de **chaque** sous-partie par
+   **tous** les PNJ : le modèle *sait* déjà B et C pendant la sous-partie A, va droit au dénouement et saute
+   des étapes au lieu de dérouler la scène en cours. Le prompt lui demande bien d'ignorer ce qui n'est pas
+   encore arrivé, mais il ne comprend pas qu'il n'a pas le droit d'utiliser une information qu'il a sous
+   les yeux : la seule parade fiable est de ne pas la lui montrer avant la sous-partie où elle se joue. Sous le titre parent, ne mettre que ce qui est vrai
+   dans toutes les sous-parties (lieu, ton, personnages) ; l'enchaînement des événements se lit dans
+   l'ordre des sous-parties, un événement chacune.
+   **Un plan de l'histoire n'est pas une synthèse.** Quand les personnages se donnent réellement un plan
+   (« on passe devant les orcs, puis… »), on peut l'écrire, mais **comme un plan** : « les personnages
+   mettent en place le plan suivant : … », jamais comme un fait à venir. Un plan peut être partagé avec le
+   joueur, il peut y en avoir plusieurs à la suite, et l'action peut différer ou échouer selon ce qui se
+   passe : la formulation doit le laisser ouvert. (Hypothèse d'écriture à vérifier selon le modèle : un
+   petit modèle peut quand même suivre le plan à la lettre.) Un plan connu d'un seul PNJ peut aussi aller
+   dans son `# SECRET` ou un `{delta-pnj secret nom : …}` (§2.8), mais ce n'est pas obligatoire.
 5. Les lignes `[...]` d'un acte sont connues de tous les PNJ dès l'arrivée de l'acte.
 6. Le PNJ ne voit pas l'acte suivant : une condition ne peut s'appuyer que sur le texte de l'acte
    courant.
@@ -890,12 +1091,14 @@ Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bi
 | Langue hésitante | Le modèle passe sa réflexion à choisir entre français et anglais | Écrire `Langue :` dans l'en-tête (§2.1) |
 | Mirroring | Le PNJ décrit les sensations ou actions du joueur | Ne pas écrire de pensées ou d'actions du joueur dans le scénario |
 | Spoil | Le PNJ anticipe un événement scripté | Écrire l'événement dans l'acte où il arrive (§7.1) |
+| Synthèse sous un titre parent | Le PNJ sait déjà la suite : il anticipe, saute des étapes et va droit au dénouement | Ne pas écrire « ce qui va se passer = … » sous un titre qui a des sous-parties : son texte est relu à chaque tour de chacune. Un vrai plan des personnages s'écrit comme un plan (« les personnages mettent en place le plan : … »), qui peut échouer (§7.1) |
 | PNJ jamais présenté | Un PNJ tiré au hasard réfléchit longtemps et répond vide | Nommer tous les PNJ dans le premier acte (§2.4) |
 | Négation absolue | Boucle de réflexion, réponse vide | « Dès que… » (§7.2) |
 | Émotion jouée comme preuve | Le PNJ sur-joue sa colère pour déclencher l'acte | Ancrer la condition sur le comportement du joueur |
 | Acte sauté | `[NEXT ACT]` dès le premier tour | Marqueur unique, fait d'ancrage (§7.2) |
 | Commande citée en exemple | Chargement refusé : `{npc-starts}` « doit être seul sur sa ligne », ou `{pick …}` mal formé | Une commande écrite entre accolades est toujours exécutée ou validée, même dans une note : décrire la commande avec des mots (`npc-starts`) sans les accolades (§2.9) |
 | Style qui parle d'histoire | Le style annonce ou impose des événements, tous les PNJ le lisent à chaque tour | `style.txt` ne décrit que la manière d'écrire (§2.10) ; les événements vont dans les actes |
+| « De temps en temps » appliqué à chaque réponse | « Mets en valeur la tenue des filles de temps en temps » : le modèle le fait à chaque réplique | Un petit modèle n'a pas de hasard interne et lit toute consigne présente dans son prompt. Pour la rareté, calculer la probabilité **avant** de construire le prompt : `{N%}` dans une ligne de `style.txt` (§2.10) ; la ligne n'est donnée que N % du temps. L'idée vaut pour toute consigne à fréquence voulue |
 | Secret dans le texte de l'acte | Un autre PNJ réagit à une information privée | Écrire l'information privée avec `{delta-pnj secret nom : …}` (§2.8), jamais dans le corps de l'acte, lu par tous |
 | Échange coupé | `[NEXT ACT]` en plein dialogue | Condition qui laisse de la marge ; un filet existe dans le prompt |
 | Saut de scène | Le `[...]` du nouvel acte ne raccorde pas à la scène précédente | Un `[...]` n'est pas généré par le modèle : l'écrire en lien avec l'état précédent |

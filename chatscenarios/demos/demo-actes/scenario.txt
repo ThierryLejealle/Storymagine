@@ -1,0 +1,27 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Une petite ville tranquille, un dimanche de printemps.
+Prémisse : Alex se promène avec son amie Mina. Ils font une promenade en trois temps : le départ, le parc, le retour.
+Ton : Calme et souriant.
+
+# La promenade
+Mina est une amie d'Alex. Il fait beau, le ciel est dégagé et elle aime marcher doucement en regardant autour d'elle.
+
+## Le départ
+[Alex retrouve Mina devant la boulangerie du coin, un dimanche matin ensoleillé.]
+Point de départ : Mina et Alex se saluent et décident où aller.
+Ce qui doit se passer : Mina propose d'aller au parc.
+Quand écrire [NEXT ACT] : Dès qu'Alex et Mina ont décidé d'aller au parc.
+
+## Au parc
+[Alex et Mina arrivent au parc, où des canards se promènent autour de la mare.]
+Point de départ : Ils marchent sur le chemin qui longe la mare.
+Ce qui doit se passer : Ils regardent les canards et bavardent.
+Quand écrire [NEXT ACT] : Dès qu'Alex ou Mina a proposé de rentrer.
+
+## Le retour
+[Le soleil baisse un peu et Mina et Alex reprennent le chemin de la ville.]
+Point de départ : Ils reviennent vers la boulangerie.
+Ce qui doit se passer : Mina remercie Alex pour la promenade et ils se disent au revoir.

@@ -42,12 +42,13 @@ public class RoleplayNarrator {
     private static final double REPEAT_PENALTY_DEFAULT = 1.08;
 
     /**
-     * Default per-Npc probability used by SpeakerSelector.rollInterjectors when
-     * GenerationSettings.interjectionChance is null — public : ChatServiceImpl (a different
-     * package, orchestrates the roll before calling this agent) needs the same default, and a
-     * single constant here keeps the settings-panel placeholder and the actual fallback in sync.
+     * Default total chance (expected number of reactions per round, shared among the candidates)
+     * used by SpeakerSelector.rollInterjectors when GenerationSettings.interjectionChance is null —
+     * public : ChatServiceImpl (a different package, orchestrates the roll before calling this
+     * agent) needs the same default, and a single constant here keeps the settings-panel
+     * placeholder and the actual fallback in sync.
      */
-    public static final double INTERJECTION_CHANCE_DEFAULT = 0.5;
+    public static final double INTERJECTION_CHANCE_DEFAULT = 1.0;
 
     /**
      * Cuts generation short the moment the model starts writing the next turn in someone else's

@@ -25,7 +25,7 @@ chatscenarios/{nom}/
   scenario-1.txt ...    optionnel — suite des actes, un fichier par tranche (voir plus bas)
   characters/           obligatoire — un fichier .txt par personnage
     {pnj}.txt           première ligne "# Nom" obligatoire
-  picks/{nom}.txt       optionnel — paragraphes pour {pick type nom} (voir « Contenu aléatoire »)
+  picks/{nom}.txt       optionnel — paragraphes pour {pick type nom} et {repeat mode nom} (voir « Contenu aléatoire »)
   run/                  généré par l'appli — voir « Le run »
 ```
 
@@ -136,6 +136,19 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   paragraphe, dans l'ordre des tags), écrits dans `resolved/picks.txt` **avant** les `scenario*.txt`.
   `ChatStoragePort.pickDraws` les relit (vide pour un run ancien) ; `ChatService.pickDraws` →
   `GET /picks` → bouton 🎲 (tableau Fichier / Type / Valeur, une ligne par commande `pick`).
+- **Séquence répétée `{repeat order|random [N] nom}` … `{end-repeat}`** (guide §2.6 bis) : un gabarit
+  recopié une fois par paragraphe d'un `picks/nom.txt`. Concepts : `RepeatMode` (`order` : les N premiers
+  du fichier ; `random` : N différents tirés avec `RandomnessPort` ; sans N, tout le fichier),
+  `PickParagraph` (un paragraphe et ses morceaux, coupés sur les lignes ne contenant que `-`),
+  `RepeatExpander` (domaine, pur, lignes `{repeat}` / `{end-repeat}` seules, pas d'imbrication),
+  `RepeatExpansion` (textes dépliés + un `PickDraw` par bloc). Zones : `{n}` (numéro 1…N dans l'ordre de
+  jeu), `{item}` (paragraphe sans les lignes `-`), `{itemK}` (K-ième morceau) ; remplacement en une
+  seule passe. Erreurs (`IllegalArgumentException` avec `ligne N`) : bloc non fermé, imbriqué ou vide,
+  zone hors d'un bloc, mode ou nombre invalide, N supérieur à la taille du fichier, paragraphe dont le
+  nombre de morceaux diffère du plus grand `{itemK}` du gabarit. `PickResolver.resolve` déplie d'abord
+  (le `{pick}` d'un gabarit est donc tiré par copie) ; les tirages des blocs précèdent ceux des `pick`
+  dans `picks.txt`, avec les types `repeat-order` / `repeat-random` (`PickMode.parseRecorded`). Le
+  scénario déplié est ce qu'écrit `resolved/` : le jeu ne voit jamais de `repeat`.
 - **Debug 🐞** : `ChatService.scenarioPrompt` → `GET /scenario-prompt` : la prémisse et le texte de l'acte
   courant tels que `ChatPromptBuilder` les insère (aucune requête LLM, pas d'historique).
 - **Cycle de vie** : `resolved/` fait partie de `current/` — supprimé par `resetSession` (donc tirage
@@ -156,11 +169,28 @@ Injectées dans chaque prompt (`ChatPromptBuilder`) :
 
 # Qui répond (multi-PNJ)
 
-`SpeakerSelector`, trois étapes : (1) PNJ nommés dans le message, dans l'ordre d'apparition ;
-(2) sinon le PNJ unique du tour précédent ; (3) sinon tirage aléatoire parmi les PNJ éligibles
-à l'interjection. Ensuite, chaque autre PNJ présent et éligible tire sa chance d'interjecter
-(réglage « Chance d'interjection »). Présence (🔊/🔇) et interjection (💬) se règlent par PNJ.
-Détail : `chatscenarios/guide-redaction-chat.md` §4.
+Chaque PNJ a un **niveau d'activité** (`NpcActivity`) : active 😎 (parle à chaque échange), present 🙂
+(défaut : répond quand il est nommé), passive 🤨 (réaction brève occasionnelle), absent 😴 (ne parle jamais,
+listé « pas dans la scène » dans le prompt des autres). `SpeakerSelector`, quatre étapes : (1) les actifs ;
+(2) les PNJ active/present nommés dans le message du joueur puis dans les réponses du tour précédent,
+avant les autres actifs ; (3) sinon le PNJ unique du tour précédent ; (4) sinon tirage aléatoire parmi
+present et passive (un present deux fois plus probable). Ensuite, chaque autre PNJ present ou passive tire
+sa chance d'interjecter : le réglage « Chance d'interjection » (défaut 1) est une chance totale partagée
+entre les candidats (un present pèse double d'un passive, plafond de 60 % par PNJ), donc dégressive selon
+leur nombre.
+
+Le niveau vient du scénario (`{npc-active|present|passive|absent noms}`, `{npc-reset}` : `ActivityDirective`,
+résolues par `ActivityResolver` le long du chemin de titres, jamais stockées : `ChatScenario.activityAt`),
+avec un statut explicite (nommé, ou `*` = tous nommés d'un coup, un nom du même titre l'emportant) ou
+implicite (défaut, commande sans nom). Le joueur peut le forcer en
+cliquant la vignette (`POST /cycle-activity`) : `ForcedActivity`, accroché au titre parent de l'acte courant,
+disparaît quand l'histoire en sort, persisté dans `state.txt`. Pastille : point blanc explicite, gris
+implicite, rouge forcé. Détail : `chatscenarios/guide-redaction-chat.md` §2.11 et §4.
+
+**Continue** : `ChatService.continueScene` (`POST /continue`, bouton ▶ Continue) joue un tour de PNJ sans
+message du joueur : `SpeakerSelector.select` avec un message vide, jamais d'interjection, aucun tour joueur
+(`ChatTurnResult.playerTurn` nul). Le prompt reste le prompt habituel. Annuler et Régénérer inchangés : ils
+reviennent au dernier vrai message du joueur.
 
 # Appel LLM
 
@@ -199,7 +229,7 @@ pas accumulés) et **cumulative** : le nouveau résumé reçoit l'ancien en entr
 framework) servant `chat.html` (vanilla JS/CSS). Endpoints JSON : `/history`, `/message`, `/retry`,
 `/undo`, `/rollback`, `/stop`, `/restart`, `/settings`, `/next-act`, `/previous-act`,
 `/analyze-next-act`, `/analyze-mind-state`, `/analyze-reply-origin`, `/picks`, `/scenario-prompt`,
-`/set-present`, `/set-interjecting`, `/reload-scenario`, `/save`, `/saves`, `/load-save`, `/delete-save`.
+`/cycle-activity`, `/reload-scenario`, `/save`, `/saves`, `/load-save`, `/delete-save`.
 Les réponses sont streamées (texte + réflexion). Les requêtes sont traitées par un pool de fils qui
 grandit (`newCachedThreadPool`) : un appel LLM long ne retient jamais un simple affichage (🐞, 🎲, `/stop`)
 — avec un pool fixe de 2 fils, deux appels longs laissaient le clic suivant sans réponse. La session
@@ -217,7 +247,8 @@ appelle `/rollback` (`/undo` et `/retry` en sont des cas particuliers).
 `ChatService.hasSavedSession` — sinon il démarre une nouvelle partie directement), `ScenarioTesterCli` (revue d'un scénario par agents reviewers,
 `test-scenario.bat`), `InitChatCli` (nouveau scénario : dossier, nom, nombre et noms des PNJ, puis
 `ScenarioScaffolder` crée `scenario.txt` et `characters/*.txt` à remplir, `init-chat.bat`),
-`ValidateScenarioCli` (validation des scénarios, `validation-scenarios.bat`).
+`ValidateScenarioCli` (validation des scénarios, `validation-scenarios.bat` ; contrôle aussi `chatscenarios/demos`).
+Au démarrage, `ChatCliSupport` propose la racine des scénarios : par défaut, projet, autre chemin, ou **3 = `chatscenarios/demos`** (un scénario minimaliste, tous publics, par mécanisme ; `DemoScenariosTest` les valide et vérifie leurs actes et personnages).
 Lancés par des `.bat` minimaux qui transmettent leurs arguments ; la classe lancée par `exec:java`
 vient de la propriété `exec.mainClass` du `pom.xml` du module (défaut `ChatCli`). Le choix du dossier
 des scénarios et le chargement des propriétés sont partagés dans `ChatCliSupport`. Option commune `--logs` : active l'écriture des
@@ -250,7 +281,7 @@ run/
     turns/
       {n:6}.md                          un tour
       {R:6}-compaction-f{F:6}.md        une compaction
-    state.txt                           présence et interjection
+    state.txt                           acte courant, niveaux d'activité forcés
     resolved/scenario[-N].txt           scénario dont les {pick} sont tirés (absent sans pick)
     resolved/picks.txt                  les tirages dans l'ordre : "@@ mode fichier" puis les paragraphes (séparés par "@@ --")
   saves/{yyyy-MM-dd-HHmmss-SSS}.zip     zip de current/ (sauvegarde manuelle)
@@ -283,14 +314,16 @@ n'y a pas d'UID : R est unique dans une histoire linéaire.
 
 ```
 act=2
-present=elena,marcus
-interjecting=elena
+forced=elena:active@1.2;marcus:absent@
 ```
 
 `act` : l'acte en vigueur maintenant (il peut différer de l'acte du dernier tour après un « Précédent »
-manuel, qui ne crée aucun tour). `present` / `interjecting` : un id de PNJ par valeur, séparés par des
-virgules. Fichier absent, ou clé absente : tous les PNJ présents / éligibles à l'interjection. Les
-réglages de génération ne sont pas persistés. Écrit après chaque `saveSession`, de façon atomique
+manuel, qui ne crée aucun tour). `forced` : les niveaux d'activité forcés par le joueur, `id:niveau@ancre`
+séparés par `;` (l'ancre est le numéro du titre parent, vide = racine). Fichier absent, ou clé absente :
+rien de forcé, chaque PNJ a le niveau que donne le scénario à l'acte courant. Les niveaux du scénario ne
+sont jamais écrits (recalculés). Les anciennes clés `present` / `interjecting` sont encore lues (un PNJ
+absent de `present` est rouvert forcé absent), jamais réécrites. Les réglages de génération ne sont pas
+persistés. Écrit après chaque `saveSession`, de façon atomique
 (fichier temporaire puis renommage).
 
 **Zips** : `turns/`, `state.txt` et `resolved/` (dont `picks.txt`) de `current/`, chemins relatifs à `current/`. Fichiers immuables,
@@ -320,7 +353,8 @@ temporaire puis renommage : un crash n'abîme jamais un tour au milieu).
 4. `window` = les fichiers de tour de `(C ? C.F+1 : 1)` à `N` : seuls fichiers de tour lus.
 5. `currentAct` = acte inscrit sur le tour N. Au chargement d'une partie (N = dernier tour),
    l'`act` de `state.txt` prime s'il est présent (cas du « Précédent » manuel).
-6. `presentNpcIds`, `interjectingNpcIds` : lus dans `state.txt`, jamais déduits du tour.
+6. Niveaux forcés (`forced`) : lus dans `state.txt`, jamais déduits du tour ; ceux dont l'ancre ne couvre
+   plus l'acte restauré sont abandonnés. Les niveaux du scénario se recalculent depuis l'acte.
 La fenêtre n'est jamais vide quand `F < R ≤ N` ; elle l'est seulement si une compaction a tout replié
 (`F = R`), l'acte est alors lu sur le fichier du tour N lui-même.
 
@@ -416,8 +450,8 @@ Syntaxe des erreurs : guide §2.9. Ici, la mécanique.
   (`ERROR` / `WARNING`, lieu `fichier:ligne` ou acte, message). `ScenarioValidationException`
   (`IllegalStateException`) liste toutes les erreurs.
 - **`checkSources`** (erreurs, sur le texte écrit par l'auteur, ligne par ligne) : ancienne syntaxe,
-  commande inconnue ou mal écrite, `npc-starts` / `delta-pnj` pas seuls sur leur ligne, personnage
-  inconnu, bibliothèque `picks/` absente ou trop courte, `unique` plus nombreux que les paragraphes.
+  commande inconnue ou mal écrite, `npc-starts` / `delta-pnj` / `npc-active|present|passive|absent|reset`
+  pas seuls sur leur ligne, personnage inconnu (dont les noms d'une commande d'activité), bibliothèque `picks/` absente ou trop courte, `unique` plus nombreux que les paragraphes, blocs `repeat` incorrects (`RepeatExpander`, fichier par fichier).
 - **`checkScenario`** (avertissements, sur le scénario analysé) : acte non final sans `[NEXT ACT]`, PNJ
   jamais cité dans la prémisse ni le premier acte.
 - **Quand** : `ChatFileStorageAdapter.scenarioTextDir` valide les textes à chaque lecture depuis le
@@ -441,8 +475,14 @@ Syntaxe et conseils d'écriture : `chatscenarios/guide-redaction-chat.md` §2.10
   format, seulement si le style est présent. Seul le prompt du personnage qui joue le reçoit ; ni le
   résumeur, ni `NextActReadinessAnalyst`, ni `NpcMindStateAnalyst`.
 - **Validation** : `ScenarioValidator.checkStyleText` refuse l'ancienne syntaxe et toute commande entre
-  accolades (erreur au chargement) ; `checkScenario` avertit au-delà de 1 200 caractères.
-- **Debug** : `ScenarioPromptView.style`, affiché par le bouton 🐞.
+  accolades (erreur au chargement) ; `checkScenario` avertit au-delà de 1 500 caractères.
+- **Lignes rares** : un marqueur `{N%}` dans une ligne (`ScenarioStyle.CHANCE_MARKER`) la rend
+  conditionnelle. `ChatServiceImpl` tire le style à chaque réponse de PNJ (`ScenarioStyle.drawn`, hasard
+  du service, non reproductible) et donne au narrateur un scénario portant ce style (`ChatScenario.withStyle`) :
+  la ligne est gardée sans son marqueur, ou supprimée. `checkStyleText` refuse un marqueur mal formé
+  (hors 1-100, plusieurs par ligne, sans texte). Le texte du prompt lui-même est inchangé.
+- **Debug** : `ScenarioPromptView.style` (fichier) et `styleReceived` (style tiré pour la dernière
+  réponse, `ChatSession.lastStyleReceived`, en mémoire), affichés par le bouton 🐞.
 
 # Origine d'une réponse — bouton ❓
 

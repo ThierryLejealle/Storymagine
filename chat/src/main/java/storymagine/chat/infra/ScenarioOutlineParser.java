@@ -1,5 +1,7 @@
 package storymagine.chat.infra;
 
+import storymagine.chat.coeur.domaine.activity.ActivityDirective;
+import storymagine.chat.coeur.domaine.activity.ActivityDirectiveMarker;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
 import storymagine.chat.coeur.domaine.scenario.CharacterDeltaMarker;
@@ -73,6 +75,10 @@ final class ScenarioOutlineParser {
         if (!CharacterDeltaMarker.extract(premise).deltas().isEmpty()) {
             throw new IllegalArgumentException("{delta-pnj ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
         }
+        if (!ActivityDirectiveMarker.extract(premise).directives().isEmpty()) {
+            throw new IllegalArgumentException("{npc-active ...}, {npc-present ...}, {npc-passive ...}, {npc-absent ...} et "
+                + "{npc-reset} ne peuvent etre ecrits que dans un acte, pas dans la premisse.");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -120,6 +126,7 @@ final class ScenarioOutlineParser {
         String     body;        // "{npc-starts}" line already cut out
         NpcOpening opening = NpcOpening.NONE;
         List<CharacterDelta> deltas = new ArrayList<>();
+        List<ActivityDirective> activity = new ArrayList<>();
         List<Node> children = new ArrayList<>();
     }
 
@@ -132,9 +139,11 @@ final class ScenarioOutlineParser {
             node.title = h.title;
             NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(h.body.strip());
             CharacterDeltaMarker.Extracted withoutDeltas = CharacterDeltaMarker.extract(body.text());
-            node.body    = withoutDeltas.text().strip();
-            node.opening = body.opening();
-            node.deltas  = withoutDeltas.deltas();
+            ActivityDirectiveMarker.Extracted withoutActivity = ActivityDirectiveMarker.extract(withoutDeltas.text());
+            node.body     = withoutActivity.text().strip();
+            node.opening  = body.opening();
+            node.deltas   = withoutDeltas.deltas();
+            node.activity = withoutActivity.directives();
 
             int depth = Math.min(h.depth, stack.size() + 1); // tolerate a heading level skip
             while (stack.size() >= depth) stack.remove(stack.size() - 1);
@@ -170,7 +179,8 @@ final class ScenarioOutlineParser {
                 deltas.addAll(entered.deltas);
                 if (opening.isNone()) opening = entered.opening; // le premier marqueur, de la racine a la feuille, decide
             }
-            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas));
+            List<List<ActivityDirective>> activityPath = path.stream().map(n -> n.activity).toList();
+            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas, activityPath));
             previousPath.clear();
             previousPath.addAll(path);
         } else {

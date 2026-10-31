@@ -26,7 +26,7 @@ public record ChatTurnResult(ChatTurn playerTurn, List<ChatTurn> replyTurns, boo
     /** Every turn this exchange actually added, in order — what the UI should append, verbatim. */
     public List<ChatTurn> newTurns() {
         List<ChatTurn> all = new ArrayList<>();
-        all.add(playerTurn);
+        if (playerTurn != null) all.add(playerTurn); // null : a continuation, the player said nothing
         all.addAll(replyTurns);
         all.addAll(narratorTurnsFromActAdvance);
         return all;

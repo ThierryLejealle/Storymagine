@@ -103,6 +103,18 @@ class ChatWebServerEndpointsTest {
     }
 
     @Test
+    void aClickOnACharacterStepsItsActivityAndTheViewTellsWhereItComesFrom(@TempDir Path root) throws Exception {
+        int port = startServer(root, "Une nuit d'orage.\n", null);
+
+        String answer = call("POST", port, "/cycle-activity?id=elena");
+
+        assertTrue(answer.startsWith("200 "), answer);
+        assertTrue(answer.contains("\"level\":\"passive\""), answer);
+        assertTrue(answer.contains("\"source\":\"forced\""), answer);
+        assertTrue(answer.contains("\"scenarioLevel\":\"present\""), answer);
+    }
+
+    @Test
     void theOriginOfAReplyAnswersWithAClearErrorBeforeAnyReply(@TempDir Path root) throws Exception {
         int port = startServer(root, "Une nuit d'orage.\n", null);
 

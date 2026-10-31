@@ -15,6 +15,9 @@ import java.util.Scanner;
  */
 final class ChatCliSupport {
 
+    /** The project's demo scenarios, inside chatscenarios/ : a root of their own, not listed with the others. */
+    static final String DEMOS_DIR = "demos";
+
     private ChatCliSupport() {}
 
     /** storymagine.properties (project root, optional) first, then chat.properties on the classpath, which wins. */
@@ -33,21 +36,24 @@ final class ChatCliSupport {
 
     /**
      * Asks where the chatscenarios live : ENTER = the configured default (chatscenarios.root.default,
-     * else the project's chatscenarios/), 1 = the project's chatscenarios/, 2 = a path typed in. The
-     * chosen directory is created if it does not exist yet.
+     * else the project's chatscenarios/), 1 = the project's chatscenarios/, 2 = a path typed in,
+     * 3 = the project's demos (chatscenarios/demos, one tiny scenario per mechanism). The chosen
+     * directory is created if it does not exist yet.
      */
     static Path chooseChatScenariosRoot(Properties props, Scanner scanner) {
         String defaultDir = props.getProperty("chatscenarios.root.default", "");
         String projectDir = Paths.get("chatscenarios").toAbsolutePath().toString();
+        String demosDir = Paths.get("chatscenarios", DEMOS_DIR).toAbsolutePath().toString();
 
         System.out.println("Ou se trouvent les chatscenarios ?");
         System.out.println("  ENTREE - Repertoire par defaut : " + (defaultDir.isBlank() ? projectDir : defaultDir));
         System.out.println("  1      - Repertoire du projet  : " + projectDir);
         System.out.println("  2      - Autre repertoire...");
+        System.out.println("  3      - Demos du projet       : " + demosDir);
         System.out.println();
 
         while (true) {
-            System.out.print("Choix [ENTREE/1/2] : ");
+            System.out.print("Choix [ENTREE/1/2/3] : ");
             String choice = scanner.nextLine().trim();
             Path root = switch (choice) {
                 case ""  -> Paths.get(defaultDir.isBlank() ? projectDir : defaultDir);
@@ -56,10 +62,11 @@ final class ChatCliSupport {
                     System.out.print("Chemin du repertoire : ");
                     yield Paths.get(scanner.nextLine().trim());
                 }
+                case "3" -> Paths.get(demosDir);
                 default -> null;
             };
             if (root == null) {
-                System.out.println("  --> Entree invalide, choisir ENTREE, 1 ou 2.");
+                System.out.println("  --> Entree invalide, choisir ENTREE, 1, 2 ou 3.");
                 continue;
             }
             try {

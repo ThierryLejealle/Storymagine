@@ -1,5 +1,7 @@
 package storymagine.chat.coeur.domaine.scenario;
 
+import storymagine.chat.coeur.domaine.activity.ActivityDirective;
+
 import java.util.List;
 
 /**
@@ -18,17 +20,40 @@ import java.util.List;
  * the first time by this transition ; the marker line itself is already cut out of text. deltas are
  * the "{delta-pnj ...}" changes (see CharacterDelta) written in this leaf or in an ancestor entered
  * for the first time by this transition, lines already cut out of text : the sheets in force at act
- * N are the Cast's plus the deltas of acts 1..N in order (see ChatScenario.sheetAt).
+ * N are the Cast's plus the deltas of acts 1..N in order (see ChatScenario.sheetAt). activityPath
+ * holds the activity commands (see ActivityDirective) of every heading on the way from the root to
+ * this leaf, one list per heading, root first — unlike beats and deltas the WHOLE path is kept, since
+ * the activity in force here is computed from it (see ChatScenario.activityAt).
  */
 public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
-                          List<CharacterDelta> deltas) {
+                          List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath) {
 
     public ScenarioAct {
         deltas = deltas == null ? List.of() : List.copyOf(deltas);
+        activityPath = activityPath == null ? List.of() : activityPath.stream().map(List::copyOf).toList();
+    }
+
+    public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
+                       List<CharacterDelta> deltas) {
+        this(number, title, text, beats, opening, deltas, List.of());
     }
 
     public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening) {
         this(number, title, text, beats, opening, List.of());
+    }
+
+    /**
+     * Number of the heading this leaf hangs from ("" when it is a top-level heading) : what a level
+     * forced by the player is attached to (see ForcedActivity).
+     */
+    public String parentAnchor() {
+        List<Integer> segments = number.segments();
+        return segments.size() <= 1 ? "" : new ActNumber(segments.subList(0, segments.size() - 1)).display();
+    }
+
+    /** True if this leaf is under the heading numbered anchor ("" = the root, which holds everything). */
+    public boolean isUnder(String anchor) {
+        return anchor.isEmpty() || number.display().startsWith(anchor + ".");
     }
 
     public ScenarioAct(ActNumber number, String title, String text, List<String> beats) {

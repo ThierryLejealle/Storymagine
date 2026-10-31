@@ -1,0 +1,5 @@
+# Mélanger
+[Léo apporte un grand saladier et une cuillère en bois.]
+Point de départ : Les fruits coupés sont prêts à être mis dans le saladier.
+Ce qui doit se passer : Alex mélange les fruits et Léo ajoute un filet de citron.
+Quand écrire [NEXT ACT] : Dès que la salade de fruits est mélangée.

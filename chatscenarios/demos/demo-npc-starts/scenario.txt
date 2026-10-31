@@ -1,0 +1,20 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Une boulangerie de quartier, un samedi matin.
+Prémisse : Alex entre dans la boulangerie de Rose pour acheter du pain.
+Ton : Simple et chaleureux.
+{npc-starts Rose}
+
+# Le bonjour
+[Alex pousse la porte de la boulangerie, où l'odeur du pain chaud flotte. Rose, derrière son comptoir, lève la tête.]
+Point de départ : Alex vient d'entrer, il n'y a personne d'autre dans la boulangerie.
+Ce qui doit se passer : Rose l'accueille et lui demande ce qu'il désire.
+Quand écrire [NEXT ACT] : Dès qu'Alex a choisi son pain.
+
+# Le paiement
+{npc-starts Rose}
+[Rose emballe le pain dans un sac en papier.]
+Point de départ : Alex est devant la caisse.
+Ce qui doit se passer : Rose annonce le prix et souhaite une bonne journée à Alex.

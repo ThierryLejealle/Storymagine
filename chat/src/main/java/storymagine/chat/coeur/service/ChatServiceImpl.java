@@ -1,6 +1,7 @@
 package storymagine.chat.coeur.service;
 
 import storymagine.chat.coeur.domaine.agent.chatsummarizer.ChatSummarizer;
+import storymagine.chat.coeur.domaine.activity.CastActivity;
 import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.validation.ScenarioIssue;
 import storymagine.chat.coeur.domaine.validation.ScenarioValidator;
@@ -20,6 +21,8 @@ import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarratorOut
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
+import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
+import storymagine.chat.coeur.domaine.session.StyleReceived;
 import storymagine.chat.coeur.domaine.session.ChatContextBudget;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder.ChatPrompt;
@@ -38,10 +41,8 @@ import storymagine.commun.coeur.ports.LogPort;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 
 /**
  * Orchestrates one exchange : runs SpeakerSelector to pick which Cast member(s) answer the
@@ -155,6 +156,18 @@ public class ChatServiceImpl implements ChatService {
             storage.saveSession(chatScenariosRoot, session);
             throw e;
         }
+    }
+
+    @Override
+    public ChatTurnResult continueScene(Path chatScenariosRoot, ChatSession session, ExchangeProgressListener listener) {
+        if (session.turns().isEmpty()) {
+            throw new IllegalStateException("Rien à continuer : personne n'a encore parlé.");
+        }
+        // No player line is appended, so the previous round is the one that ends the history.
+        List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), session.activity(), "",
+            repliesBefore(session, session.turns().size()), random);
+        List<RoundSpeaker> speakers = primary.stream().map(npc -> new RoundSpeaker(npc, false)).toList();
+        return generateRepliesAndFinish(chatScenariosRoot, session, null, speakers, 0, listener);
     }
 
     /**
@@ -297,7 +310,7 @@ public class ChatServiceImpl implements ChatService {
      * same round is ignored — a rare edge case, not worth a second act advance mid-round).
      * replacedTurnCount is threaded straight into the result — see ChatTurnResult.
      * A speaker's presence is re-checked right before their own turn (not just once when the round
-     * was planned) : the player can mute an Npc mid-round (see ChatWebServer's /set-present, not
+     * was planned) : the player can mute an Npc mid-round (see ChatWebServer's /cycle-activity, not
      * gated behind generation in progress) while an earlier speaker in the same round is still being
      * generated — without this check, that now-muted Npc would still speak, having already been
      * queued before the mute happened.
@@ -329,8 +342,11 @@ public class ChatServiceImpl implements ChatService {
             Scene scene = sceneFor(session, round.npc(), round.interjecting());
             RoleplayNarratorOutput reply;
             try {
+                ScenarioStyle styleForThisReply = session.scenario().style().drawn(random::nextDouble);
+                session.rememberStyleReceived(new StyleReceived(round.npc().label(), styleForThisReply.text()));
+                ChatScenario forThisReply = session.scenario().withStyle(styleForThisReply);
                 reply = roleplayNarrator.call(new RoleplayNarratorInput(
-                    session.scenario(), scene, session.currentAct(), session.summary(), session.turns(),
+                    forThisReply, scene, session.currentAct(), session.summary(), session.turns(),
                     session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
             } catch (GenerationCancelledException e) {
                 if (replyTurns.isEmpty()) throw e; // rien produit ce tour : voir javadoc, sendMessage/retry annulent
@@ -395,10 +411,11 @@ public class ChatServiceImpl implements ChatService {
             return List.of(new RoundSpeaker(
                 SpeakerSelector.openingSpeaker(session.scenario().cast(), session.presentNpcIds(), opening, random), false));
         }
-        List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), session.presentNpcIds(),
-            session.interjectingNpcIds(), playerMessage, previousRoundSpeakerIds(session), random);
-        List<Npc> interjectors = SpeakerSelector.rollInterjectors(session.scenario().cast(), session.presentNpcIds(),
-            session.interjectingNpcIds(), primary, interjectionChance(session), random);
+        CastActivity activity = session.activity();
+        List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), activity, playerMessage,
+            previousRoundReplies(session), random);
+        List<Npc> interjectors = SpeakerSelector.rollInterjectors(session.scenario().cast(), activity, primary,
+            interjectionChance(session), random);
 
         List<RoundSpeaker> round = new ArrayList<>();
         for (Npc npc : primary) round.add(new RoundSpeaker(npc, false));
@@ -407,22 +424,27 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * Npc id(s) who spoke in the round just before the player's line that was just appended (empty
-     * on the very first exchange) — used by SpeakerSelector.select's continuation step. Scans
-     * backward from just before the last (current) player turn, stopping at the previous player
-     * turn (a round's boundary) ; NARRATOR turns (act-advance beats) are skipped without stopping
-     * the scan, since they can sit between an Npc's reply and the next player turn within the same
-     * round.
+     * The Npc replies of the round just before the player's line that was just appended, in the order
+     * they were said (empty on the very first exchange) — used by SpeakerSelector.select to find who
+     * was mentioned and who spoke alone. Scans backward from just before the last (current) player
+     * turn, stopping at the previous player turn (a round's boundary) ; NARRATOR turns (act-advance
+     * beats) are skipped without stopping the scan, since they can sit between an Npc's reply and the
+     * next player turn within the same round.
      */
-    private static Set<String> previousRoundSpeakerIds(ChatSession session) {
+    private static List<ChatTurn> previousRoundReplies(ChatSession session) {
+        return repliesBefore(session, session.turns().size() - 1);
+    }
+
+    /** The Npc replies that end the history before index endExclusive, back to the previous player turn. */
+    private static List<ChatTurn> repliesBefore(ChatSession session, int endExclusive) {
         List<ChatTurn> turns = session.turns();
-        Set<String> ids = new LinkedHashSet<>();
-        for (int i = turns.size() - 2; i >= 0; i--) {
+        List<ChatTurn> replies = new ArrayList<>();
+        for (int i = endExclusive - 1; i >= 0; i--) {
             ChatTurn t = turns.get(i);
             if (t.speaker() == ChatTurn.Speaker.PLAYER) break;
-            if (t.speaker() == ChatTurn.Speaker.LLM && t.npcId() != null) ids.add(t.npcId());
+            if (t.speaker() == ChatTurn.Speaker.LLM && t.npcId() != null) replies.add(0, t);
         }
-        return ids;
+        return replies;
     }
 
     private static double interjectionChance(ChatSession session) {
@@ -560,15 +582,8 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public boolean setNpcPresent(Path chatScenariosRoot, ChatSession session, String npcId, boolean present) {
-        boolean changed = session.setPresent(npcId, present);
-        if (changed) storage.saveSession(chatScenariosRoot, session);
-        return changed;
-    }
-
-    @Override
-    public boolean setNpcInterjecting(Path chatScenariosRoot, ChatSession session, String npcId, boolean interjecting) {
-        boolean changed = session.setInterjecting(npcId, interjecting);
+    public boolean cycleNpcActivity(Path chatScenariosRoot, ChatSession session, String npcId) {
+        boolean changed = session.cycleActivity(npcId);
         if (changed) storage.saveSession(chatScenariosRoot, session);
         return changed;
     }
@@ -593,8 +608,7 @@ public class ChatServiceImpl implements ChatService {
         ChatScenario freshScenario = storage.loadScenario(chatScenariosRoot, session.scenario().name());
         session.reloadScenario(freshScenario);
         ChatSession fresh = ChatSession.fresh(freshScenario);
-        session.restore(fresh.summary(), fresh.turns(), fresh.currentAct(), fresh.presentNpcIds(),
-            fresh.interjectingNpcIds());
+        session.restore(fresh.summary(), fresh.turns(), fresh.currentAct(), fresh.forcedActivities());
         storage.saveSession(chatScenariosRoot, session);
     }
 
@@ -608,13 +622,25 @@ public class ChatServiceImpl implements ChatService {
         return ScenarioValidator.checkScenario(scenario).warnings().stream().map(ScenarioIssue::display).toList();
     }
 
+    /**
+     * The warnings the 🐞 view shows : without the style.txt ones (its length), since with {N%} lines the
+     * file is not what a character receives — the view shows the drawn style instead.
+     */
+    private List<String> warningsForDebugView(ChatScenario scenario) {
+        return ScenarioValidator.checkScenario(scenario).warnings().stream()
+            .filter(issue -> !ScenarioValidator.STYLE_FILE.equals(issue.where()))
+            .map(ScenarioIssue::display)
+            .toList();
+    }
+
     @Override
     public ScenarioPromptView scenarioPrompt(ChatSession session) {
         ChatScenario scenario = session.scenario();
         int currentAct = session.currentAct();
         boolean actActive = currentAct > 0 && currentAct <= scenario.acts().size();
         return new ScenarioPromptView(scenario.premise(), currentAct, scenario.acts().size(),
-            actActive ? scenario.acts().get(currentAct - 1).text() : "", scenario.style().text(), scenarioWarnings(scenario));
+            actActive ? scenario.acts().get(currentAct - 1).text() : "", scenario.style().text(),
+            session.lastStyleReceived().orElse(null), warningsForDebugView(scenario));
     }
 
     @Override

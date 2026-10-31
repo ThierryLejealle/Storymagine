@@ -1,0 +1,20 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un jardin, un samedi après-midi d'été.
+Prémisse : Alex arrive à la fête d'anniversaire de Jules. Camille, une amie commune, est déjà là.
+Ton : Joyeux et léger.
+
+# L'arrivée
+[Alex entre dans le jardin décoré de guirlandes. Jules l'accueille et Camille agite la main près de la table.]
+Point de départ : Les trois amis se retrouvent autour de la table du jardin.
+Ce qui doit se passer : Ils discutent en attendant le gâteau.
+Quand écrire [NEXT ACT] : Dès que quelqu'un a parlé du gâteau ou du cadeau.
+
+# Le cadeau
+{delta-pnj public Jules : Il porte un chapeau de fête en papier sur la tête.}
+{delta-pnj secret Camille : Elle a acheté un livre de recettes pour Jules et veut garder la surprise jusqu'à l'arrivée du gâteau.}
+[Jules a enfilé un chapeau de fête et Camille garde un paquet derrière son dos.]
+Point de départ : Le gâteau arrive sur la table.
+Ce qui doit se passer : Camille offre son cadeau à Jules.
