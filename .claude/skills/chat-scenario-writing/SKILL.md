@@ -36,6 +36,9 @@ Dans `characters/`, tout `.txt` dont la première ligne n'est pas `# Nom` est ig
 - **Multi** : un fichier par PNJ. Tous sont présents dès le tour 1. Donc :
   - **nommer tous les PNJ dans les `[...]` du tout premier acte**, même discrets, sinon un PNJ
     tiré au hasard ne sait pas s'il est dans la pièce et peut boucler ;
+  - **donner le contexte de départ du joueur** (qui il est, où, pourquoi, avec qui) dans ces mêmes `[...]`,
+    jamais dans la prémisse : la prémisse est relue à chaque tour jusqu'à la fin, le premier acte seulement
+    tant qu'il est courant (guide §2.4, §7.1) ;
   - donner à chacun une fiche publique distincte et un `# SECRET` qui répond à ceux des autres
     (aspirations, non-dits, jamais de trahison gratuite) ;
   - la fiche publique de chaque PNJ est lue par les autres : n'y mettre que ce que l'équipe sait.
@@ -126,13 +129,14 @@ naturelle » : imprécis, à éviter.
   phrase (`Quand écrire [NEXT ACT] : ...`) — c'est ce qui l'empêche d'être pris pour une
   réplique `[...]` à afficher.
 
-### Faire parler un PNJ en premier : `{npc-starts}`
+### Faire parler un PNJ en premier : `{npc-starts}` ou `{npc-do}`
 
 Toutes les commandes de l'auteur s'écrivent entre **accolades** (`[...]` reste réservé à la narration
 et à `[NEXT ACT]`). Celle-ci s'écrit **seule sur sa ligne** (sinon le chargement échoue) :
 `{npc-starts}` (PNJ au hasard) ou `{npc-starts Elena}`. Dans l'en-tête avant le premier acte, il
-ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : comme un clic sur DO sans texte, un seul
-PNJ parle. Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
+ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : un seul PNJ parle, **sans message du joueur**
+(ouverture normale). `{npc-do}` / `{npc-do Elena}` : même chose, mais le PNJ ouvre avec la plume du narrateur
+(comme un clic sur DO sans texte, il peut narrer et agir pour les autres). Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
 Ne pas le mettre sur chaque acte « par défaut » : réserver-le aux scènes où quelqu'un agit
 réellement avant le joueur (arrivée, interpellation, événement).
 
@@ -154,6 +158,14 @@ recopié une fois par paragraphe de `picks/nom.txt` (tout le fichier sans N). `{
 contient qu'un `-`. Tous les paragraphes doivent avoir autant de morceaux que le plus grand `{itemK}` du
 gabarit. Déplié une fois par partie, avant `pick`. Exemple : `chatscenarios/demos/demo-repeat/`. Détails :
 `chatscenarios/guide-redaction-chat.md` §2.6 bis.
+
+### Mode DO d'un PNJ : `{npc-mode do on|off nom|*}`
+
+Le PNJ tient la plume du narrateur (comme le `DO:` du joueur) pendant un moment : il peut avancer la scène et
+forcer le personnage du joueur (drogué, hypnotisé, possédé…). Une ligne seule dans un acte, héritée par ses
+sous-actes, annulée par `off`, avec un nom ou `*` ; ★ sur la vignette. **Un seul PNJ à la fois** : plusieurs
+PNJ avec la plume se doublent. Un `{npc-starts Nom}` de ce PNJ devient une ouverture avec la plume.
+Guide §2.12, démo `chatscenarios/demos/demo-npc-do`.
 
 ### Style commun à tous les personnages : `style.txt`
 

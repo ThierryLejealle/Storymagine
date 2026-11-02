@@ -1,6 +1,7 @@
 package storymagine.chat.coeur.domaine.scenario;
 
 import storymagine.chat.coeur.domaine.activity.ActivityResolver;
+import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.activity.CastActivity;
 
 import java.util.List;
@@ -53,9 +54,20 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
             if (ActivityResolver.resolve(cast, act.activityPath()).inSceneIds().isEmpty() && !cast.npcs().isEmpty()) {
                 throw new IllegalArgumentException("plus aucun personnage present dans la scene (tous sont absents).");
             }
+            for (NpcMode mode : NpcMode.values()) ActivityResolver.modeIds(cast, act.activityPath(), mode);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("acte " + act.number() + " : " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * The characters with `mode` switched on at act `act` (1-based ; 0 = no acts in use). For DO they
+     * hold the narrator's pen, as if the player prefixed each message with "DO:". Computed from the
+     * commands on the path of headings leading to that act, like activityAt.
+     */
+    public java.util.Set<String> npcIdsInMode(int act, NpcMode mode) {
+        if (act < 1 || act > acts.size()) return java.util.Set.of();
+        return ActivityResolver.modeIds(cast, acts.get(act - 1).activityPath(), mode);
     }
 
     /**

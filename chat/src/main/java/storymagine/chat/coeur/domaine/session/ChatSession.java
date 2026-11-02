@@ -7,6 +7,7 @@ import storymagine.chat.coeur.domaine.activity.NpcActivity;
 import storymagine.chat.coeur.domaine.activity.NpcActivityState;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
@@ -224,6 +225,23 @@ public class ChatSession {
 
     /** The activity the scenario alone gives at the current act, without the player's forced levels. */
     public CastActivity scenarioActivity() { return scenario.activityAt(currentAct); }
+
+    /** The characters with `mode` switched on in the current act (see ChatScenario.npcIdsInMode). */
+    public Set<String> npcIdsInMode(NpcMode mode) { return scenario.npcIdsInMode(currentAct, mode); }
+
+    /**
+     * True if the pending opening is a DO (the opening Npc holds the narrator's pen) : "{npc-do}", or
+     * "{npc-starts Name}" for a character whose DO mode is on. A nameless "{npc-starts}" stays a normal
+     * opening : the character is only drawn when it speaks.
+     */
+    public boolean pendingOpeningUsesPen() {
+        NpcOpening opening = pendingNpcOpening();
+        if (opening.isNone()) return false;
+        if (opening.doPen()) return true;
+        if (!opening.isNamed()) return false;
+        return scenario.cast().findByName(opening.npcName())
+            .map(npc -> npcIdsInMode(NpcMode.DO).contains(npc.id())).orElse(false);
+    }
 
     /** Ids of the Npcs in the scene (every level but ABSENT). */
     public Set<String> presentNpcIds() { return activity().inSceneIds(); }

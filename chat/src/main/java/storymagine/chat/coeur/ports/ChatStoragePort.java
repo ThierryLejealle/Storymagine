@@ -47,7 +47,18 @@ public interface ChatStoragePort {
      * game worth resuming. The narrator's opening lines alone (what a fresh start or a restart writes)
      * do not count : there is nothing to resume yet.
      */
-    boolean hasPlayedTurns(Path chatScenariosRoot, ChatScenario scenario);
+    boolean hasPlayedTurns(Path chatScenariosRoot, String scenarioName);
+
+    default boolean hasPlayedTurns(Path chatScenariosRoot, ChatScenario scenario) {
+        return hasPlayedTurns(chatScenariosRoot, scenario.name());
+    }
+
+    /**
+     * True if the scenario has a run directory on disk, played or not (a copied scenario brings its
+     * run/ along). Asked before the scenario is loaded : the load itself reads the run (the resolved
+     * copy of the scenario) and can fail on it.
+     */
+    boolean hasRun(Path chatScenariosRoot, String scenarioName);
 
     /**
      * Read-only : the state the run was in just after turn `at` — the most recent compaction made at
@@ -73,7 +84,11 @@ public interface ChatStoragePort {
      * Archives the current run (a zip of everything, never deleted outright — a long conversation is
      * too costly to lose to an accidental reset) and leaves the scenario with no current run.
      */
-    void resetSession(Path chatScenariosRoot, ChatScenario scenario);
+    void resetSession(Path chatScenariosRoot, String scenarioName);
+
+    default void resetSession(Path chatScenariosRoot, ChatScenario scenario) {
+        resetSession(chatScenariosRoot, scenario.name());
+    }
 
     /**
      * Player-triggered snapshot of the run as persisted — callers persist the session first (see

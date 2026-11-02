@@ -2,8 +2,11 @@ package storymagine.chat.coeur.service;
 
 import storymagine.chat.coeur.domaine.agent.chatsummarizer.ChatSummarizer;
 import storymagine.chat.coeur.domaine.activity.CastActivity;
+import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.validation.ScenarioIssue;
+import storymagine.chat.coeur.domaine.validation.ScenarioReport;
+import storymagine.chat.coeur.domaine.validation.ScenarioValidationException;
 import storymagine.chat.coeur.domaine.validation.ScenarioValidator;
 import storymagine.chat.coeur.domaine.agent.chatsummarizer.ChatSummarizerInput;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalyst;
@@ -116,6 +119,21 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public boolean hasSavedSession(Path chatScenariosRoot, String scenarioName) {
+        return storage.hasPlayedTurns(chatScenariosRoot, scenarioName);
+    }
+
+    @Override
+    public boolean hasRun(Path chatScenariosRoot, String scenarioName) {
+        return storage.hasRun(chatScenariosRoot, scenarioName);
+    }
+
+    @Override
+    public void archiveRun(Path chatScenariosRoot, String scenarioName) {
+        storage.resetSession(chatScenariosRoot, scenarioName);
+    }
+
+    @Override
     public ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset) {
         if (reset) {
             storage.resetSession(chatScenariosRoot, scenario);
@@ -156,6 +174,17 @@ public class ChatServiceImpl implements ChatService {
             storage.saveSession(chatScenariosRoot, session);
             throw e;
         }
+    }
+
+    @Override
+    public ChatTurnResult openScene(Path chatScenariosRoot, ChatSession session, ExchangeProgressListener listener) {
+        NpcOpening opening = session.pendingNpcOpening();
+        if (opening.isNone()) {
+            throw new IllegalStateException("Aucun personnage n'a a ouvrir la scene.");
+        }
+        // The named Npc speaks alone (no interjection), exactly as for a DO opening, but nothing is said by the player.
+        List<RoundSpeaker> speakers = resolveSpeakers(session, "", opening);
+        return generateRepliesAndFinish(chatScenariosRoot, session, null, speakers, 0, listener);
     }
 
     @Override
@@ -346,7 +375,8 @@ public class ChatServiceImpl implements ChatService {
                 session.rememberStyleReceived(new StyleReceived(round.npc().label(), styleForThisReply.text()));
                 ChatScenario forThisReply = session.scenario().withStyle(styleForThisReply);
                 reply = roleplayNarrator.call(new RoleplayNarratorInput(
-                    forThisReply, scene, session.currentAct(), session.summary(), session.turns(),
+                    forThisReply, scene, session.currentAct(), session.summary(),
+                    turnsSeenBy(session, npcId, playerTurn != null),
                     session.generationSettings()), partial -> listener.onPartialReply(npcId, partial));
             } catch (GenerationCancelledException e) {
                 if (replyTurns.isEmpty()) throw e; // rien produit ce tour : voir javadoc, sendMessage/retry annulent
@@ -405,6 +435,30 @@ public class ChatServiceImpl implements ChatService {
      * already in the transcript, matching the "react to what was just said" framing in
      * INTERJECTION_RULE.
      */
+    /**
+     * The turns an Npc reads. For a character whose DO mode is on, the player's line of this exchange
+     * is shown with the "DO: " prefix, so the prompt's existing rule applies (the narrator's pen is
+     * handed over for this reply : the character may then advance the scene and act for others,
+     * including the player's character). The player's text on screen and in the history is untouched.
+     * Nothing changes without a player line this round (the Continue button, an opening), for an
+     * out-of-game "OOC:" line, or for a line the player already wrote as a "DO:".
+     */
+    private static List<ChatTurn> turnsSeenBy(ChatSession session, String npcId, boolean playerSpokeThisRound) {
+        List<ChatTurn> turns = session.turns();
+        if (!playerSpokeThisRound || !session.npcIdsInMode(NpcMode.DO).contains(npcId)) return turns;
+        for (int i = turns.size() - 1; i >= 0; i--) {
+            ChatTurn turn = turns.get(i);
+            if (turn.speaker() != ChatTurn.Speaker.PLAYER) continue;
+            PlayerMessage message = PlayerMessage.parse(turn.text());
+            boolean ooc = turn.text().stripLeading().regionMatches(true, 0, "OOC:", 0, 4);
+            if (message.mode() == PlayerMessage.Mode.NARRATOR_HANDOFF || ooc) return turns;
+            List<ChatTurn> seen = new ArrayList<>(turns);
+            seen.set(i, new ChatTurn(turn.speaker(), "DO: " + turn.text(), turn.thinking(), turn.npcId()));
+            return seen;
+        }
+        return turns;
+    }
+
     private List<RoundSpeaker> resolveSpeakers(ChatSession session, String playerMessage, NpcOpening opening) {
         if (!opening.isNone()) {
             // Ouverture voulue par l'auteur : ce PNJ seul, sans interjection (voir NpcOpening).
@@ -603,6 +657,10 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public void restartSession(Path chatScenariosRoot, ChatSession session) {
+        // Validate FIRST, before anything is archived or deleted : a scenario with an error must leave
+        // the run in progress exactly as it is (the reset below clears current/ before the load).
+        ScenarioReport report = storage.validateScenario(chatScenariosRoot, session.scenario().name());
+        if (report.hasErrors()) throw new ScenarioValidationException(report);
         // Reset BEFORE loading : the load of a new run is what draws its {pick ...} paragraphs.
         storage.resetSession(chatScenariosRoot, session.scenario());
         ChatScenario freshScenario = storage.loadScenario(chatScenariosRoot, session.scenario().name());

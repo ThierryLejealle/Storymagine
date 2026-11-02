@@ -74,6 +74,35 @@ class ChatWebServerEndpointsTest {
     }
 
     @Test
+    void restartWithABrokenScenarioIsRefusedWithTheErrorsAndLeavesTheRunAlone(@TempDir Path root) throws Exception {
+        int port = startServer(root, "Une nuit d'orage.\n\n# Un\nElena sert un verre.\n", null);
+        Path scenarioFile = root.resolve("inn/scenario.txt");
+        Files.writeString(scenarioFile, Files.readString(scenarioFile, StandardCharsets.UTF_8) + "{teleport elena}\n", StandardCharsets.UTF_8);
+
+        String answer = call("POST", port, "/restart");
+
+        assertTrue(answer.startsWith("500 "), answer);
+        assertTrue(answer.contains("Recommencer annul"), answer);
+        assertTrue(answer.contains("teleport"), answer);
+        assertTrue(!Files.exists(root.resolve("inn/run/archive")), "rien n'est archive");
+    }
+
+    @Test
+    void openSceneMakesTheNamedCharacterSpeakWithNoPlayerLineAndOnlyOnce(@TempDir Path root) throws Exception {
+        int port = startServer(root, "Une nuit d'orage.\n{npc-starts Elena}\n", null);
+
+        String history = call("GET", port, "/history");
+        assertTrue(history.contains("\"npcOpeningPending\":true") && history.contains("\"npcOpeningWithPen\":false"), history);
+
+        String answer = call("POST", port, "/open-scene");
+
+        assertTrue(answer.startsWith("200 "), answer);
+        assertTrue(answer.contains("\"npcId\":\"elena\""), answer);
+        assertTrue(!answer.contains("\"speaker\":\"PLAYER\""), "aucune bulle du joueur : " + answer);
+        assertTrue(call("POST", port, "/open-scene").contains("Aucun personnage"), "une seule ouverture");
+    }
+
+    @Test
     void theScenarioSentToTheCharactersIsServedWithItsStyle(@TempDir Path root) throws Exception {
         int port = startServer(root, "Une nuit d'orage.\n\n# Un\nElena sert un verre.\n", "Phrases courtes.");
 

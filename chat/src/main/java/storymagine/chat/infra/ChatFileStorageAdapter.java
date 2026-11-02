@@ -332,8 +332,13 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     }
 
     @Override
-    public boolean hasPlayedTurns(Path chatScenariosRoot, ChatScenario scenario) {
-        for (SequenceFile file : RunLayout.listSequence(RunLayout.turnsDir(chatScenariosRoot, scenario.name()))) {
+    public boolean hasRun(Path chatScenariosRoot, String scenarioName) {
+        return Files.isDirectory(RunLayout.currentDir(chatScenariosRoot, scenarioName));
+    }
+
+    @Override
+    public boolean hasPlayedTurns(Path chatScenariosRoot, String scenarioName) {
+        for (SequenceFile file : RunLayout.listSequence(RunLayout.turnsDir(chatScenariosRoot, scenarioName))) {
             if (file.kind() != SequenceFile.Kind.TURN) continue;
             if (TurnFileCodec.parse(readText(file.path()), file.path()).turn().speaker() != ChatTurn.Speaker.NARRATOR) return true;
         }
@@ -465,10 +470,10 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     /** Archives (never deletes) the current run on reset — a zip of current/, then current/ is cleared. */
     @Override
-    public void resetSession(Path chatScenariosRoot, ChatScenario scenario) {
-        Path current = RunLayout.currentDir(chatScenariosRoot, scenario.name());
+    public void resetSession(Path chatScenariosRoot, String scenarioName) {
+        Path current = RunLayout.currentDir(chatScenariosRoot, scenarioName);
         if (!Files.isDirectory(current)) return;
-        RunArchiver.zip(current, RunLayout.archiveDir(chatScenariosRoot, scenario.name())
+        RunArchiver.zip(current, RunLayout.archiveDir(chatScenariosRoot, scenarioName)
             .resolve(LocalDateTime.now().format(STAMP) + ZIP_EXTENSION));
         RunArchiver.deleteRecursively(current);
     }

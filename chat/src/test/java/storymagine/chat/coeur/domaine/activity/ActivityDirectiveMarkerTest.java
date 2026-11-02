@@ -62,4 +62,28 @@ class ActivityDirectiveMarkerTest {
     void aResetWithNamesIsAnError() {
         assertThrows(IllegalArgumentException.class, () -> ActivityDirectiveMarker.extract("{npc-reset Elena}\n"));
     }
+
+    @Test
+    void modeLinesAreReadInTheOrderWrittenAndCutOut() {
+        ActivityDirectiveMarker.Extracted extracted = ActivityDirectiveMarker.extract(
+            "Texte.\n{npc-mode do on Elena}\n{NPC-MODE DO off *}\nSuite.\n");
+
+        assertEquals(List.of(ActivityDirective.modeOn(NpcMode.DO, "Elena"), ActivityDirective.modeOff(NpcMode.DO, "*")),
+            extracted.directives());
+        assertEquals("Texte.\nSuite.\n", extracted.text());
+    }
+
+    @Test
+    void anUnknownModeOrAModeWithoutNamesIsAnErrorNeverLeftInTheText() {
+        IllegalArgumentException unknown = assertThrows(IllegalArgumentException.class,
+            () -> ActivityDirectiveMarker.extract("{npc-mode fly on Elena}\n"));
+        assertTrue(unknown.getMessage().contains("fly") && unknown.getMessage().contains("do"), unknown.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> ActivityDirectiveMarker.extract("{npc-mode do on}\n"));
+        assertThrows(IllegalArgumentException.class, () -> ActivityDirectiveMarker.extract("Elena {npc-mode do on Elena} ici\n"));
+    }
+
+    @Test
+    void theNpcDoOpeningCommandIsNotAnActivityCommand() {
+        assertEquals(List.of(), ActivityDirectiveMarker.extract("{npc-do Elena}\n").directives());
+    }
 }

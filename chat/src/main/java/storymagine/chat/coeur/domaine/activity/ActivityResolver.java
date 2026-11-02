@@ -5,6 +5,7 @@ import storymagine.chat.coeur.domaine.scenario.Npc;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -46,7 +47,7 @@ public final class ActivityResolver {
         }
         Set<String> namedHere = new HashSet<>();
         for (ActivityDirective directive : heading) {
-            if (directive.isReset() || directive.isUnnamed() || directive.isAll()) continue;
+            if (directive.isReset() || directive.isMode() || directive.isUnnamed() || directive.isAll()) continue;
             for (Npc npc : resolveNames(cast, directive.namesText())) {
                 if (!namedHere.add(npc.id())) {
                     throw new IllegalArgumentException(npc.label() + " est nomme deux fois dans le meme titre.");
@@ -66,6 +67,26 @@ public final class ActivityResolver {
             }
         }
         return activity;
+    }
+
+    /**
+     * The characters with `mode` switched on in an act : the {npc-mode ... on|off ...} commands of the
+     * path of headings leading to it are replayed root first, in the order written, so a deeper heading
+     * (or a later line) overrides an earlier one. Never stored, like the activity.
+     * @throws IllegalArgumentException unknown name
+     */
+    public static Set<String> modeIds(Cast cast, List<List<ActivityDirective>> path, NpcMode mode) {
+        Set<String> on = new LinkedHashSet<>();
+        for (List<ActivityDirective> heading : path) {
+            for (ActivityDirective directive : heading) {
+                if (!directive.isMode() || directive.mode() != mode) continue;
+                List<String> targets = directive.isModeAll()
+                    ? cast.npcs().stream().map(Npc::id).toList()
+                    : resolveNames(cast, directive.namesText()).stream().map(Npc::id).toList();
+                if (directive.kind() == ActivityDirective.Kind.MODE_ON) on.addAll(targets); else on.removeAll(targets);
+            }
+        }
+        return on;
     }
 
     /**

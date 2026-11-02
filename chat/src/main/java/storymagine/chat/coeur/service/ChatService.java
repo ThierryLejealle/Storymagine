@@ -26,10 +26,28 @@ public interface ChatService {
      */
     boolean hasSavedSession(Path chatScenariosRoot, ChatScenario scenario);
 
+    /**
+     * Same question for a scenario NOT loaded yet, by name : the CLI asks "continue ?" before loading,
+     * because the load reads the run and a run copied from another scenario can make it fail.
+     */
+    boolean hasSavedSession(Path chatScenariosRoot, String scenarioName);
+
+    /** True if the scenario has a run directory on disk, played or not (see ChatStoragePort.hasRun). */
+    boolean hasRun(Path chatScenariosRoot, String scenarioName);
+
+    /** Archives the run of a scenario not loaded yet (a zip, never a deletion) : the next load starts fresh. */
+    void archiveRun(Path chatScenariosRoot, String scenarioName);
+
     /** Loads the persisted session for this scenario, or a fresh one if reset was asked / none exists. */
     ChatSession openSession(Path chatScenariosRoot, ChatScenario scenario, boolean reset);
 
     ChatTurnResult sendMessage(Path chatScenariosRoot, ChatSession session, String rawPlayerInput);
+
+    /**
+     * The scene opens with the Npc the author asked for ("{npc-starts}", see NpcOpening) : that Npc speaks,
+     * with no player message at all (no "DO:" line). Only valid while ChatSession.pendingNpcOpening() is not NONE.
+     */
+    ChatTurnResult openScene(Path chatScenariosRoot, ChatSession session, ExchangeProgressListener listener);
 
     /**
      * Same as sendMessage(), but listener is notified synchronously, in order, of everything this
@@ -167,6 +185,8 @@ public interface ChatService {
      * ChatSession.restore) — archives the whole old run as a zip (see ChatStoragePort.resetSession,
      * same mechanism as the CLI's reset prompt), not a silent discard.
      * Callers (the chat UI) confirm with the player first, same guarantee as loadSavePoint.
+     * The scenario files are validated first : if they hold an error, a ScenarioValidationException is
+     * thrown (listing every error) and nothing is archived, deleted or changed.
      */
     void restartSession(Path chatScenariosRoot, ChatSession session);
 

@@ -76,11 +76,24 @@ public class ChatCli {
             System.exit(1);
             return;
         }
-        ChatScenario scenario;
-        try {
-            scenario = service.loadScenario(root, names.get(idx));
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            System.err.println("ERREUR : " + e.getMessage());
+        String scenarioName = names.get(idx);
+
+        // 4. Continuer ou remettre a zero — AVANT de charger le scenario : le chargement relit le run
+        // (copie resolue du scenario, etat) et un scenario copie avec son run puis adapte peut y echouer.
+        // Si on repart de zero, le run est archive d'abord et plus rien ne peut bloquer. La question
+        // n'a de sens que s'il y a une partie a reprendre ; sans historique, rien a demander.
+        boolean reset = false;
+        if (service.hasSavedSession(root, scenarioName)) {
+            System.out.print("Continuer la conversation ? [O/n] : ");
+            String contInput = scanner.nextLine().trim();
+            reset = contInput.equalsIgnoreCase("n") || contInput.equalsIgnoreCase("non");
+            if (reset) {
+                service.archiveRun(root, scenarioName);
+                System.out.println(">> Historique remis a zero (ancienne partie archivee dans run/archive).");
+            }
+        }
+        ChatScenario scenario = loadOrOfferRestart(service, root, scenarioName, reset, scanner);
+        if (scenario == null) {
             System.exit(1);
             return;
         }
@@ -91,20 +104,12 @@ public class ChatCli {
         Path logsDir = root.resolve(scenario.name()).resolve("run").resolve("logs");
         if (logsEnabled) fileLog.setOutputDir(logsDir);
 
-        // 4. Continuer ou remettre a zero — la question n'a de sens que s'il y a une partie a
-        // reprendre ; sans historique sur disque c'est un demarrage, rien a demander.
-        ChatSession session;
-        if (service.hasSavedSession(root, scenario)) {
-            System.out.print("Continuer la conversation ? [O/n] : ");
-            String contInput = scanner.nextLine().trim();
-            boolean reset = contInput.equalsIgnoreCase("n") || contInput.equalsIgnoreCase("non");
-            session = service.openSession(root, scenario, reset);
-            System.out.println(reset
-                ? ">> Historique remis a zero."
-                : ">> Reprise (" + session.turns().stream()
-                    .filter(t -> t.speaker() != ChatTurn.Speaker.NARRATOR).count() + " tour(s) joue(s) en memoire).");
-        } else {
-            session = service.openSession(root, scenario, false);
+        boolean resume = service.hasSavedSession(root, scenario);
+        ChatSession session = service.openSession(root, scenario, false);
+        if (resume) {
+            System.out.println(">> Reprise (" + session.turns().stream()
+                .filter(t -> t.speaker() != ChatTurn.Speaker.NARRATOR).count() + " tour(s) joue(s) en memoire).");
+        } else if (!reset) {
             System.out.println(">> Nouvelle partie.");
         }
 
@@ -162,6 +167,32 @@ public class ChatCli {
             new ProcessBuilder("cmd", "/c", "start", "", url).start();
         } catch (Exception e) {
             System.out.println("(ouverture automatique du navigateur impossible : " + e.getMessage() + ")");
+        }
+    }
+
+    /**
+     * Loads the scenario. If that fails while a run exists on disk, says so and offers to archive that
+     * run and try again (the error may come from the run itself, for example a scenario copied with its
+     * run/ then adapted). Null when the scenario cannot be loaded : the error was printed.
+     */
+    private static ChatScenario loadOrOfferRestart(ChatService service, Path root, String name, boolean alreadyReset, Scanner scanner) {
+        try {
+            return service.loadScenario(root, name);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            System.err.println("ERREUR : " + e.getMessage());
+            if (alreadyReset || !service.hasRun(root, name)) return null;
+            System.out.println("Cette erreur peut venir de la partie enregistree (run/), par exemple copiee d'un autre scenario.");
+            System.out.print("La remettre a zero (archivee dans run/archive) et recharger ? [o/N] : ");
+            String answer = scanner.nextLine().trim();
+            if (!answer.equalsIgnoreCase("o") && !answer.equalsIgnoreCase("oui")) return null;
+            service.archiveRun(root, name);
+            System.out.println(">> Ancienne partie archivee dans run/archive.");
+            try {
+                return service.loadScenario(root, name);
+            } catch (IllegalStateException | IllegalArgumentException again) {
+                System.err.println("ERREUR : " + again.getMessage());
+                return null;
+            }
         }
     }
 }

@@ -5,7 +5,9 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutput;
+import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.session.ChatSession;
+import storymagine.chat.coeur.domaine.validation.ScenarioValidationException;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.domaine.session.TurnNumber;
@@ -78,6 +80,7 @@ public class ChatWebServer {
         server.createContext("/history",  this::handleHistory);
         server.createContext("/message",  this::handleMessage);
         server.createContext("/continue", this::handleContinue);
+        server.createContext("/open-scene", this::handleOpenScene);
         server.createContext("/next-act", this::handleNextAct);
         server.createContext("/previous-act", this::handlePreviousAct);
         server.createContext("/analyze-next-act", this::handleAnalyzeNextAct);
@@ -192,6 +195,20 @@ public class ChatWebServer {
      */
     private void handleContinue(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        streamRound(ex, listener -> service.continueScene(chatScenariosRoot, session, listener));
+    }
+
+    /**
+     * Opens the scene with the Npc the author asked for ("{npc-starts}") : same stream as /continue, no
+     * player turn (see ChatService.openScene).
+     */
+    private void handleOpenScene(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        streamRound(ex, listener -> service.openScene(chatScenariosRoot, session, listener));
+    }
+
+    /** A round with no player message, streamed as NDJSON like /message. */
+    private void streamRound(HttpExchange ex, java.util.function.Function<ExchangeProgressListener, ChatTurnResult> round) throws IOException {
         beginGeneration();
         ex.getResponseHeaders().add("Content-Type", "application/x-ndjson; charset=utf-8");
         ex.sendResponseHeaders(200, 0);
@@ -199,7 +216,7 @@ public class ChatWebServer {
             NdjsonWriter out = new NdjsonWriter(os);
             int[] streamedCount = {0};
             try {
-                ChatTurnResult result = service.continueScene(chatScenariosRoot, session, new ExchangeProgressListener() {
+                ChatTurnResult result = round.apply(new ExchangeProgressListener() {
                     @Override public void onPartialReply(String npcId, PartialGeneration partial) {
                         out.writeUnchecked(new PartialReplyEvent(npcId, partial.thinkingSoFar(), partial.textSoFar()));
                     }
@@ -359,6 +376,8 @@ public class ChatWebServer {
             service.restartSession(chatScenariosRoot, session);
             lastPromptTokens = 0;
             writeJson(ex, 200, currentView(List.of(), 0, false, false));
+        } catch (ScenarioValidationException e) {
+            writeJson(ex, 500, new ErrorView("Recommencer annulé : la partie en cours n'a pas été touchée.\n" + e.getMessage()));
         } catch (Exception e) {
             writeJson(ex, 500, new ErrorView(e.getMessage()));
         }
@@ -564,7 +583,7 @@ public class ChatWebServer {
         return new ChatHistoryView(session.scenario().name(), session.turns(), newTurns, removedTurnCount, compacted,
             lastPromptTokens, contextWindow, session.currentAct(), session.scenario().acts().size(), actAdvanced,
             currentActTitle(), session.generationSettings(), castView(), session.lastTurnNumber().value(),
-            !session.pendingNpcOpening().isNone());
+            !session.pendingNpcOpening().isNone(), session.pendingOpeningUsesPen());
     }
 
     private List<NpcView> castView() {
@@ -574,7 +593,8 @@ public class ChatWebServer {
             .map(npc -> new NpcView(npc.id(), npc.label(),
                 activity.levelOf(npc.id()).keyword(),
                 activity.stateOf(npc.id()).source().name().toLowerCase(java.util.Locale.ROOT),
-                scenarioActivity.levelOf(npc.id()).keyword()))
+                scenarioActivity.levelOf(npc.id()).keyword(),
+                session.npcIdsInMode(NpcMode.DO).contains(npc.id())))
             .toList();
     }
 

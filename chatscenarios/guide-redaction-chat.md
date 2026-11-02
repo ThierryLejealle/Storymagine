@@ -152,7 +152,8 @@ regroupement : un chapitre contenant plusieurs scènes.
 | Titres | Jamais envoyés au modèle ; utilisés par l'interface et le testeur de scénario. |
 | `[...]` d'un parent | Affichés une seule fois, à la première entrée dans le chapitre. Restent dans le texte envoyé au modèle. |
 | `Quand écrire [NEXT ACT]` dans un parent | Hérité par toutes les feuilles du chapitre. À écrire dans la feuille. |
-| `{npc-starts}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la feuille, décide (§4.5). |
+| `{npc-starts}`, `{npc-do}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la feuille, décide (§4.5). |
+| `{npc-mode do on\|off …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les sous-actes (§2.12). |
 | `{delta-pnj …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants (§2.8). |
 | Numérotation | Racines `1`, `2`… ; enfants `1.1`, `1.2`… ; petits-enfants `1.1.1`. |
 | Saut de niveau | `#` puis `###` : traité comme `##`. |
@@ -190,6 +191,13 @@ courant. Aucun appel au modèle n'est fait pour l'afficher.
 - **Tout premier acte** : ses `[...]` disent qui est le joueur, où il est, qui est présent (**tous les PNJ
   nommés**, même discrets) et quel est le but général. Tous les PNJ sont présents dès le tour 1 (§4.1) ;
   un PNJ non présenté peut être tiré au hasard et rester sans répondre (§7.4).
+- **Contexte de départ du joueur : à écrire, et ici.** Un joueur qui arrive dans une histoire a besoin de
+  quelques lignes de situation (qui il est, où, pourquoi, avec qui) : sans elles, il ne sait pas quoi
+  répondre. Pas de mécanisme à part : ce sont les `[...]` du tout premier acte, affichés au joueur au
+  début. Les écrire là plutôt que dans la prémisse : la prémisse est relue à **chaque tour jusqu'à la fin**
+  par tous les PNJ, alors que le texte du premier acte ne pèse que tant que cet acte est courant, puis
+  glisse dans l'historique et le résumé (§2.7, §7.1). Un acte d'introduction court, avec une condition
+  `[NEXT ACT]` simple (par exemple « dès que le joueur a répondu »), limite encore ce coût.
 - Même règle de 3e personne que la prémisse (§2.2).
 
 ```
@@ -386,10 +394,11 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 |---|---|
 | Ancienne syntaxe | `[PICK: x]`, `[NPC STARTS]` (à réécrire avec les accolades) |
 | Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{delta-pnj Elena : …}` (visibilité manquante) |
-| Commande qui doit être seule sur sa ligne | `{npc-starts}` ou `{delta-pnj …}` au milieu d'une phrase |
+| Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}` ou `{delta-pnj …}` au milieu d'une phrase |
 | Fichier ou paragraphes manquants | `picks/x.txt` absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
 | Bloc `repeat` incorrect | pas de `{end-repeat}`, bloc imbriqué ou vide, `{n}` ou `{item}` hors d'un bloc, `{repeat plain x}` (mode manquant), nombre trop grand, paragraphe qui n'a pas le même nombre de morceaux que les `{itemK}` du gabarit |
-| Personnage inconnu | `{npc-starts Zorglub}`, `{delta-pnj secret Zorglub : …}`, `{npc-active Zorglub}` |
+| Personnage inconnu | `{npc-starts Zorglub}`, `{npc-do Zorglub}`, `{delta-pnj secret Zorglub : …}`, `{npc-active Zorglub}`, `{npc-mode do on Zorglub}` |
+| Mode inconnu ou mal écrit | `{npc-mode fly on Elena}`, `{npc-mode do on}` (nom manquant) |
 | Activité incohérente | `{npc-active …}` au milieu d'une phrase ; scène où tout le monde est absent ; même PNJ nommé deux fois dans un titre |
 
 Avertissements (affichés au lancement et dans 🐞, sans bloquer) : un acte non final sans
@@ -503,6 +512,41 @@ Scène 1 : Elena active (explicite), les autres absents (implicites). Sous-scèn
   Les clics du joueur (§4.1) s'ajoutent par-dessus.
 - Un PNJ **passive** qui est nommé ne répond pas pour autant : c'est ce qui le distingue de **present**.
   Pour qu'un personnage réponde dès qu'on l'appelle, le laisser present (ou active).
+
+### 2.12 Modes d'un PNJ : `{npc-mode do on|off nom|*}`
+
+Un **mode** est un réglage qui se superpose au niveau d'activité (§2.11) : un PNJ est actif, présent, passif
+ou absent, et peut en plus être dans un ou plusieurs modes. Écrit sur **une ligne seule**, dans un acte (jamais
+dans la prémisse), avec un nom de PNJ ou `*` pour tous. Le seul mode aujourd'hui est `do` ; d'autres pourront
+s'ajouter sous la même forme `{npc-mode mode on|off nom|*}` (un mode inconnu empêche le chargement).
+
+```
+{npc-mode do on Elena}
+{npc-mode do off *}
+```
+
+**Mode DO : le PNJ tient la plume du narrateur.** C'est l'équivalent du `DO:` du joueur (§4.9), décidé par le
+scénario et valable **pendant** un moment, au lieu d'un seul message. Le joueur continue à taper normalement ;
+mais le PNJ en mode DO peut avancer la scène, narrer, agir pour les autres personnages et **forcer le
+personnage du joueur dans une direction** (il est drogué, hypnotisé, sous contrôle, possédé…). Hors de ce mode,
+un PNJ ne parle jamais à la place du personnage du joueur.
+
+- **Héritage** : comme les niveaux d'activité. `on` vaut pour l'acte où il est écrit et tous ses sous-actes ;
+  un titre plus profond ou une ligne plus bas peut l'annuler avec `off`. Retour arrière, sauvegarde et
+  rechargement donnent toujours l'état de l'acte. Dans un même titre, les lignes sont rejouées dans l'ordre.
+- **À l'écran** : une petite étoile ★ s'affiche sur la vignette du PNJ en mode DO.
+- **Pas de nom dans le message du joueur** : le mode ne change pas qui répond (§4.2), seulement ce que le PNJ
+  qui répond a le droit de faire.
+- **Ouverture** : un `{npc-starts Nom}` (§4.5) d'un PNJ en mode DO devient une ouverture avec la plume,
+  comme `{npc-do Nom}`. Un `{npc-mode do off ...}` retire seulement cet effet : un `{npc-do}` explicite
+  reste toujours une ouverture avec la plume.
+- ⚠️ **Collision de plusieurs PNJ** : avec `{npc-mode do on *}` ou plusieurs PNJ en mode DO dans la même scène,
+  plusieurs personnages tiennent la plume en même temps et peuvent se doubler, par exemple en narrant tous
+  les mêmes actions des autres. Les PNJ répondent l'un après l'autre et le second lit la réponse du premier,
+  ce qui limite le problème sans le supprimer. Préférer **un seul PNJ** en mode DO à la fois.
+- Technique : le moteur présente au PNJ en mode DO le dernier message du joueur avec le préfixe `DO: ` (une
+  ligne `OOC:` ou déjà `DO:` n'est pas modifiée ; rien ne change pour le bouton Continue). Aucun prompt n'est
+  modifié : la règle `DO:` du §4.9 s'applique telle quelle.
 
 ## 3. Fiche personnage (`characters/nom.txt`)
 
@@ -666,19 +710,28 @@ personnage, écrite à la fin de la réponse. Le bouton 🔍 appelle un agent s�
 (`NextActReadinessAnalyst`) : lecture seule, mêmes réglages d'échantillonnage que le jeu, il ne pilote
 rien.
 
-#### `{npc-starts}` : faire ouvrir la scène par un PNJ
+#### `{npc-starts}` et `{npc-do}` : faire ouvrir la scène par un PNJ
 
 Par défaut, le joueur parle en premier. Pour qu'un PNJ ouvre, écrire sur **une ligne seule** :
 
 ```
 {npc-starts}
 {npc-starts Elena}
+{npc-do}
+{npc-do Elena}
 ```
+
+- `{npc-starts}` : le PNJ ouvre **en mode normal** : il parle le premier, **sans aucun message du joueur** (pas
+  de bulle `DO:`), comme avec le bouton Continue. Il joue son personnage seulement.
+- `{npc-do}` : le PNJ ouvre **avec la plume du narrateur** : comme un clic sur **DO** sans texte (une bulle `DO:`
+  du joueur, puis le PNJ parle). Il peut avancer la scène, narrer et agir pour les autres.
+- Un `{npc-starts Nom}` devient une ouverture avec la plume si ce PNJ est en mode DO (`{npc-mode do on …}`, §2.12).
+  Sans nom, `{npc-starts}` reste une ouverture normale.
 
 | Sujet | Règle |
 |---|---|
 | Emplacement | En-tête du scénario (avant le premier acte) : ouvre l'histoire. Dans un acte : ouvre cet acte quand il devient courant (automatiquement ou par « Suivant »). |
-| Effet | Comme un clic sur **DO** sans texte : une bulle `DO:` du joueur, puis le PNJ parle seul (pas d'interjection). |
+| Effet | Le PNJ parle seul, sans interjection. `{npc-starts}` : sans bulle du joueur ; `{npc-do}` : après une bulle `DO:` vide du joueur. |
 | Sans nom | Un PNJ présent est tiré au hasard. |
 | Avec nom | Id de fichier, nom complet ou un seul mot du nom (`Elena` pour `Elena Voss`), sans tenir compte des accents ni de la casse. Nom inconnu : le scénario refuse de se charger. PNJ nommé mais retiré de la scène : un autre PNJ présent le remplace. |
 | Texte | La ligne est retirée : le modèle ne la lit jamais. Une mention au milieu d'une phrase est refusée au chargement (la commande doit être seule sur sa ligne). |
@@ -691,9 +744,16 @@ Par défaut, le joueur parle en premier. Pour qu'un PNJ ouvre, écrire sur **une
   partie (§6.7). Charger une sauvegarde remplace la partie en cours (confirmation) ; on peut ensuite
   remonter dans l'historique (§4.8).
 - 🔄 **Recommencer** : remet la session à zéro sur le même scénario (confirmation). La partie terminée
-  est archivée dans un zip.
+  est archivée dans un zip. Le scénario est **validé en premier** : s'il contient une erreur, une
+  fenêtre liste chacune (fichier, ligne) et rien n'est touché (la partie en cours reste intacte).
 - ⟳ (à côté de « Personnages ») : recharge `scenario*.txt` et `characters/` sans toucher à la
-  conversation. Exception : un scénario avec `{pick}` est relu depuis sa copie résolue (§2.6).
+  conversation. Exception : un scénario avec `{pick}` est relu depuis sa copie résolue (§2.6). Une erreur
+  de scénario s'affiche aussi dans une fenêtre.
+- **Au lancement de `chat.bat`**, la question « Continuer la conversation ? » est posée **avant** le
+  chargement du scénario. Répondre « n » archive d'abord la partie (`run/archive/`), donc un `run/` copié
+  d'un autre scénario ne peut plus bloquer le démarrage. Si le chargement échoue malgré tout alors qu'une
+  partie existe, le programme affiche l'erreur et propose de la remettre à zéro (archivée) avant de réessayer.
+  Copier un scénario avec son `run/` reste déconseillé : pour partager ou dupliquer, copier le dossier sans `run/` (§1, §6.9).
 
 ### 4.7 Compaction du contexte
 
@@ -725,7 +785,7 @@ Injectées dans le prompt de chaque PNJ :
 | `(texte)` | Pensée du personnage du joueur. Reste affichée et sauvegardée, mais **supprimée du texte envoyé aux LLM** (PNJ, résumé, analyses) : aucun PNJ ne peut y réagir. Un message fait uniquement de pensées n'est pas transmis. |
 | `OOC: …` | Instruction hors-jeu, que personne dans l'histoire n'a dite ni entendue. Le PNJ répond en tant que lui-même et s'arrête là : la scène n'avance pas dans cette réponse. |
 | `DO: …` | Le joueur confie la plume du narrateur au PNJ pour une seule réponse : avancer la scène, narrer, agir pour d'autres personnages. Au tour suivant, retour à son seul personnage. |
-| `DO:` vide | Le PNJ parle en premier (`{npc-starts}`, §4.5) |
+| `DO:` vide | Le PNJ parle en premier, avec la plume (`{npc-do}`, §4.5) |
 | Bouton **▶ Continue** | Aucun message du joueur : les PNJ continuent « comme si le joueur n'avait rien répondu ». Le prompt est le prompt habituel, sans consigne en plus ; sa dernière ligne est simplement la dernière réplique d'un PNJ. Sélection habituelle (actifs, PNJ cités dans les dernières répliques, continuité, tirage), **sans interjection**. Rien n'est ajouté pour le joueur dans l'historique. Refusé tant que personne n'a parlé. Annuler et Régénérer reviennent toujours au dernier vrai message du joueur : un Continue fait partie du tour qui le précède. |
 
 Le message du joueur est présenté au modèle sous le nom du joueur (§2.1). La génération est coupée si le
@@ -979,7 +1039,9 @@ dire comment.
 Conséquences de §2.7 :
 
 1. La prémisse est envoyée à chaque tour à tous les PNJ : la garder courte, **sans spoil** (monde,
-   ton, situation de départ).
+   ton, situation de départ). Le contexte d'accueil du joueur (qui, où, pourquoi) va dans les `[...]` du
+   premier acte (§2.4), pas dans la prémisse : il est affiché au joueur et ne pèse plus ensuite que
+   dans l'historique.
 2. Un rebondissement s'écrit dans l'acte où il devient utile, pas avant.
 3. Ce qu'un seul PNJ sait depuis le début va dans son `# SECRET` ; ce qui n'est vrai qu'à partir d'un
    moment de l'histoire va dans l'acte.

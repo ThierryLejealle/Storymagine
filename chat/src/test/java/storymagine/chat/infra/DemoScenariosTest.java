@@ -31,6 +31,7 @@ class DemoScenariosTest {
         Map.entry("demo-multi-fichiers",  new int[]{3, 1}),
         Map.entry("demo-pnj",             new int[]{1, 2}),
         Map.entry("demo-npc-starts",      new int[]{2, 1}),
+        Map.entry("demo-npc-do",          new int[]{3, 1}),
         Map.entry("demo-delta-pnj",       new int[]{2, 2}),
         Map.entry("demo-secret",          new int[]{1, 1}),
         Map.entry("demo-activite",        new int[]{2, 3}),

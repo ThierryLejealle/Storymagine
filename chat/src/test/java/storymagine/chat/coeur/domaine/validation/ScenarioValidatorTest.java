@@ -134,4 +134,14 @@ class ScenarioValidatorTest {
 
         assertTrue(ScenarioValidator.checkScenario(scenario).issues().isEmpty());
     }
+
+    @Test
+    void npcModeAndNpcDoAreValidatedLikeTheOtherNpcCommands() {
+        assertTrue(check("# Un\n{npc-mode do on Elena}\n{npc-mode do off *}\n{npc-do Marcus}\n").issues().isEmpty());
+
+        ScenarioReport report = check("# Un\n{npc-mode do on Zorglub}\n{npc-mode fly on Elena}\n{npc-do Zorglub}\nEn {npc-do} milieu\n");
+
+        List<String> where = report.errors().stream().map(ScenarioIssue::where).toList();
+        assertEquals(List.of("scenario.txt:2", "scenario.txt:3", "scenario.txt:4", "scenario.txt:5"), where, report.issues().toString());
+    }
 }

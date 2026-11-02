@@ -86,11 +86,12 @@ ne reçoivent que la fiche publique des autres (le secret ne fuit jamais).
   analyse sans rien persister où en est la condition (voir son `.md`). Bouton d'analyse d'état
   d'esprit : `NpcMindStateAnalyst`.
 
-# Ouverture par un PNJ — `{npc-starts}`
+# Ouverture par un PNJ — `{npc-starts}` et `{npc-do}`
 
-Une ligne seule `{npc-starts}` ou `{npc-starts Nom}`, dans l'en-tête du scénario (ouverture de
-l'histoire, valeur `ChatScenario.storyOpening`) ou dans un acte (`ScenarioAct.opening`, ouverture de
-cet acte). Concepts : `NpcOpening` (aucune / un PNJ au hasard / un PNJ nommé), `NpcOpeningMarker`
+Une ligne seule `{npc-starts}`, `{npc-starts Nom}`, `{npc-do}` ou `{npc-do Nom}`, dans l'en-tête du scénario
+(ouverture de l'histoire, valeur `ChatScenario.storyOpening`) ou dans un acte (`ScenarioAct.opening`, ouverture
+de cet acte). `starts` = ouverture normale, `do` = ouverture avec la plume du narrateur (`NpcOpening.doPen`).
+Concepts : `NpcOpening` (aucune / un PNJ au hasard / un PNJ nommé, plus l'indicateur de plume), `NpcOpeningMarker`
 (détection tolérante comme `NextActMarker`, mais la ligne doit être **seule** ; elle est retirée du
 texte avant que le LLM ou `Teaser` ne le voie).
 
@@ -102,7 +103,11 @@ texte avant que le LLM ou `Teaser` ne le voie).
   ouvrirait l'histoire ou l'acte : l'acte du tour a une ouverture et, avant lui, aucun tour joueur ou
   PNJ n'existe dans cet acte (seulement des NARRATOR). `pendingNpcOpening()` = la même question pour
   la suite de la conversation ; la vue web l'expose (`npcOpeningPending`).
-- **Exécution** : la page envoie un `DO:` vide (comme un clic sur DO) après le chargement, un
+- **Deux chemins** (`ChatSession.pendingOpeningUsesPen`, exposé par la vue web : `npcOpeningWithPen`) :
+  ouverture **normale** (`{npc-starts}`) : la page appelle `POST /open-scene`, `ChatServiceImpl.openScene` fait
+  parler le PNJ nommé sans tour joueur (même flux que `/continue`, factorisé dans `ChatWebServer.streamRound`) ;
+  ouverture **avec la plume** (`{npc-do}`, ou `{npc-starts Nom}` d'un PNJ en mode DO) : voir ci-dessous.
+- **Exécution (avec la plume)** : la page envoie un `DO:` vide (comme un clic sur DO) après le chargement, un
   redémarrage ou un changement d'acte ; `ChatServiceImpl.sendMessage` reconnaît ce cas
   (`PlayerMessage.isEmptyHandoff`) et donne la parole à `SpeakerSelector.openingSpeaker` : le PNJ nommé
   s'il est présent, sinon un PNJ présent au hasard ; **un seul locuteur**, aucune interjection. Le
@@ -110,6 +115,24 @@ texte avant que le LLM ou `Teaser` ne le voie).
 - Pas d'ouverture après un undo, un rollback ou une sauvegarde chargée, ni après un arrêt ou une
   erreur ; une pression sur Stop pendant l'ouverture retire le `DO:` et la relancera au prochain
   chargement de la page.
+
+# Modes d'un PNJ — `{npc-mode do on|off nom|*}`
+
+Guide §2.12 pour l'auteur. Un mode se superpose au niveau d'activité ; aujourd'hui un seul, `do` (`NpcMode.DO`),
+mais la forme `{npc-mode mode on|off nom|*}` est générique (mode inconnu : erreur listant `NpcMode.keywords()`).
+
+- **Concepts** : `NpcMode` (enum, `fromKeyword`), `ActivityDirective` (kinds `MODE_ON` / `MODE_OFF` portant le mode,
+  à côté de `LEVEL` et `RESET`), `ActivityDirectiveMarker` (retire la ligne, qui doit être seule), `ActivityResolver.modeIds`
+  (rejoue sur le chemin de titres, racine d'abord, dans l'ordre écrit : un `on` ajoute, un `off` retire ; `*` = tout le
+  `Cast`), `ChatScenario.npcIdsInMode(acte, mode)` et `ChatSession.npcIdsInMode(mode)`. Rien n'est stocké : recalculé
+  depuis les actes, donc retour arrière, sauvegarde et rechargement redonnent l'état de l'acte. Les noms inconnus
+  font échouer le chargement (`ChatScenario`, `ScenarioValidator`) ; interdit dans la prémisse.
+- **Effet du mode DO** : `ChatServiceImpl.turnsSeenBy` présente au PNJ en mode DO le dernier tour joueur avec le préfixe
+  `DO: ` (sauf ligne `OOC:`, ligne déjà `DO:`, ou tour sans message joueur : Continue, ouverture). Aucun prompt n'est
+  modifié : la règle `DO:` de `ChatPromptBuilder` s'applique telle quelle. L'historique et l'écran gardent le texte du joueur.
+  Les PNJ d'un tour répondent l'un après l'autre et le suivant lit la réponse du précédent (collision limitée, pas supprimée).
+- **Écran** : `NpcView.doMode` → étoile ★ sur la vignette (`chat.html`).
+- **Ouverture** : `ChatSession.pendingOpeningUsesPen` (voir ci-dessus).
 
 # Contenu aléatoire — `{pick type nom}`
 
@@ -450,7 +473,7 @@ Syntaxe des erreurs : guide §2.9. Ici, la mécanique.
   (`ERROR` / `WARNING`, lieu `fichier:ligne` ou acte, message). `ScenarioValidationException`
   (`IllegalStateException`) liste toutes les erreurs.
 - **`checkSources`** (erreurs, sur le texte écrit par l'auteur, ligne par ligne) : ancienne syntaxe,
-  commande inconnue ou mal écrite, `npc-starts` / `delta-pnj` / `npc-active|present|passive|absent|reset`
+  commande inconnue ou mal écrite, `npc-starts` / `npc-do` / `delta-pnj` / `npc-active|present|passive|absent|reset` / `npc-mode`
   pas seuls sur leur ligne, personnage inconnu (dont les noms d'une commande d'activité), bibliothèque `picks/` absente ou trop courte, `unique` plus nombreux que les paragraphes, blocs `repeat` incorrects (`RepeatExpander`, fichier par fichier).
 - **`checkScenario`** (avertissements, sur le scénario analysé) : acte non final sans `[NEXT ACT]`, PNJ
   jamais cité dans la prémisse ni le premier acte.

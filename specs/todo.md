@@ -39,3 +39,16 @@ Reste a faire / a decider :
 - Les deltas s'accumulent et pesent sur le budget de contexte du PNJ : a surveiller sur un long scenario.
 - Validation : verifications possibles en plus (premier acte qui ne presente pas tous les PNJ de facon plus
   fine, blocs `[...]` mal fermes, fiches sans section attendue, personnages jamais utilises).
+
+## Chat - mode DO temporaire pour les PNJ (realise le 2026-11-01)
+
+Realise : `{npc-mode do on|off nom|*}` (mode permanent, herite des titres, etoile sur la vignette), `{npc-do}` /
+`{npc-do Nom}` (ouverture avec la plume) et `{npc-starts}` devenu une ouverture normale sans bulle `DO:`
+(voir `evols/2026-11-01-demarrage-recommencer-contexte-et-mode-do.md`, guide §2.12 et §4.5, demo `demo-npc-do`).
+
+Reste a faire / a surveiller :
+
+- Essayer avec un vrai LLM : la plume sur un PNJ (le prompt `DO:` n'a pas ete modifie), l'ouverture normale sans
+  message du joueur, et la collision de plusieurs PNJ en mode DO dans la meme scene.
+- D'autres modes `{npc-mode autre on|off}` pourront s'ajouter (`NpcMode` est generique).
+- Un nom de PNJ peut-il etre ecrit sans `on|off` ? Non, pour l'instant.

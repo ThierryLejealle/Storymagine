@@ -12,6 +12,7 @@ import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.session.ChatContextBudget;
 import storymagine.chat.coeur.domaine.session.ChatPromptBuilder;
 import storymagine.chat.coeur.domaine.session.ChatSession;
+import storymagine.chat.coeur.domaine.validation.ScenarioValidationException;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
 import storymagine.chat.coeur.domaine.session.GenerationSettings;
 import storymagine.chat.coeur.domaine.session.SavePoint;
@@ -946,6 +947,54 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void restartSessionWithAnInvalidScenarioChangesNothingAndListsTheErrors(@TempDir Path root) throws IOException {
+        // Le scenario est valide a l'ouverture, puis l'auteur l'abime (commande inconnue) : "Recommencer"
+        // doit refuser AVANT d'archiver ou de supprimer quoi que ce soit, sinon la partie en cours
+        // disparait du disque alors que la session en memoire, elle, n'a pas bouge.
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        ChatScenario scenario = service.loadScenario(root, "inn");
+        ChatSession session = service.openSession(root, scenario, true);
+        service.sendMessage(root, session, "Hello there.");
+        int turnsBefore = session.turns().size();
+        Path scenarioFile = root.resolve("inn").resolve("scenario.txt");
+        Files.writeString(scenarioFile, Files.readString(scenarioFile, StandardCharsets.UTF_8) + "\n{teleport elena}\n", StandardCharsets.UTF_8);
+
+        ScenarioValidationException e = assertThrows(ScenarioValidationException.class, () -> service.restartSession(root, session));
+
+        assertTrue(e.getMessage().contains("teleport"), e.getMessage());
+        assertEquals(turnsBefore, session.turns().size(), "la conversation en memoire n'a pas bouge");
+        assertTrue(Files.isDirectory(root.resolve("inn/run/current")), "la partie en cours est toujours sur le disque");
+        assertFalse(Files.exists(root.resolve("inn/run/archive")), "rien n'a ete archive");
+        assertEquals(turnsBefore, newService(32_768).openSession(root, scenario, false).turns().size(),
+            "la partie se rouvre telle qu'elle etait");
+    }
+
+    @Test
+    void aRunIsQueriedAndArchivedByNameBeforeTheScenarioIsLoaded(@TempDir Path root) throws IOException {
+        // Le CLI pose "Continuer ?" AVANT de charger le scenario (le chargement relit le run et peut y
+        // echouer) : il n'a donc que le nom. Repartir de zero archive le run, jamais ne le supprime.
+        writeTwoNpcScenarioFiles(root, "inn");
+        ChatServiceImpl service = newService(32_768);
+        assertFalse(service.hasRun(root, "inn"), "aucun run avant la premiere partie");
+        assertFalse(service.hasSavedSession(root, "inn"));
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        service.sendMessage(root, session, "Hello there.");
+        assertTrue(service.hasRun(root, "inn"));
+        assertTrue(service.hasSavedSession(root, "inn"), "des tours ont ete joues");
+
+        service.archiveRun(root, "inn");
+
+        assertFalse(service.hasRun(root, "inn"));
+        assertFalse(service.hasSavedSession(root, "inn"));
+        try (var archives = Files.list(root.resolve("inn/run/archive"))) {
+            assertEquals(1, archives.count(), "la partie est archivee, pas perdue");
+        }
+        assertEquals(List.of(), service.openSession(root, service.loadScenario(root, "inn"), false).turns().stream()
+            .filter(t -> t.speaker() != ChatTurn.Speaker.NARRATOR).toList(), "le scenario se recharge sur une partie vierge");
+    }
+
+    @Test
     void deleteSavePointRemovesItFromTheListing(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn");
         ChatServiceImpl service = newService(32_768);
@@ -1402,6 +1451,103 @@ class ChatServiceImplTest {
         return new GenerationSettings(null, null, null, null, null, null, null, 100.0, null);
     }
 
+    // ── {npc-mode do on|off} : le PNJ tient la plume du narrateur ──────────────
+
+    private static void writeDoModeScenario(Path root, String actBody) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"),
+            "A stormy night at the inn.\n\n# Un\n" + actBody + "\nSomething is about to happen.\n", StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void aCharacterInDoModeReadsThePlayersLineAsADoAndTheOthersDoNot(@TempDir Path root) throws IOException {
+        writeDoModeScenario(root, "{npc-mode do on Marcus}");
+        LoggingModelCallPort llm = new LoggingModelCallPort();
+        ChatServiceImpl service = newServiceWith(llm);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+
+        service.sendMessage(root, session, "Marcus, what now?");
+        service.sendMessage(root, session, "Elena, what do you think?");
+
+        assertEquals(2, llm.userPrompts.size());
+        assertTrue(llm.userPrompts.get(0).contains("DO: Marcus, what now?"), "Marcus tient la plume : " + llm.userPrompts.get(0));
+        assertFalse(llm.userPrompts.get(1).contains("DO: Elena"), "Elena n'est pas en mode DO : " + llm.userPrompts.get(1));
+        assertEquals("Marcus, what now?", session.turns().stream()
+            .filter(t -> t.speaker() == ChatTurn.Speaker.PLAYER).findFirst().orElseThrow().text(),
+            "l'historique et l'ecran gardent le texte du joueur tel qu'il l'a ecrit");
+    }
+
+    @Test
+    void doModeLeavesOocLinesAndPlayerWrittenDoAlone(@TempDir Path root) throws IOException {
+        writeDoModeScenario(root, "{npc-mode do on *}");
+        LoggingModelCallPort llm = new LoggingModelCallPort();
+        ChatServiceImpl service = newServiceWith(llm);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+
+        service.sendMessage(root, session, "OOC: Marcus, be more careful");
+        service.sendMessage(root, session, "DO: Marcus opens the door");
+
+        assertFalse(llm.userPrompts.get(0).contains("DO: OOC:"), llm.userPrompts.get(0));
+        assertFalse(llm.userPrompts.get(1).contains("DO: DO:"), llm.userPrompts.get(1));
+    }
+
+    @Test
+    void doModeIsOffAgainAfterAnOffCommandAndNotAppliedWithoutAPlayerLine(@TempDir Path root) throws IOException {
+        writeDoModeScenario(root, "{npc-mode do on *}\n{npc-mode do off Marcus}");
+        LoggingModelCallPort llm = new LoggingModelCallPort();
+        ChatServiceImpl service = newServiceWith(llm);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(neverInterject());
+
+        assertEquals(java.util.Set.of("elena"), session.npcIdsInMode(storymagine.chat.coeur.domaine.activity.NpcMode.DO));
+        service.sendMessage(root, session, "Marcus, what now?");
+
+        assertFalse(llm.userPrompts.get(0).contains("DO: Marcus"), "off annule le on qui precede : " + llm.userPrompts.get(0));
+    }
+
+    // ── {npc-starts} : ouverture normale ; {npc-do} : ouverture avec la plume ──
+
+    @Test
+    void npcStartsOpensTheSceneWithNoPlayerLineAtAll(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);
+        LoggingModelCallPort llm = new LoggingModelCallPort();
+        ChatServiceImpl service = newServiceWith(llm);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject()); // l'ouverture reste un PNJ seul, sans interjection
+
+        assertFalse(session.pendingOpeningUsesPen(), "{npc-starts} est une ouverture normale");
+        ChatTurnResult result = service.openScene(root, session, ExchangeProgressListener.NOOP);
+
+        assertEquals(1, result.replyTurns().size());
+        assertEquals("marcus", result.replyTurns().get(0).npcId());
+        assertTrue(session.turns().stream().noneMatch(t -> t.speaker() == ChatTurn.Speaker.PLAYER), "aucune bulle DO: du joueur");
+        assertTrue(session.pendingNpcOpening().isNone());
+        assertThrows(IllegalStateException.class, () -> service.openScene(root, session, ExchangeProgressListener.NOOP));
+    }
+
+    @Test
+    void npcDoOpensWithThePenAndSoDoesNpcStartsForACharacterInDoMode(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-do Marcus}\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession doOpening = service.openSession(root, service.loadScenario(root, "inn"), true);
+        assertTrue(doOpening.pendingOpeningUsesPen(), "{npc-do} : l'ouverture se fait avec la plume");
+
+        Files.delete(root.resolve("inn/scenario.txt"));
+        Files.writeString(root.resolve("inn/scenario.txt"),
+            "A stormy night at the inn.\n\n# Un\n{npc-mode do on Marcus}\n{npc-starts Marcus}\nSomething.\n", StandardCharsets.UTF_8);
+        service.restartSession(root, doOpening);
+        assertTrue(doOpening.pendingOpeningUsesPen(), "{npc-starts Marcus} d'un PNJ en mode DO devient un DO");
+
+        Files.writeString(root.resolve("inn/scenario.txt"),
+            "A stormy night at the inn.\n\n# Un\n{npc-mode do on Elena}\n{npc-starts Marcus}\nSomething.\n", StandardCharsets.UTF_8);
+        service.restartSession(root, doOpening);
+        assertFalse(doOpening.pendingOpeningUsesPen(), "Marcus n'est pas en mode DO : ouverture normale");
+    }
+
     @Test
     void emptyDoOpensTheStoryWithTheNpcNamedByTheMarkerAndNobodyElse(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
@@ -1524,6 +1670,27 @@ class ChatServiceImplTest {
     }
 
     /** Fixed answer, remembers the last user prompt it was given. */
+    /** Keeps every user prompt received, in call order : one per speaking character. */
+    private static class LoggingModelCallPort implements ModelCallPort {
+        final List<String> userPrompts = new java.util.ArrayList<>();
+
+        @Override
+        public LlmResult generate(String systemPrompt, String userPrompt, double temperature, LlmCallContext ctx) {
+            userPrompts.add(userPrompt);
+            return LlmResult.of("*nods slowly*");
+        }
+
+        @Override
+        public int contextWindow() { return 32_768; }
+    }
+
+    private ChatServiceImpl newServiceWith(ModelCallPort roleplayLlm) {
+        StubModelCallPort other = new StubModelCallPort(32_768, "FOLDED SUMMARY", 0);
+        return new ChatServiceImpl(new ChatFileStorageAdapter(), new RoleplayNarrator(roleplayLlm), new ChatSummarizer(other),
+            new NextActReadinessAnalyst(other), new NpcMindStateAnalyst(other), new ReplyOriginAnalyst(other),
+            LogPort.NOOP, new Random(1));
+    }
+
     private static class RecordingModelCallPort implements ModelCallPort {
         private final String responseText;
         String lastUserPrompt;

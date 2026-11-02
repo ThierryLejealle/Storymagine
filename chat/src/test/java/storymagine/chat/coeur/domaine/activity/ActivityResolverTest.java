@@ -171,4 +171,38 @@ class ActivityResolverTest {
         assertThrows(IllegalArgumentException.class,
             () -> resolve(List.of(level(NpcActivity.ACTIVE, ""), level(NpcActivity.ABSENT, ""))));
     }
+
+    private static List<String> doModeAt(List<ActivityDirective>... headings) {
+        return List.copyOf(ActivityResolver.modeIds(CAST, List.of(headings), NpcMode.DO));
+    }
+
+    @SafeVarargs
+    private static List<String> doMode(List<ActivityDirective>... headings) {
+        return doModeAt(headings);
+    }
+
+    @Test
+    void aModeIsInheritedDownThePathAndOffOrAStarOverrideItInTheOrderWritten() {
+        assertEquals(List.of(), doMode());
+        assertEquals(List.of("j1", "j3"), doMode(List.of(ActivityDirective.modeOn(NpcMode.DO, "J1 J3"))));
+        assertEquals(List.of("j1", "j2", "j3", "j4"), doMode(List.of(ActivityDirective.modeOn(NpcMode.DO, "*"))));
+        // child heading : on * then off J2 -> everyone but J2 ; a later heading may switch J2 back on
+        assertEquals(List.of("j1", "j3", "j4"), doMode(
+            List.of(ActivityDirective.modeOn(NpcMode.DO, "*")),
+            List.of(ActivityDirective.modeOff(NpcMode.DO, "J2"))));
+        assertEquals(List.of("j1", "j3", "j4", "j2"), doMode(
+            List.of(ActivityDirective.modeOn(NpcMode.DO, "*")),
+            List.of(ActivityDirective.modeOff(NpcMode.DO, "J2")),
+            List.of(ActivityDirective.modeOn(NpcMode.DO, "J2"))));
+        assertEquals(List.of(), doMode(
+            List.of(ActivityDirective.modeOn(NpcMode.DO, "J1")),
+            List.of(ActivityDirective.modeOff(NpcMode.DO, "*"))));
+    }
+
+    @Test
+    void aModeNeverTouchesTheActivityLevelsAndAnUnknownNameFails() {
+        CastActivity activity = resolve(List.of(ActivityDirective.modeOn(NpcMode.DO, "J1")));
+        assertEquals(NpcActivityState.DEFAULT, activity.stateOf("j1"));
+        assertThrows(IllegalArgumentException.class, () -> doMode(List.of(ActivityDirective.modeOn(NpcMode.DO, "Zorglub"))));
+    }
 }

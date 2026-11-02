@@ -14,8 +14,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-seri
 header{padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w));border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between}
 header h1{font-size:1.1rem;font-weight:700}
 header .status{font-size:.8rem;color:#9ca3af}
-main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1.5rem calc(1.5rem + var(--cast-w));width:80%;margin:0 auto}
-.turn{margin-bottom:1.1rem;max-width:80%;line-height:1.6}
+main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1.5rem calc(1.5rem + var(--cast-w));width:100%}
+.turn{margin-bottom:1.1rem;max-width:85%;line-height:1.6}
 .turn.player{margin-left:auto;text-align:right}
 .turn .bubble{display:inline-block;padding:.6rem .9rem;border-radius:10px;text-align:left}
 .turn.player .bubble{background:#2563eb;color:#fff}
@@ -36,9 +36,10 @@ main{flex:1;overflow-y:auto;padding:1.5rem calc(1.5rem + var(--gauge-w) + var(--
 .turn.streaming .bubble::after{content:'▍';margin-left:2px;opacity:.6;animation:stream-blink 1s infinite}
 @keyframes stream-blink{0%,50%{opacity:.6}51%,100%{opacity:0}}
 footer{border-top:1px solid #e5e7eb;padding:1rem calc(1.5rem + var(--gauge-w) + var(--saves-w)) 1rem calc(1.5rem + var(--cast-w))}
-form{width:90%;margin:0 10% 0 0;display:flex;gap:.6rem}
+form{display:flex;gap:.6rem;align-items:flex-end}
+form button,form #undoStepsInput{height:2.8rem}
 textarea{flex:1;min-width:12rem;resize:none;border:1px solid #e5e7eb;border-radius:8px;padding:.6rem .8rem;font:inherit;
-         font-size:.95rem;line-height:1.4;height:2.8rem}
+         font-size:.95rem;line-height:1.4;height:4.2rem}
 textarea:focus{outline:none;border-color:#2563eb}
 button{border:none;background:#2563eb;color:#fff;padding:0 1.3rem;border-radius:8px;font-size:.92rem;
        font-weight:600;cursor:pointer}
@@ -49,11 +50,11 @@ button:disabled{background:#9ca3af;cursor:default}
 .undo-group #undoBtn{border-radius:8px 0 0 8px}
 #undoStepsInput{width:2.8rem;flex:none;border:1px solid #e5e7eb;border-left:none;border-radius:0 8px 8px 0;
                  padding:0 .3rem;font:inherit;font-size:.85rem;text-align:center;color:#6b7280;background:#fff}
-.hint{width:90%;margin:.5rem 10% 0 0;font-size:.75rem;color:#9ca3af}
+.hint{margin:.5rem 0 0;font-size:.75rem;color:#9ca3af}
 #settingsBtn{background:#fff;color:#6b7280;border:1px solid #e5e7eb;padding:0 .8rem;font-size:.95rem}
 #stopBtn{background:#fff;color:#dc2626;border:1px solid #fecaca;padding:0 .8rem;font-size:.85rem;display:none}
 #stopBtn.visible{display:inline-block}
-.settings-panel{width:90%;margin:.6rem 10% 0 0;padding:.7rem 1rem;border-top:1px solid #e5e7eb;display:flex;
+.settings-panel{margin:.6rem 0 0;padding:.7rem 1rem;border-top:1px solid #e5e7eb;display:flex;
                  gap:1.6rem;align-items:flex-end;flex-wrap:wrap;font-size:.8rem;color:#374151}
 .settings-panel.hidden{display:none}
 .presets-row{width:100%;display:flex;gap:.5rem;margin-bottom:.2rem}
@@ -133,6 +134,7 @@ button:disabled{background:#9ca3af;cursor:default}
 .npc-vignette:hover{border-color:#2563eb;color:#2563eb}
 .npc-vignette.absent{background:#f3f4f6;color:#9ca3af;font-weight:400}
 .npc-vignette.absent .npc-name{text-decoration:line-through}
+.npc-do-star{margin-left:auto;color:#d97706}
 /* Pastille sombre + point d'etat dans le coin : blanc = explicite, gris = implicite, rouge = force par le joueur. */
 .npc-badge{position:relative;flex:none;width:1.9rem;height:1.9rem;border-radius:50%;background:#2b2e35;
             display:inline-flex;align-items:center;justify-content:center;font-size:1.05rem;line-height:1}
@@ -509,6 +511,13 @@ function updateCastPanel(cast) {
     name.textContent = npc.label;
     btn.appendChild(badge);
     btn.appendChild(name);
+    if (npc.doMode) {
+      const star = document.createElement('span');
+      star.className = 'npc-do-star';
+      star.textContent = '★';
+      star.title = 'Mode DO : ce personnage tient la plume du narrateur et peut forcer les actions de ton personnage';
+      btn.appendChild(star);
+    }
     btn.addEventListener('click', () => cycleNpcActivity(npc.id));
 
     row.appendChild(btn);
@@ -880,20 +889,25 @@ function updateChrome(history) {
   analyzeNextActBtnEl.disabled = nextActBtnEl.disabled;
   updateGauge(history.promptTokens, history.contextWindow);
   npcOpeningPending = history.npcOpeningPending;
+  npcOpeningWithPen = history.npcOpeningWithPen;
 }
 
 // Vrai quand l'histoire ou l'acte courant vient de commencer et que l'auteur a ecrit {npc-starts}
 // dans le scenario : un PNJ doit parler en premier (voir ChatSession.pendingNpcOpening).
 let npcOpeningPending = false;
+let npcOpeningWithPen = false;
 
-// Fait ce que ferait le joueur en cliquant DO sans rien ecrire : le serveur reconnait ce "DO:" vide
-// et donne la parole au PNJ voulu par l'auteur (voir ChatServiceImpl.sendMessage). Appele seulement
+// Ouvre la scene avec le PNJ voulu par l'auteur. Ouverture avec la plume ({npc-do}, ou {npc-starts Nom} d'un
+// PNJ en mode DO) : fait ce que ferait le joueur en cliquant DO sans rien ecrire, le serveur reconnait ce
+// "DO:" vide (voir ChatServiceImpl.sendMessage). Ouverture normale ({npc-starts}) : le PNJ parle sans aucun
+// message du joueur (voir ChatServiceImpl.openScene). Appele seulement
 // apres un chargement, un redemarrage ou un changement d'acte — jamais apres un undo, un rollback ou
 // une sauvegarde chargee, ni apres un arret ou une erreur (sinon on relancerait en boucle).
 function maybeStartNpcOpening() {
   if (!npcOpeningPending || generating) return;
   npcOpeningPending = false;
-  sendMessage('DO:');
+  if (npcOpeningWithPen) sendMessage('DO:');
+  else sendMessage('', true, '/open-scene');
 }
 
 // Rendu complet depuis zero : uniquement au chargement/rechargement de la page, a partir de
@@ -1047,6 +1061,13 @@ async function loadSave(id) {
   }
 }
 
+// Une erreur de scenario (validation) tient sur plusieurs lignes, une par probleme : pop-up pour la
+// lire en entier, la barre d'etat ne garde qu'un rappel.
+function showScenarioError(message) {
+  statusEl.textContent = 'Erreur dans le scénario : voir la fenêtre.';
+  alert(message);
+}
+
 // Relit scenario.txt et les .txt de personnages depuis le disque, sans toucher a la conversation
 // en cours (voir ChatSession.reloadScenario) — repeint via render() comme loadSave, la reponse a la
 // meme forme que /history.
@@ -1057,7 +1078,7 @@ async function reloadScenario() {
     const res = await fetch('/reload-scenario', { method: 'POST' });
     const data = await res.json();
     if (data.error) {
-      statusEl.textContent = 'Erreur : ' + data.error;
+      showScenarioError(data.error);
       return;
     }
     render(data);
@@ -1083,7 +1104,7 @@ async function restartSession() {
     const res = await fetch('/restart', { method: 'POST' });
     const data = await res.json();
     if (data.error) {
-      statusEl.textContent = 'Erreur : ' + data.error;
+      showScenarioError(data.error);
       return;
     }
     render(data);
@@ -1128,7 +1149,7 @@ function stopGeneration() {
 // la version autoritaire du serveur des la premiere ligne recue.
 // continuation = true : le bouton "Continue" (voir ChatServiceImpl.continueScene) — aucun message du
 // joueur, donc ni bulle optimiste ni brouillon a restaurer en cas d'arret ou d'erreur.
-async function sendMessage(text, continuation = false) {
+async function sendMessage(text, continuation = false, endpoint = '/continue') {
   setControlsDisabled(true);
   statusEl.textContent = 'Le personnage réfléchit…';
   const optimisticTurn = continuation ? null : appendTurn('PLAYER', text);
@@ -1141,7 +1162,7 @@ async function sendMessage(text, continuation = false) {
   let completed = false;
   try {
     const res = continuation
-      ? await fetch('/continue', { method: 'POST' })
+      ? await fetch(endpoint, { method: 'POST' })
       : await fetch('/message', { method: 'POST', body: text });
     await readNdjsonStream(res, (data) => {
       if (data.textSoFar !== undefined) {

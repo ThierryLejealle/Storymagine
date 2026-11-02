@@ -76,8 +76,8 @@ final class ScenarioOutlineParser {
             throw new IllegalArgumentException("{delta-pnj ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
         }
         if (!ActivityDirectiveMarker.extract(premise).directives().isEmpty()) {
-            throw new IllegalArgumentException("{npc-active ...}, {npc-present ...}, {npc-passive ...}, {npc-absent ...} et "
-                + "{npc-reset} ne peuvent etre ecrits que dans un acte, pas dans la premisse.");
+            throw new IllegalArgumentException("{npc-active ...}, {npc-present ...}, {npc-passive ...}, {npc-absent ...}, "
+                + "{npc-reset} et {npc-mode ...} ne peuvent etre ecrits que dans un acte, pas dans la premisse.");
         }
     }
 

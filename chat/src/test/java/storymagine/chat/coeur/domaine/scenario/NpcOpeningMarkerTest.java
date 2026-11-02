@@ -59,4 +59,19 @@ class NpcOpeningMarkerTest {
         assertTrue(e.opening().isNone());
         assertEquals("[Alex entre dans la salle.]", e.text());
     }
+
+    @Test
+    void npcDoIsAnOpeningWithThePenAndTheFirstCommandDecides() {
+        assertEquals(NpcOpening.ANY_DO, NpcOpeningMarker.extract("{npc-do}").opening());
+        NpcOpening named = NpcOpeningMarker.extract("{NPC-DO Elena Voss}").opening();
+        assertTrue(named.isNamed() && named.doPen());
+        assertEquals("Elena Voss", named.npcName());
+        assertEquals(NpcOpening.namedDo("Elena"), NpcOpeningMarker.extract("{npc-do Elena}\n{npc-starts Marcus}\n").opening());
+        assertEquals("texte\n", NpcOpeningMarker.extract("{npc-do}\ntexte\n").text());
+    }
+
+    @Test
+    void npcStartsIsANormalOpening() {
+        assertEquals(false, NpcOpeningMarker.extract("{npc-starts Elena}").opening().doPen());
+    }
 }

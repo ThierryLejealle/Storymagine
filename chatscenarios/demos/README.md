@@ -11,6 +11,7 @@ de `chat.bat`, choisir « 3 - Démos du projet ». Chaque dossier a un `README.m
 | `demo-multi-fichiers` | une salade de fruits | `scenario-N.txt` | §1 |
 | `demo-pnj` | deux amis au café | plusieurs personnages | §4.2 |
 | `demo-npc-starts` | une boulangère | `npc-starts` | §4.5 |
+| `demo-npc-do` | une visite guidée | `npc-mode do`, `npc-do` | §2.12, §4.5 |
 | `demo-delta-pnj` | un anniversaire | `delta-pnj` | §2.8 |
 | `demo-secret` | un carton mystérieux | section `# SECRET` | §3 |
 | `demo-activite` | le palier | `npc-active` et co | §2.11 |

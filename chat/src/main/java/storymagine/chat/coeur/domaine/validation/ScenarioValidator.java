@@ -36,9 +36,9 @@ import java.util.regex.Pattern;
  */
 public final class ScenarioValidator {
 
-    private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset");
+    private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode");
     private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "delta-pnj", "npc-active", "npc-present",
-        "npc-passive", "npc-absent", "npc-reset", "repeat", "end-repeat", "n", "item");
+        "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-do", "repeat", "end-repeat", "n", "item");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
     private static final Pattern COMMAND_START = Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
@@ -88,13 +88,13 @@ public final class ScenarioValidator {
             String command = text.find() ? text.group() : line.substring(start.start());
             if (!COMMANDS.contains(name)) {
                 issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, npc-starts, delta-pnj, "
-                    + "npc-active, npc-present, npc-passive, npc-absent, npc-reset)"));
+                    + "npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode, npc-do)"));
             } else if (REPEAT_COMMANDS.contains(name)) {
                 continue;
             } else if (name.equals("pick")) {
                 checkPick(where, command, library, issues);
-            } else if (name.equals("npc-starts")) {
-                checkNpcStarts(where, line, cast, issues);
+            } else if (name.equals("npc-starts") || name.equals("npc-do")) {
+                checkNpcStarts(where, line, cast, issues, name);
             } else if (ACTIVITY_COMMANDS.contains(name)) {
                 checkActivity(where, line, cast, issues);
             } else {
@@ -111,12 +111,12 @@ public final class ScenarioValidator {
         }
     }
 
-    private static void checkNpcStarts(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+    private static void checkNpcStarts(String where, String line, Cast cast, List<ScenarioIssue> issues, String command) {
         NpcOpening opening = NpcOpeningMarker.extract(line + "\n").opening();
         if (opening.isNone()) {
-            issues.add(ScenarioIssue.error(where, "{npc-starts} doit etre seul sur sa ligne : {npc-starts} ou {npc-starts Nom}"));
+            issues.add(ScenarioIssue.error(where, "{" + command + "} doit etre seul sur sa ligne : {" + command + "} ou {" + command + " Nom}"));
         } else if (opening.isNamed() && cast.findByName(opening.npcName()).isEmpty()) {
-            issues.add(ScenarioIssue.error(where, "{npc-starts " + opening.npcName() + "} : aucun personnage de ce nom dans characters/"));
+            issues.add(ScenarioIssue.error(where, "{" + command + " " + opening.npcName() + "} : aucun personnage de ce nom dans characters/"));
         }
     }
 
@@ -125,10 +125,10 @@ public final class ScenarioValidator {
             List<ActivityDirective> directives = ActivityDirectiveMarker.extract(line + "\n").directives();
             if (directives.isEmpty()) {
                 issues.add(ScenarioIssue.error(where, "une commande d'activite doit etre seule sur sa ligne : "
-                    + "{npc-active|present|passive|absent noms} ou {npc-reset}"));
+                    + "{npc-active|present|passive|absent noms}, {npc-reset} ou {npc-mode mode on|off nom|*}"));
             }
             for (ActivityDirective directive : directives) {
-                if (!directive.isReset() && !directive.isUnnamed() && !directive.isAll()) ActivityResolver.resolveNames(cast, directive.namesText());
+                if (!directive.isReset() && !directive.isUnnamed() && !directive.isAll() && !directive.isModeAll()) ActivityResolver.resolveNames(cast, directive.namesText());
             }
         } catch (IllegalArgumentException e) {
             issues.add(ScenarioIssue.error(where, e.getMessage()));

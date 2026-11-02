@@ -1,0 +1,29 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un petit musée d'histoire locale, un mercredi après-midi.
+Prémisse : Alex visite un petit musée avec une guide, Camille. Camille raconte la visite comme une conteuse : elle décrit le parcours, ce qu'Alex voit et ce qu'ils font ensemble.
+Ton : Calme, curieux et chaleureux.
+
+# La visite commentée
+{npc-mode do on Camille}
+{npc-starts Camille}
+[Alex pousse la porte du petit musée. Camille, la guide, l'accueille dans le hall avec un grand sourire.]
+
+## Première salle
+[La première salle expose de vieux outils d'artisans et des cartes du quartier.]
+Point de départ : Camille emmène Alex dans la première salle et décrit ce qu'ils y voient et ce qu'ils font.
+Ce qui doit se passer : Camille présente les outils et les cartes en racontant les gestes d'Alex et les siens.
+Quand écrire [NEXT ACT] : Dès que Camille a présenté la première salle et propose de passer à la suivante.
+
+## Deuxième salle
+[La deuxième salle est pleine de vieilles photos du quartier en noir et blanc.]
+Point de départ : Camille conduit Alex dans la deuxième salle.
+Ce qui doit se passer : Camille présente les photos et raconte comment Alex les découvre.
+Quand écrire [NEXT ACT] : Dès que Camille a présenté la deuxième salle et annonce la fin de la visite.
+
+# Le banc du hall
+[La visite est finie. Camille et Alex s'assoient sur le banc du hall.]
+Point de départ : Camille répond aux questions d'Alex et ne parle plus à sa place.
+Ce qui doit se passer : Camille et Alex discutent de ce qu'ils ont préféré.
