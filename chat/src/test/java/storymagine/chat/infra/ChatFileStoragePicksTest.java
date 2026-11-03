@@ -166,7 +166,7 @@ class ChatFileStoragePicksTest {
         String resolved = Files.readString(root.resolve("inn/run/current/resolved/scenario.txt"));
         assertFalse(resolved.contains("repeat") || resolved.contains("{n}"), resolved);
         assertTrue(Files.readString(root.resolve("inn/scenario.txt")).contains("{repeat random 2 place}"));
-        assertEquals(List.of("repeat-random place Night market. / Empty town."), describe(adapter.pickDraws(root, scenario)));
+        assertEquals(List.of("repeat-random place Night market.", "repeat-random place Empty town."), describe(adapter.pickDraws(root, scenario)));
 
         randomness.index = 0;
         assertEquals(scenario.acts().get(1).text(), adapter.loadScenario(root, "inn").acts().get(1).text());

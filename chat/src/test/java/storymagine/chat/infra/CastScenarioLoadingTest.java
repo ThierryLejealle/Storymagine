@@ -78,7 +78,7 @@ class CastScenarioLoadingTest {
 
         assertEquals(first.acts().get(0).beats(), again.acts().get(0).beats(), "un run deja tire garde ses personnages");
         PickDraws draws = adapter(1).pickDraws(root, first);
-        assertEquals(1, draws.values().stream().filter(d -> d.mode().equals(PickMode.REPEAT_ORDER)).count());
+        assertEquals(3, draws.values().stream().filter(d -> d.mode().equals(PickMode.REPEAT_ORDER)).count(), "un par copie");
         List<PickDraw> casts = draws.values().stream().filter(d -> d.mode().equals(PickMode.CAST)).toList();
         assertEquals(3, casts.size());
         assertEquals(Set.of("COMMIS"), Set.copyOf(casts.stream().map(d -> d.tag().name()).toList()));

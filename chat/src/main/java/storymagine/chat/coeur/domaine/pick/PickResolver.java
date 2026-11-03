@@ -4,6 +4,7 @@ import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.ports.RandomnessPort;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,25 +57,84 @@ public final class PickResolver {
         return resolve(texts).texts();
     }
 
-    /** Same as resolveAll, and keeps the draws made, in the order of the commands. */
+    /**
+     * Same as resolveAll, and keeps the draws made, in reading order : a copy of a "{repeat}" block groups its
+     * own item, the picks written in it and its casts, so they can be shown copy by copy.
+     */
     public PickResolution resolve(List<String> texts) {
         RepeatExpansion unfolded = new RepeatExpander(library, randomness, cast).expand(texts);
         Map<PickTag, Set<Integer>> drawn = new HashMap<>();
-        List<PickDraw> draws = new ArrayList<>(unfolded.draws());
+        List<Positioned> picks = new ArrayList<>();
         List<String> resolved = new ArrayList<>();
-        for (String text : unfolded.texts()) {
-            resolved.add(COMMAND.matcher(text).replaceAll(match -> Matcher.quoteReplacement(draw(match, drawn, draws))));
+        for (int t = 0; t < unfolded.texts().size(); t++) {
+            int textIndex = t;
+            resolved.add(COMMAND.matcher(unfolded.texts().get(t)).replaceAll(match -> {
+                PickDraw draw = draw(match, drawn, scopeAt(unfolded.spans(), textIndex, match.start()));
+                picks.add(new Positioned(draw, textIndex, match.start()));
+                return Matcher.quoteReplacement(String.join(PARAGRAPH_SEPARATOR, draw.paragraphs()));
+            }));
         }
         // Last : the "{cast}" commands and their %NAME% variables, so a variable written in a paragraph drawn above is replaced too.
+        List<PickDraw> casts = List.of();
         if (resolved.stream().anyMatch(CastResolver::isNeeded)) {
             CastResolver.Resolution casted = new CastResolver(cast, randomness).resolve(resolved);
             resolved = new ArrayList<>(casted.texts());
-            draws.addAll(casted.draws());
+            casts = casted.draws();
         }
-        return new PickResolution(resolved, new PickDraws(draws));
+        return new PickResolution(resolved, new PickDraws(inReadingOrder(unfolded.spans(), picks, casts)));
     }
 
-    private String draw(MatchResult match, Map<PickTag, Set<Integer>> drawn, List<PickDraw> draws) {
+    private static PickScope scopeAt(List<RepeatExpansion.CopySpan> spans, int textIndex, int position) {
+        return spans.stream().filter(span -> span.contains(textIndex, position)).map(RepeatExpansion.CopySpan::scope)
+            .findFirst().orElse(PickScope.NONE);
+    }
+
+    /** A pick draw and where its command stood in the unfolded texts. */
+    private record Positioned(PickDraw draw, int textIndex, int position) {}
+
+    /** What is shown together : one copy of a block (its item, then its picks, then its casts) or one pick outside any copy. */
+    private static final class Group {
+        final int textIndex;
+        final int position;
+        final List<PickDraw> draws = new ArrayList<>();
+
+        Group(int textIndex, int position) {
+            this.textIndex = textIndex;
+            this.position = position;
+        }
+    }
+
+    /** Groups in the order they stand in the texts ; casts outside any copy come last (they run after everything). */
+    private static List<PickDraw> inReadingOrder(List<RepeatExpansion.CopySpan> spans, List<Positioned> picks, List<PickDraw> casts) {
+        List<Group> groups = new ArrayList<>();
+        Map<PickScope, Group> copies = new HashMap<>();
+        for (RepeatExpansion.CopySpan span : spans) {
+            Group group = new Group(span.textIndex(), span.start());
+            if (span.itemDraw() != null) group.draws.add(span.itemDraw());
+            groups.add(group);
+            copies.put(span.scope(), group);
+        }
+        for (Positioned pick : picks) {
+            Group group = pick.draw().scope().isNone() ? null : copies.get(pick.draw().scope());
+            if (group == null) {
+                group = new Group(pick.textIndex(), pick.position());
+                groups.add(group);
+            }
+            group.draws.add(pick.draw());
+        }
+        List<PickDraw> loose = new ArrayList<>();
+        for (PickDraw cast : casts) {
+            Group group = cast.scope().isNone() ? null : copies.get(cast.scope());
+            if (group == null) loose.add(cast); else group.draws.add(cast);
+        }
+        groups.sort(Comparator.comparingInt((Group g) -> g.textIndex).thenComparingInt(g -> g.position));
+        List<PickDraw> ordered = new ArrayList<>();
+        groups.forEach(group -> ordered.addAll(group.draws));
+        ordered.addAll(loose);
+        return ordered;
+    }
+
+    private PickDraw draw(MatchResult match, Map<PickTag, Set<Integer>> drawn, PickScope scope) {
         String[] words = match.group(1).strip().split("\\s+");
         if (words.length != 2 || words[0].isEmpty()) {
             throw new IllegalArgumentException("Commande pick invalide : " + match.group()
@@ -88,8 +148,7 @@ public final class PickResolver {
         List<Integer> chosen = choose(mode, tag, paragraphs.size(), alreadyDrawn);
         alreadyDrawn.addAll(chosen);
         List<String> handedOut = chosen.stream().map(paragraphs::get).toList();
-        draws.add(new PickDraw(mode, tag, handedOut));
-        return String.join(PARAGRAPH_SEPARATOR, handedOut);
+        return new PickDraw(mode, tag, handedOut, scope);
     }
 
     private List<Integer> choose(PickMode mode, PickTag tag, int size, Set<Integer> alreadyDrawn) {

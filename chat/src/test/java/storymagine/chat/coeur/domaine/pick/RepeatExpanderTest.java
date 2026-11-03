@@ -64,7 +64,9 @@ class RepeatExpanderTest {
         RepeatExpansion out = new RepeatExpander(TRIALS, scripted(2, 0)).expand(List.of("{repeat random 2 plain}\n{n}:{item}\n{end-repeat}"));
 
         assertEquals(List.of("1:Gamma.\n\n2:Alpha."), out.texts());
-        assertEquals(List.of(new PickDraw(PickMode.REPEAT_RANDOM, new PickTag("plain"), List.of("Gamma.", "Alpha."))), out.draws());
+        assertEquals(List.of(
+            new PickDraw(PickMode.REPEAT_RANDOM, new PickTag("plain"), List.of("Gamma."), new PickScope(1, "plain", 1, 2)),
+            new PickDraw(PickMode.REPEAT_RANDOM, new PickTag("plain"), List.of("Alpha."), new PickScope(1, "plain", 2, 2))), out.draws());
     }
 
     @Test
@@ -131,7 +133,7 @@ class RepeatExpanderTest {
     // ── Avec pick ───────────────────────────────────────────────────────────
 
     @Test
-    void aPickInsideABlockIsDrawnOncePerCopyAndTheRepeatDrawsComeFirst() {
+    void aPickInsideABlockIsDrawnOncePerCopyAndEachCopyGroupsItsItemAndItsPick() {
         PickLibrary library = library(Map.of("plain", "Alpha.\n---\nBeta.", "place", "Harbor.\n---\nMarket."));
         // repeat order draws nothing ; the two copies then draw "place" : Market (index 1), Harbor (index 0).
         PickResolver resolver = new PickResolver(library, scripted(1, 0));
@@ -140,9 +142,10 @@ class RepeatExpanderTest {
 
         assertEquals(List.of("Alpha. at Market.\n\nBeta. at Harbor."), resolution.texts());
         assertEquals(List.of(
-            new PickDraw(PickMode.REPEAT_ORDER, new PickTag("plain"), List.of("Alpha.", "Beta.")),
-            new PickDraw(PickMode.RANDOM, new PickTag("place"), List.of("Market.")),
-            new PickDraw(PickMode.RANDOM, new PickTag("place"), List.of("Harbor."))),
+            new PickDraw(PickMode.REPEAT_ORDER, new PickTag("plain"), List.of("Alpha."), new PickScope(1, "plain", 1, 2)),
+            new PickDraw(PickMode.RANDOM, new PickTag("place"), List.of("Market."), new PickScope(1, "plain", 1, 2)),
+            new PickDraw(PickMode.REPEAT_ORDER, new PickTag("plain"), List.of("Beta."), new PickScope(1, "plain", 2, 2)),
+            new PickDraw(PickMode.RANDOM, new PickTag("place"), List.of("Harbor."), new PickScope(1, "plain", 2, 2))),
             resolution.draws().values());
         assertTrue(PickResolver.containsTag("{repeat order plain}"));
     }

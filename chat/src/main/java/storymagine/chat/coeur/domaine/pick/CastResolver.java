@@ -33,8 +33,9 @@ import java.util.stream.IntStream;
  */
 public final class CastResolver {
 
-    static final String COPY_START = "{copy-start}";
+    private static final String COPY_START_PREFIX = "{copy-start";
     static final String COPY_END = "{copy-end}";
+    private static final Pattern COPY_START = Pattern.compile("^\\{copy-start(?:\\s+(\\S+))?\\s*}$");
     private static final Pattern BIND = Pattern.compile("^\\{cast-bind\\s+(\\S+)\\s+(\\S+)\\s*}$");
     private static final Pattern USE = Pattern.compile("%([A-Za-z][A-Za-z0-9_]*)%");
     /** A search that needs more steps than this is given up : the author is asked to simplify. */
@@ -55,9 +56,14 @@ public final class CastResolver {
         return "{cast-bind " + variable + " " + npcId + "}";
     }
 
+    /** The line that opens a copy ; the scope tells the draws made inside which copy they belong to. */
+    static String copyStartLine(PickScope scope) {
+        return COPY_START_PREFIX + " " + scope.token() + "}";
+    }
+
     /** True if the pass has anything to do : a "{cast" or the internal lines of a copy. */
     public static boolean isNeeded(String text) {
-        return CastCommand.appearsIn(text) || text.contains(COPY_START);
+        return CastCommand.appearsIn(text) || text.contains(COPY_START_PREFIX);
     }
 
     public Resolution resolve(List<String> texts) {
@@ -75,7 +81,8 @@ public final class CastResolver {
 
     private enum Kind { TEXT, START, END, BIND, CAST }
 
-    private record Item(Kind kind, int textIndex, String text, String variable, String npcId, CastCommand command, List<Npc> pool) {}
+    private record Item(Kind kind, int textIndex, String text, String variable, String npcId, CastCommand command, List<Npc> pool,
+                        PickScope scope) {}
 
     private List<Item> parse(List<String> texts) {
         List<Item> items = new ArrayList<>();
@@ -83,18 +90,19 @@ public final class CastResolver {
             for (String line : texts.get(t).split("\n", -1)) {
                 String stripped = line.strip();
                 Matcher bind = BIND.matcher(stripped);
-                if (stripped.equals(COPY_START)) {
-                    items.add(new Item(Kind.START, t, line, null, null, null, null));
+                Matcher start = COPY_START.matcher(stripped);
+                if (start.matches()) {
+                    items.add(new Item(Kind.START, t, line, null, null, null, null, PickScope.parse(start.group(1)).orElse(PickScope.NONE)));
                 } else if (stripped.equals(COPY_END)) {
-                    items.add(new Item(Kind.END, t, line, null, null, null, null));
+                    items.add(new Item(Kind.END, t, line, null, null, null, null, PickScope.NONE));
                 } else if (bind.matches()) {
-                    items.add(new Item(Kind.BIND, t, line, bind.group(1), bind.group(2), null, null));
+                    items.add(new Item(Kind.BIND, t, line, bind.group(1), bind.group(2), null, null, PickScope.NONE));
                 } else {
                     Optional<CastCommand> command = CastCommand.parseLine(line);
                     if (command.isPresent()) {
-                        items.add(new Item(Kind.CAST, t, line, command.get().variable(), null, command.get(), poolOf(command.get())));
+                        items.add(new Item(Kind.CAST, t, line, command.get().variable(), null, command.get(), poolOf(command.get()), PickScope.NONE));
                     } else {
-                        items.add(new Item(Kind.TEXT, t, line, null, null, null, null));
+                        items.add(new Item(Kind.TEXT, t, line, null, null, null, null, PickScope.NONE));
                     }
                 }
             }
@@ -229,15 +237,23 @@ public final class CastResolver {
         for (int t = 0; t < textCount; t++) lines.add(new ArrayList<>());
         List<PickDraw> draws = new ArrayList<>();
         State state = State.EMPTY;
+        List<PickScope> scopes = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             Item item = items.get(i);
             switch (item.kind) {
-                case START -> state = state.push();
-                case END -> state = state.pop();
+                case START -> {
+                    state = state.push();
+                    scopes.add(item.scope);
+                }
+                case END -> {
+                    state = state.pop();
+                    if (!scopes.isEmpty()) scopes.remove(scopes.size() - 1);
+                }
                 case BIND -> state = state.set(item.variable, item.npcId);
                 case CAST -> {
                     state = state.set(item.variable, assigned[i]);
-                    draws.add(new PickDraw(PickMode.CAST, new PickTag(item.variable), List.of(labelOf(assigned[i]))));
+                    PickScope scope = scopes.isEmpty() ? PickScope.NONE : scopes.get(scopes.size() - 1);
+                    draws.add(new PickDraw(PickMode.CAST, new PickTag(item.variable), List.of(labelOf(assigned[i])), scope));
                 }
                 case TEXT -> lines.get(item.textIndex).add(replaceVariables(item.text, state));
             }

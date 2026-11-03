@@ -469,7 +469,7 @@ public class ChatWebServer {
         if (!"GET".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
         try {
             List<PickRow> rows = service.pickDraws(chatScenariosRoot, session).values().stream()
-                .map(draw -> new PickRow(draw.tag().name(), draw.mode().label(), String.join("\n", draw.paragraphs())))
+                .map(ChatWebServer::pickRow)
                 .toList();
             writeJson(ex, 200, rows);
         } catch (Exception e) {
@@ -607,8 +607,23 @@ public class ChatWebServer {
 
     private record ErrorView(String error) {}
 
-    /** Une ligne du tableau des tirages (une par commande pick) : fichier, type (random, unique, all, N), valeur (un paragraphe par ligne). */
-    private record PickRow(String file, String type, String value) {}
+    /**
+     * Une ligne du tableau des tirages (une par commande) : group = la copie de repeat ou elle a ete tiree
+     * ("defis 2/3", vide hors d'un repeat), fichier, type (random, unique, all, N, repeat-order...), et la valeur
+     * en elements (un par paragraphe tire) eux-memes en morceaux ; labelled = les morceaux d'un element de repeat,
+     * que la page nomme item1, item2...
+     */
+    private record PickRow(String group, String file, String type, boolean labelled, List<List<String>> items) {}
+
+    private static PickRow pickRow(storymagine.chat.coeur.domaine.pick.PickDraw draw) {
+        boolean repeatItem = draw.mode().kind() == storymagine.chat.coeur.domaine.pick.PickMode.Kind.REPEAT_ORDER
+            || draw.mode().kind() == storymagine.chat.coeur.domaine.pick.PickMode.Kind.REPEAT_RANDOM;
+        List<List<String>> items = draw.paragraphs().stream().map(paragraph -> {
+            List<String> pieces = repeatItem ? new storymagine.chat.coeur.domaine.pick.PickParagraph(paragraph).pieces() : List.<String>of();
+            return pieces.isEmpty() ? List.of(paragraph) : pieces;
+        }).toList();
+        return new PickRow(draw.scope().display(), draw.tag().name(), draw.mode().label(), repeatItem, items);
+    }
 
     /** removedTurnCount tells the client how many already-shown bubbles are now stale — see /stop. */
     private record StoppedView(boolean stopped, int removedTurnCount) {}

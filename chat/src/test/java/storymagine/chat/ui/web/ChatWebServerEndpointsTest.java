@@ -132,6 +132,21 @@ class ChatWebServerEndpointsTest {
     }
 
     @Test
+    void picksAreServedCopyByCopyWithTheItemsAndTheirPiecesApart(@TempDir Path root) throws Exception {
+        Files.createDirectories(root.resolve("inn/picks"));
+        Files.writeString(root.resolve("inn/picks/trial.txt"), "Pont.\n-\nUne verite.\n---\nEnigme.\n-\nUne reponse.", StandardCharsets.UTF_8);
+        int port = startServer(root, "Une nuit d'orage.\n\n{repeat order trial}\n# Epreuve {n}\nElena : {item1} puis {item2}\n{end-repeat}\n", null);
+
+        String answer = call("GET", port, "/picks");
+
+        assertTrue(answer.startsWith("200 "), answer);
+        assertTrue(answer.contains("\"group\":\"trial 1/2\"") && answer.contains("\"group\":\"trial 2/2\""), answer);
+        assertTrue(answer.contains("\"labelled\":true"), answer);
+        assertTrue(answer.contains("\"items\":[[\"Pont.\",\"Une verite.\"]]"), "les morceaux d'un element sont separes : " + answer);
+        assertTrue(answer.contains("\"items\":[[\"Enigme.\",\"Une reponse.\"]]"), answer);
+    }
+
+    @Test
     void aClickOnACharacterStepsItsActivityAndTheViewTellsWhereItComesFrom(@TempDir Path root) throws Exception {
         int port = startServer(root, "Une nuit d'orage.\n", null);
 

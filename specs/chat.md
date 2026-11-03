@@ -164,13 +164,13 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   du fichier ; `random` : N différents tirés avec `RandomnessPort` ; sans N, tout le fichier),
   `PickParagraph` (un paragraphe et ses morceaux, coupés sur les lignes ne contenant que `-`),
   `RepeatExpander` (domaine, pur, lignes `{repeat}` / `{end-repeat}` seules, pas d'imbrication),
-  `RepeatExpansion` (textes dépliés + un `PickDraw` par bloc). Zones : `{n}` (numéro 1…N dans l'ordre de
+  `RepeatExpansion` (textes dépliés + un `CopySpan` par copie : où elle se trouve dans son texte, sa `PickScope` et son élément). Zones : `{n}` (numéro 1…N dans l'ordre de
   jeu), `{item}` (paragraphe sans les lignes `-`), `{itemK}` (K-ième morceau) ; remplacement en une
   seule passe. Erreurs (`IllegalArgumentException` avec `ligne N`) : bloc non fermé, imbriqué ou vide,
   zone hors d'un bloc, mode ou nombre invalide, N supérieur à la taille du fichier, paragraphe dont le
   nombre de morceaux diffère du plus grand `{itemK}` du gabarit. `PickResolver.resolve` déplie d'abord
-  (le `{pick}` d'un gabarit est donc tiré par copie) ; les tirages des blocs précèdent ceux des `pick`
-  dans `picks.txt`, avec les types `repeat-order` / `repeat-random` (`PickMode.parseRecorded`). Le
+  (le `{pick}` d'un gabarit est donc tiré par copie) ; chaque copie donne un `PickDraw` (type `repeat-order` / `repeat-random`, `PickMode.parseRecorded`) et
+  `PickResolver.resolve` range les tirages **par copie** (voir plus bas, « Tableau des tirages par itération »). Le
   scénario déplié est ce qu'écrit `resolved/` : le jeu ne voit jamais de `repeat`.
 - **Bibliothèque commune `/lib/nom`** (guide §2.6) : `PickTag` accepte `nom` (fichier de `picks/`) ou
   `/lib/chemin` (chaque partie en lettres, chiffres, `_`, `-`, donc jamais de `..` ni de `.`) ; `isShared()`,
@@ -200,6 +200,17 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   `checkVariables` (par fichier et ligne, une variable d'un bloc `repeat` est oubliée à son `{end-repeat}`)
   les `%NOM%` ; une ligne qui contient un `%NOM%` est contrôlée avec un personnage du casting à sa place ;
   `checkUniqueDoesNotRunOut` lance la résolution complète (hasard fixé) et rapporte une combinaison impossible.
+- **Tableau des tirages par itération** (🎲) : `PickDraw` porte une `PickScope` (numéro du bloc dans le scénario, libellé,
+  copie, nombre de copies ; `NONE` hors d'un bloc) écrite dans `picks.txt` en troisième mot de l'en-tête
+  (`@@ repeat-random defis 2:defis:3/5`, absent = hors copie : les anciens runs se relisent). `RepeatExpander`
+  garde, pour chaque copie, sa place (`CopySpan`) sans rien ajouter au texte déplié ; `PickResolver` retrouve
+  la copie d'un `pick` par la position de sa commande, et celle d'un `cast` par la ligne interne `{copy-start
+  <scope>}` qui ouvre la copie. L'ordre final (`inReadingOrder`) range par copie : élément du bloc, `pick` de
+  la copie dans l'ordre du texte, puis ses `cast` ; un `pick` hors copie garde sa place entre deux blocs ;
+  les `cast` hors copie viennent en dernier. `GET /picks` renvoie `group` (« defis 2/3 », vide hors copie),
+  `labelled` (élément de repeat) et `items` (un par paragraphe tiré, découpé en morceaux avec `PickParagraph`
+  pour un élément de repeat) ; la page numérote les éléments, nomme `item1`, `item2`… les morceaux et
+  insère un titre par copie (et « hors boucle » au retour).
 - **Debug 🐞** : `ChatService.scenarioPrompt` → `GET /scenario-prompt` : la prémisse et le texte de l'acte
   courant tels que `ChatPromptBuilder` les insère (aucune requête LLM, pas d'historique).
 - **Cycle de vie** : `resolved/` fait partie de `current/` — supprimé par `resetSession` (donc tirage

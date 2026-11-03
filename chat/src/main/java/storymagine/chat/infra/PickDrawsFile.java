@@ -3,6 +3,7 @@ package storymagine.chat.infra;
 import storymagine.chat.coeur.domaine.pick.PickDraw;
 import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.pick.PickMode;
+import storymagine.chat.coeur.domaine.pick.PickScope;
 import storymagine.chat.coeur.domaine.pick.PickTag;
 
 import java.util.ArrayList;
@@ -12,13 +13,13 @@ import java.util.regex.Pattern;
 
 /**
  * Text format of run/current/resolved/picks.txt : one block per "{pick ...}" command, a header line
- * "@@ unique place" (mode, library) followed by the paragraphs as drawn, separated by a line
+ * "@@ unique place" (mode, library, and for a draw made inside a copy of a repeat block its scope, see PickScope) followed by the paragraphs as drawn, separated by a line
  * "@@ --" when the command handed out several. A paragraph line starting with "@@ " would be read
  * as a header — not something a picks/ library holds.
  */
 final class PickDrawsFile {
 
-    private static final Pattern HEADER = Pattern.compile("@@ (\\S+) (\\S+)");
+    private static final Pattern HEADER = Pattern.compile("@@ (\\S+) (\\S+)(?: (\\S+))?");
     private static final String NEXT_PARAGRAPH = "@@ --";
 
     private PickDrawsFile() {}
@@ -26,7 +27,9 @@ final class PickDrawsFile {
     static String format(PickDraws draws) {
         StringBuilder sb = new StringBuilder();
         for (PickDraw draw : draws.values()) {
-            sb.append("@@ ").append(draw.mode().label()).append(' ').append(draw.tag()).append('\n');
+            sb.append("@@ ").append(draw.mode().label()).append(' ').append(draw.tag());
+            if (!draw.scope().isNone()) sb.append(' ').append(draw.scope().token());
+            sb.append('\n');
             for (int i = 0; i < draw.paragraphs().size(); i++) {
                 if (i > 0) sb.append(NEXT_PARAGRAPH).append('\n');
                 sb.append(draw.paragraphs().get(i)).append('\n');
@@ -39,6 +42,7 @@ final class PickDrawsFile {
         List<PickDraw> draws = new ArrayList<>();
         PickMode mode = null;
         PickTag tag = null;
+        PickScope scope = PickScope.NONE;
         List<String> paragraphs = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         for (String line : content.replace("\r\n", "\n").split("\n", -1)) {
@@ -49,10 +53,11 @@ final class PickDrawsFile {
             } else if (header.matches()) {
                 if (mode != null) {
                     paragraphs.add(current.toString().strip());
-                    draws.add(new PickDraw(mode, tag, paragraphs));
+                    draws.add(new PickDraw(mode, tag, paragraphs, scope));
                 }
                 mode = PickMode.parseRecorded(header.group(1));
                 tag = new PickTag(header.group(2));
+                scope = PickScope.parse(header.group(3)).orElse(PickScope.NONE);
                 paragraphs = new ArrayList<>();
                 current.setLength(0);
             } else if (mode != null) {
@@ -61,7 +66,7 @@ final class PickDrawsFile {
         }
         if (mode != null) {
             paragraphs.add(current.toString().strip());
-            draws.add(new PickDraw(mode, tag, paragraphs));
+            draws.add(new PickDraw(mode, tag, paragraphs, scope));
         }
         return new PickDraws(draws);
     }

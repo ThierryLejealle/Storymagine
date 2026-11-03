@@ -93,6 +93,10 @@ button:disabled{background:#9ca3af;cursor:default}
             padding:.3rem .5rem;border-bottom:1px solid #e5e7eb}
 .picks-table td{padding:.4rem .5rem;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:pre-wrap}
 .picks-table td:first-child,.picks-table td:nth-child(2){white-space:nowrap}
+.picks-table .picks-group td{background:#eef2ff;color:#3730a3;font-weight:600;font-size:.8rem;padding:.3rem .5rem}
+.pick-item + .pick-item{border-top:1px dashed #d1d5db;margin-top:.4rem;padding-top:.4rem}
+.pick-label{color:#6b7280;font-size:.72rem;font-weight:600}
+.pick-piece + .pick-piece{margin-top:.15rem}
 .npc-picker{position:fixed;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:.3rem;
             box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:2100;min-width:9rem}
 .npc-picker.hidden{display:none}
@@ -825,11 +829,39 @@ async function showReadOnly(title, endpoint, wide, render) {
   }
 }
 
+// Valeur d'un tirage : un bloc par element tire (numerotes et separes d'un filet s'il y en a plusieurs),
+// et pour un element de repeat ses morceaux nommes item1, item2... un par ligne.
+function pickValueHtml(row) {
+  return row.items.map((pieces, i) => {
+    const number = row.items.length > 1 ? '<span class="pick-label">' + (i + 1) + '.</span> ' : '';
+    const body = row.labelled && pieces.length > 1
+      ? pieces.map((piece, k) => '<div class="pick-piece"><span class="pick-label">item' + (k + 1) + '</span> '
+          + escapeHtml(piece) + '</div>').join('')
+      : escapeHtml(pieces.join('\n'));
+    return '<div class="pick-item">' + number + body + '</div>';
+  }).join('');
+}
+
+// Les tirages d'une meme copie de repeat sont regroupes sous un titre ("defis 2/3").
+function picksTableHtml(rows) {
+  let group = '';
+  return '<table class="picks-table"><tr><th>Fichier</th><th>Type</th><th>Valeur</th></tr>'
+    + rows.map(r => {
+      let header = '';
+      if (r.group !== group) {
+        const previous = group;
+        group = r.group;
+        if (group) header = '<tr class="picks-group"><td colspan="3">' + escapeHtml(group) + '</td></tr>';
+        else if (previous) header = '<tr class="picks-group"><td colspan="3">hors boucle</td></tr>';
+      }
+      return header + '<tr><td>' + escapeHtml(r.file) + '</td><td>' + escapeHtml(r.type) + '</td><td>'
+        + pickValueHtml(r) + '</td></tr>';
+    }).join('') + '</table>';
+}
+
 function showPicks() {
   return showReadOnly('Tirages', '/picks', true, rows => rows.length
-    ? '<table class="picks-table"><tr><th>Fichier</th><th>Type</th><th>Valeur</th></tr>'
-      + rows.map(r => '<tr><td>' + escapeHtml(r.file) + '</td><td>' + escapeHtml(r.type) + '</td><td>'
-        + escapeHtml(r.value) + '</td></tr>').join('') + '</table>'
+    ? picksTableHtml(rows)
     : '<p class="analysis-loading">Aucun tirage enregistré.</p>');
 }
 

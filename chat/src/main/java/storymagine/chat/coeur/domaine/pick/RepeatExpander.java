@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.pick;
 
+import storymagine.chat.coeur.domaine.pick.RepeatExpansion.CopySpan;
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.ports.RandomnessPort;
@@ -21,8 +22,9 @@ import java.util.stream.IntStream;
  * blocks do not nest, and "{n}" or "{item}" outside a block is an error. A paragraph with a piece count
  * different from what the block uses is an error too. A copy that holds a cast (or binds a variable) is
  * wrapped in two internal lines CastResolver reads, so what a copy declares is forgotten at its end. The
- * unfolded text is what the game reads : the repeat never reaches it. Pure : same library and same draws,
- * same result.
+ * unfolded text is what the game reads : the repeat never reaches it. Besides the text, every copy is
+ * reported as a CopySpan (where it sits, its PickScope and its item) so what is drawn inside it can be
+ * shown copy by copy. Pure : same library and same draws, same result.
  */
 public final class RepeatExpander {
 
@@ -38,6 +40,8 @@ public final class RepeatExpander {
     private final PickLibrary library;
     private final RandomnessPort randomness;
     private final Cast cast;
+    /** Number of the next block, over all the texts of one expand(). */
+    private int blocks;
 
     public RepeatExpander(PickLibrary library, RandomnessPort randomness) {
         this(library, randomness, new Cast(List.of()));
@@ -54,17 +58,37 @@ public final class RepeatExpander {
     }
 
     public RepeatExpansion expand(List<String> texts) {
-        List<PickDraw> draws = new ArrayList<>();
+        blocks = 0;
+        List<CopySpan> spans = new ArrayList<>();
         List<String> expanded = new ArrayList<>();
-        for (String text : texts) {
-            expanded.add(expandText(text, draws));
+        for (int t = 0; t < texts.size(); t++) {
+            expanded.add(expandText(texts.get(t), t, spans));
         }
-        return new RepeatExpansion(expanded, draws);
+        return new RepeatExpansion(expanded, spans);
     }
 
-    private String expandText(String text, List<PickDraw> draws) {
+    /** The parts of a text being rebuilt, joined by a line break : knows where the next part will start. */
+    private static final class Joined {
+        private final List<String> parts = new ArrayList<>();
+        private int length = 0;
+
+        int nextStart() {
+            return parts.isEmpty() ? 0 : length + 1;
+        }
+
+        void add(String part) {
+            length = parts.isEmpty() ? part.length() : length + 1 + part.length();
+            parts.add(part);
+        }
+
+        String text() {
+            return String.join("\n", parts);
+        }
+    }
+
+    private String expandText(String text, int textIndex, List<CopySpan> spans) {
         if (!containsTag(text) && !ZONE.matcher(text).find()) return text;
-        List<String> out = new ArrayList<>();
+        Joined out = new Joined();
         List<String> body = null;
         String header = null;
         int headerLine = 0;
@@ -81,7 +105,12 @@ public final class RepeatExpander {
             } else if (END.matcher(line).find()) {
                 requireAlone(END, line, number);
                 if (body == null) throw error(number, "{end-repeat} sans {repeat} avant");
-                out.add(unfold(header, headerLine, body, draws));
+                Unfolded block = unfold(header, headerLine, body);
+                int base = out.nextStart();
+                for (Copy copy : block.copies()) {
+                    spans.add(new CopySpan(textIndex, base + copy.start(), base + copy.end(), copy.scope(), copy.itemDraw()));
+                }
+                out.add(block.text());
                 body = null;
             } else if (body != null) {
                 body.add(line);
@@ -91,7 +120,7 @@ public final class RepeatExpander {
             }
         }
         if (body != null) throw error(headerLine, header + " sans {end-repeat}");
-        return String.join("\n", out);
+        return out.text();
     }
 
     private static void requireAlone(Pattern command, String line, int number) {
@@ -100,10 +129,19 @@ public final class RepeatExpander {
         }
     }
 
-    /** What a block repeats over : how many copies, the item of each (none for "{repeat N}"), the variable it binds, if any. */
-    private record Items(List<String> texts, List<String> npcIds, int copies, String variable, String where) {}
+    /**
+     * What a block repeats over : how many copies, the item of each (none for "{repeat N}"), the variable it
+     * binds, if any ; label and drawMode/drawTag say how the item of each copy is recorded.
+     */
+    private record Items(List<String> texts, List<String> npcIds, int copies, String variable, String where,
+                         String label, PickMode drawMode, PickTag drawTag) {}
 
-    private String unfold(String header, int headerLine, List<String> body, List<PickDraw> draws) {
+    /** A copy inside the block's text (offsets relative to it). */
+    private record Copy(int start, int end, PickScope scope, PickDraw itemDraw) {}
+
+    private record Unfolded(String text, List<Copy> copies) {}
+
+    private Unfolded unfold(String header, int headerLine, List<String> body) {
         if (body.stream().allMatch(String::isBlank)) throw error(headerLine, header + " : bloc vide");
         Matcher command = START.matcher(header);
         command.matches();
@@ -124,7 +162,7 @@ public final class RepeatExpander {
 
         Items items;
         try {
-            items = itemsOf(header, words, listed, draws);
+            items = itemsOf(header, words, listed);
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw error(headerLine, e.getMessage());
         }
@@ -132,10 +170,14 @@ public final class RepeatExpander {
             throw error(headerLine, header + " : {item} n'a pas de sens dans un {repeat N}, qui n'a pas d'elements");
         }
 
+        int block = ++blocks;
         boolean scoped = items.variable() != null || CastCommand.appearsIn(template);
-        List<String> instances = new ArrayList<>();
+        StringBuilder text = new StringBuilder();
+        List<Copy> copies = new ArrayList<>();
         for (int i = 0; i < items.copies(); i++) {
+            PickScope scope = new PickScope(block, items.label(), i + 1, items.copies());
             String instance;
+            PickDraw itemDraw = null;
             if (items.texts().isEmpty()) {
                 instance = render(template, i + 1, new PickParagraph(""));
             } else {
@@ -145,23 +187,26 @@ public final class RepeatExpander {
                         + paragraph.pieces().size() + " morceau(x) (separes par une ligne '-'), le bloc en utilise " + piecesNeeded + ".");
                 }
                 instance = render(template, i + 1, paragraph);
+                itemDraw = new PickDraw(items.drawMode(), items.drawTag(), List.of(items.texts().get(i)), scope);
             }
             if (scoped) {
                 String bind = items.variable() == null ? "" : CastResolver.bindLine(items.variable(), items.npcIds().get(i)) + "\n";
-                instance = CastResolver.COPY_START + "\n" + bind + instance + "\n" + CastResolver.COPY_END;
+                instance = CastResolver.copyStartLine(scope) + "\n" + bind + instance + "\n" + CastResolver.COPY_END;
             }
-            instances.add(instance);
+            if (i > 0) text.append(BLOCK_SEPARATOR);
+            copies.add(new Copy(text.length(), text.length() + instance.length(), scope, itemDraw));
+            text.append(instance);
         }
-        return String.join(BLOCK_SEPARATOR, instances);
+        return new Unfolded(text.toString(), copies);
     }
 
-    /** The items of a block from the words after "repeat" ; adds the draw it makes to `draws`. */
-    private Items itemsOf(String header, String[] words, List<String> listed, List<PickDraw> draws) {
+    /** The items of a block from the words after "repeat". */
+    private Items itemsOf(String header, String[] words, List<String> listed) {
         if (words.length == 1 && words[0].matches("\\d{1,6}")) {
             if (listed != null) throw new IllegalArgumentException(header + " : une liste entre parentheses n'a de sens qu'avec cast");
             int copies = Integer.parseInt(words[0]);
             if (copies < 1) throw new IllegalArgumentException("Nombre de repeat invalide : '" + words[0] + "' (entier superieur ou egal a 1)");
-            return new Items(List.of(), List.of(), copies, null, "");
+            return new Items(List.of(), List.of(), copies, null, "", "repeat", null, null);
         }
         if (words.length < 2 || words.length > 4) {
             throw new IllegalArgumentException("Commande repeat invalide : " + header + " (attendu : " + SYNTAX + ")");
@@ -172,7 +217,7 @@ public final class RepeatExpander {
             throw new IllegalArgumentException("Commande repeat invalide : " + header + " (attendu : " + SYNTAX + ")");
         }
         RepeatMode mode = RepeatMode.parse(words[0], countWord);
-        if (castSource) return castItems(header, words[words.length - 1], listed, mode, draws);
+        if (castSource) return castItems(header, words[words.length - 1], listed, mode);
         if (listed != null) throw new IllegalArgumentException(header + " : une liste entre parentheses n'a de sens qu'avec cast");
 
         PickTag tag = new PickTag(words[words.length - 1]);
@@ -183,11 +228,10 @@ public final class RepeatExpander {
         }
         List<Integer> indexes = indexes(mode, paragraphs.size(), count);
         List<String> taken = indexes.stream().map(paragraphs::get).toList();
-        draws.add(new PickDraw(mode.recordedMode(), tag, taken));
-        return new Items(taken, List.of(), indexes.size(), null, tag.file());
+        return new Items(taken, List.of(), indexes.size(), null, tag.file(), tag.name(), mode.recordedMode(), tag);
     }
 
-    private Items castItems(String header, String variable, List<String> listed, RepeatMode mode, List<PickDraw> draws) {
+    private Items castItems(String header, String variable, List<String> listed, RepeatMode mode) {
         if (!CastCommand.VARIABLE_NAME.matcher(variable).matches()) {
             throw new IllegalArgumentException("Nom de variable invalide : '" + variable + "' dans " + header
                 + " (une lettre puis lettres, chiffres ou _)");
@@ -199,8 +243,8 @@ public final class RepeatExpander {
         }
         List<Integer> indexes = indexes(mode, pool.size(), count);
         List<String> labels = indexes.stream().map(i -> pool.get(i).label()).toList();
-        draws.add(new PickDraw(mode.recordedMode(), new PickTag(variable), labels));
-        return new Items(labels, indexes.stream().map(i -> pool.get(i).id()).toList(), indexes.size(), variable, "cast " + variable);
+        return new Items(labels, indexes.stream().map(i -> pool.get(i).id()).toList(), indexes.size(), variable, "cast " + variable,
+            variable, mode.recordedMode(), new PickTag(variable));
     }
 
     private List<Integer> indexes(RepeatMode mode, int size, int count) {

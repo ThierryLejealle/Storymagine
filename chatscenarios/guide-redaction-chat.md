@@ -265,8 +265,9 @@ picks/lieu.txt ont deja tous ete tires.`
   copie. Les paragraphes sont donc stables, y compris après redémarrage. Une sauvegarde 💾 emporte ses
   tirages.
 - Le bouton 🎲 de la partie affiche le tableau des tirages : une ligne par commande `pick`, avec le
-  fichier, le type tel qu'écrit (`random`, `unique`, `3`, `all`) et la valeur obtenue (un paragraphe par
-  ligne quand il y en a plusieurs), dans l'ordre du scénario. Le bouton 🐞 (debug) affiche le texte de scénario réellement envoyé aux personnages : la
+  fichier, le type tel qu'écrit (`random`, `unique`, `3`, `all`) et la valeur obtenue, dans l'ordre du
+  scénario. Quand une commande en tire plusieurs (`3`, `all`), chaque paragraphe est numéroté (1., 2.…) et séparé
+  du suivant par un filet. Les tirages faits dans un `{repeat}` sont regroupés par itération (§2.6 bis). Le bouton 🐞 (debug) affiche le texte de scénario réellement envoyé aux personnages : la
   prémisse puis l'acte courant (le texte des `#`/`##`/`###` parents inclus, §2.3), sans l'historique.
   Les tirages ne sont enregistrés que pour une partie démarrée après cette fonction ; une partie plus
   ancienne affiche « Aucun tirage enregistré ».
@@ -351,9 +352,13 @@ Quand écrire [NEXT ACT] : {item3}
   une commande contenue dans un paragraphe du fichier est exécutée. Les zones, elles, ne sont lues qu'une
   fois (un `{n}` écrit dans un paragraphe reste tel quel).
 - Comme `pick`, le dépliage se fait **une fois par partie** : `run/current/resolved/` contient le
-  scénario déplié, sans aucune commande `repeat`. Le bouton 🎲 affiche une ligne par bloc (type
-  `repeat-order` ou `repeat-random`) avec les paragraphes dans l'ordre de jeu. « Recommencer » pour voir
-  une modification.
+  scénario déplié, sans aucune commande `repeat`. « Recommencer » pour voir une modification.
+- **Le bouton 🎲 montre le contenu de chaque itération** : un titre par copie (`defis 2/3`), puis sous ce titre,
+  dans l'ordre, l'élément du bloc (type `repeat-order` ou `repeat-random`), les `{pick}` et les `{cast}` écrits
+  dans cette copie. Les morceaux d'un élément sont nommés `item1`, `item2`… un par ligne (ce qui sépare les
+  morceaux d'un élément de ce qui sépare deux éléments). Les tirages hors d'un bloc restent à leur place, avec
+  un séparateur « hors boucle » après une itération. Une partie commencée avant cette fonction s'affiche sans
+  titres de copie.
 
 Exemple complet : `chatscenarios/demos/demo-repeat/`.
 
