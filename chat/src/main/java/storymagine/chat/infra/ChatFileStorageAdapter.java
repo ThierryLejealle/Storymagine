@@ -6,6 +6,7 @@ import storymagine.chat.coeur.domaine.pick.PickResolver;
 import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcSheetParser;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
 import storymagine.chat.coeur.domaine.activity.ForcedActivity;
 import storymagine.chat.coeur.domaine.session.ChatSession;
@@ -33,7 +34,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +73,6 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     private static final Pattern TOP_LEVEL_HEADING = Pattern.compile("^#(?:[^#]|$).*", Pattern.DOTALL);
 
     private static final String NAME_HEADING_PREFIX = "# ";
-    private static final String SECRET_MARKER_LINE  = "# SECRET";
 
     /** Millisecond precision : two save points or archives made in quick succession must never share a name. */
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss-SSS");
@@ -155,7 +154,12 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         if (LegacyLayout.isLegacy(dir)) {
             return new ScenarioReport(List.of(ScenarioIssue.error(name, "ancien format de scenario : non pris en charge")));
         }
-        Cast cast = loadCast(dir);
+        Cast cast;
+        try {
+            cast = loadCast(dir);
+        } catch (IllegalArgumentException e) {
+            return new ReportOfOneError(name, e.getMessage()).report();
+        }
         List<Path> sources = scenarioTextFiles(dir);
         List<String> texts = sources.stream().map(ChatFileStorageAdapter::readText).toList();
         ScenarioReport sourceReport = ScenarioValidator.checkSources(sourcesOf(sources, texts), cast, new PickFileLibrary(dir));
@@ -291,32 +295,14 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     /**
      * id = filename without ".txt". name = optional "# Name" first line (kept verbatim in
-     * publicInfo, not stripped — the character should still read it there). An optional "# SECRET"
-     * line (on its own, case-insensitive) splits the rest : everything before is publicInfo,
-     * everything after is secretInfo — see Npc. No such line : the whole file is publicInfo,
-     * secretInfo is "" (a purely public character).
+     * publicInfo, not stripped — the character should still read it there). The rest (the "# SECRET"
+     * split and the "## tag" sections) is read by NpcSheetParser.
      */
     private static Npc parseNpcFile(Path file) {
         String fileName = file.getFileName().toString();
         String id = fileName.substring(0, fileName.length() - TXT_EXTENSION.length());
         String content = readText(file);
-        String name = extractCharacterName(content);
-
-        String[] lines = content.split("\n", -1);
-        int secretLineIdx = -1;
-        for (int i = 0; i < lines.length; i++) {
-            if (lines[i].strip().equalsIgnoreCase(SECRET_MARKER_LINE)) { secretLineIdx = i; break; }
-        }
-        String publicInfo;
-        String secretInfo;
-        if (secretLineIdx < 0) {
-            publicInfo = content.strip();
-            secretInfo = "";
-        } else {
-            publicInfo = String.join("\n", Arrays.copyOfRange(lines, 0, secretLineIdx)).strip();
-            secretInfo = String.join("\n", Arrays.copyOfRange(lines, secretLineIdx + 1, lines.length)).strip();
-        }
-        return new Npc(id, name, publicInfo, secretInfo);
+        return NpcSheetParser.parse(id, extractCharacterName(content), content);
     }
 
     private static String extractCharacterName(String content) {

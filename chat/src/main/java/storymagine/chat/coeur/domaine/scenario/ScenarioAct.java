@@ -18,19 +18,29 @@ import java.util.List;
  * at the point of use, unlike before. opening is who speaks first when this leaf becomes current
  * (see NpcOpening) : like beats, it comes from the leaf's own body or from an ancestor entered for
  * the first time by this transition ; the marker line itself is already cut out of text. deltas are
- * the "{delta-pnj ...}" changes (see CharacterDelta) written in this leaf or in an ancestor entered
+ * the "{npc-delta ...}" changes (see CharacterDelta) written in this leaf or in an ancestor entered
  * for the first time by this transition, lines already cut out of text : the sheets in force at act
  * N are the Cast's plus the deltas of acts 1..N in order (see ChatScenario.sheetAt). activityPath
  * holds the activity commands (see ActivityDirective) of every heading on the way from the root to
  * this leaf, one list per heading, root first — unlike beats and deltas the WHOLE path is kept, since
- * the activity in force here is computed from it (see ChatScenario.activityAt).
+ * the activity in force here is computed from it (see ChatScenario.activityAt). stories are the
+ * "{npc-story ...}" commands (see StoryDirective) written in this leaf or in an ancestor entered for the
+ * first time by this transition, like deltas : the tags in force at act N come from the stories of acts
+ * 1..N in order (see StoryResolver).
  */
 public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
-                          List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath) {
+                          List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath,
+                          List<StoryDirective> stories) {
 
     public ScenarioAct {
         deltas = deltas == null ? List.of() : List.copyOf(deltas);
         activityPath = activityPath == null ? List.of() : activityPath.stream().map(List::copyOf).toList();
+        stories = stories == null ? List.of() : List.copyOf(stories);
+    }
+
+    public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
+                       List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath) {
+        this(number, title, text, beats, opening, deltas, activityPath, List.of());
     }
 
     public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,

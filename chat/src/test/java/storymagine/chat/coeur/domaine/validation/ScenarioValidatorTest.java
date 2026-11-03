@@ -5,9 +5,13 @@ import storymagine.chat.coeur.domaine.pick.PickLibrary;
 import storymagine.chat.coeur.domaine.pick.PickParagraphs;
 import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.chat.coeur.domaine.scenario.Cast;
+import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
+import storymagine.chat.coeur.domaine.scenario.StoryDirective;
+import storymagine.chat.coeur.domaine.scenario.StoryTag;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +39,7 @@ class ScenarioValidatorTest {
     @Test
     void aCorrectScenarioHasNoIssue() {
         ScenarioReport report = check("Monde. {pick random lieu}\n{npc-starts Elena}\n[Alex entre.]\n"
-            + "# Un\n{delta-pnj secret Marcus : Il ment.}\nQuand écrire [NEXT ACT] : à la porte.\n");
+            + "# Un\n{npc-delta secret Marcus : Il ment.}\nQuand écrire [NEXT ACT] : à la porte.\n");
 
         assertTrue(report.issues().isEmpty(), report.issues().toString());
     }
@@ -62,8 +66,8 @@ class ScenarioValidatorTest {
     @Test
     void everyProblemIsListedWithItsFileAndLine() {
         ScenarioReport report = check("Monde.\n[PICK: lieu]\n{pick lieu}\n{pick random inconnu}\n{pick 9 lieu}\n"
-            + "{npc-starts Zorglub}\nTexte {npc-starts} au milieu\n{delta-pnj Elena : sans visibilite}\n"
-            + "{delta-pnj secret Zorglub : x}\n{teleport elena}\n");
+            + "{npc-starts Zorglub}\nTexte {npc-starts} au milieu\n{npc-delta Elena : sans visibilite}\n"
+            + "{npc-delta secret Zorglub : x}\n{teleport elena}\n");
 
         List<String> where = report.errors().stream().map(ScenarioIssue::where).toList();
         assertEquals(List.of("scenario.txt:2", "scenario.txt:3", "scenario.txt:4", "scenario.txt:5", "scenario.txt:6",
@@ -143,5 +147,49 @@ class ScenarioValidatorTest {
 
         List<String> where = report.errors().stream().map(ScenarioIssue::where).toList();
         assertEquals(List.of("scenario.txt:2", "scenario.txt:3", "scenario.txt:4", "scenario.txt:5"), where, report.issues().toString());
+    }
+
+    private static final Cast CAST_WITH_TAGS = new Cast(List.of(
+        new Npc("lea", "Léa Martin", "Réservée.", "Elle cache quelque chose.", List.of(
+            new StoryTag("froide", CharacterDelta.Visibility.PUBLIC, "Distante avec Marc."),
+            new StoryTag("chatons", CharacterDelta.Visibility.SECRET, "Touchée par Marc.")))));
+
+    private static ScenarioReport checkTags(String text) {
+        return ScenarioValidator.checkSources(List.of(new ScenarioSource("scenario.txt", text)), CAST_WITH_TAGS, LIBRARY);
+    }
+
+    @Test
+    void npcStoryIsValidatedAgainstTheCharactersAndTheirTags() {
+        assertTrue(checkTags("# Un\n{npc-story on Léa froide}\n{npc-story off Martin froide}\n").issues().isEmpty());
+
+        ScenarioReport report = checkTags("# Un\n{npc-story on Zorglub froide}\n{npc-story on Léa inconnu}\n"
+            + "{npc-story on Léa SECRET}\n{npc-story on Léa}\nEn {npc-story on Léa froide} milieu\n");
+
+        List<String> where = report.errors().stream().map(ScenarioIssue::where).toList();
+        assertEquals(List.of("scenario.txt:2", "scenario.txt:3", "scenario.txt:4", "scenario.txt:5", "scenario.txt:6"), where, report.issues().toString());
+    }
+
+    @Test
+    void theOldDeltaNameIsRefusedAndTheNewNameIsGiven() {
+        ScenarioReport report = check("# Un\n{delta-pnj public Elena : Elle boite.}\n");
+
+        assertEquals(1, report.errors().size(), report.issues().toString());
+        assertTrue(report.errors().get(0).message().contains("npc-delta"), report.errors().get(0).message());
+    }
+
+    @Test
+    void aTagNeverSwitchedOnAndAnOffOnATagThatIsNotOnAreWarnings() {
+        ScenarioAct one = new ScenarioAct(ActNumber.of(1), "Un", "Texte. Quand écrire [NEXT ACT] : fin.", List.of(), NpcOpening.NONE,
+            List.of(), List.of(), List.of(new StoryDirective(false, "Léa", "froide"), new StoryDirective(true, "Léa", "froide")));
+        ScenarioAct two = new ScenarioAct(ActNumber.of(2), "Deux", "Texte.", List.of(), NpcOpening.NONE,
+            List.of(), List.of(), List.of(new StoryDirective(false, "Léa", "froide")));
+        ChatScenario scenario = new ChatScenario("t", CAST_WITH_TAGS, "Léa est là.", List.of(one, two));
+
+        List<String> warnings = ScenarioValidator.checkScenario(scenario).issues().stream()
+            .map(ScenarioIssue::display).filter(m -> m.contains("tag")).toList();
+
+        assertEquals(2, warnings.size(), warnings.toString());
+        assertTrue(warnings.stream().anyMatch(w -> w.contains("acte 1") && w.contains("off")), warnings.toString());
+        assertTrue(warnings.stream().anyMatch(w -> w.contains("chatons") && w.contains("jamais")), warnings.toString());
     }
 }

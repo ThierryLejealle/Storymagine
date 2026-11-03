@@ -154,7 +154,8 @@ regroupement : un chapitre contenant plusieurs scènes.
 | `Quand écrire [NEXT ACT]` dans un parent | Hérité par toutes les feuilles du chapitre. À écrire dans la feuille. |
 | `{npc-starts}`, `{npc-do}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la feuille, décide (§4.5). |
 | `{npc-mode do on\|off …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les sous-actes (§2.12). |
-| `{delta-pnj …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants (§2.8). |
+| `{npc-delta …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants (§2.8). |
+| `{npc-story on\|off …}` | Comme `{npc-delta}` : appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants, **même hors de ce titre**, jusqu'à ce qu'un autre `on` ou `off` le change (§2.8 bis). |
 | Numérotation | Racines `1`, `2`… ; enfants `1.1`, `1.2`… ; petits-enfants `1.1.1`. |
 | Saut de niveau | `#` puis `###` : traité comme `##`. |
 | Ligne commençant par `#` | Toujours un titre, même `#mot` : elle coupe le corps de l'acte. |
@@ -360,15 +361,24 @@ Seul l'acte courant (ancêtres inclus) est payé à chaque tour, et une informat
 n'existe pour le modèle qu'à partir de l'arrivée dans cet acte : un acte futur ne peut ni être spoilé
 ni alourdir le contexte.
 
-### 2.8 Faire évoluer un personnage : `{delta-pnj public|secret nom : texte}`
+### 2.8 Faire évoluer un personnage : `{npc-delta public|secret nom : texte}`
+
+**Le petit delta** : un fait ponctuel, écrit en une ligne là où l'acte se passe. Il sait **seulement ajouter,
+jamais retirer**. Pour un état qu'il faudra défaire (un avis qui change, un secret révélé), utiliser un tag
+(§2.8 bis). Il garde deux atouts que le tag n'a pas : son texte peut dépendre d'un tirage (`{n}` ou `{item}`
+dans un gabarit `{repeat}`, §2.6 bis), et il complète une fiche partagée entre plusieurs scénarios sans la
+modifier.
 
 Ajoute une ligne à la fiche d'un personnage **à partir de l'acte où la commande est écrite**, pour tous
 les actes suivants. La commande tient sur **une ligne seule** ; la visibilité est obligatoire (deuxième
 mot), le nom du personnage vient en troisième.
 
+> Ancien nom : `{delta-pnj …}` est refusé au chargement avec le message « la commande s'appelle maintenant
+> npc-delta ». Remplacer le nom, le reste de la commande ne change pas.
+
 ```
-{delta-pnj public Elena : Elle a perdu un œil dans l'embuscade.}
-{delta-pnj secret Marcus : Il a reconnu le chef des bandits et décide de le suivre.}
+{npc-delta public Elena : Elle a perdu un œil dans l'embuscade.}
+{npc-delta secret Marcus : Il a reconnu le chef des bandits et décide de le suivre.}
 ```
 
 | Visibilité | Effet |
@@ -385,6 +395,47 @@ mot), le nom du personnage vient en troisième.
   l'historique.
 - Chaque delta est relu à chaque tour par le personnage concerné : en garder peu, courts.
 
+### 2.8 bis Activer et désactiver un texte de la fiche : `{npc-story on|off nom tag}`
+
+Une fiche peut contenir des sections `## tag` (§3) : du texte qui **n'est pas dans la fiche** tant qu'une
+commande ne l'active pas. `{npc-story on Léa chatons}` ajoute à la fiche de Léa le texte de sa section
+`## chatons` ; `{npc-story off Léa chatons}` le retire. La commande tient sur **une ligne seule**, le tag est
+son **dernier mot** (le nom du personnage peut avoir plusieurs mots).
+
+```
+# Le voisin
+{npc-story on Léa froide}
+{npc-story on Léa soupcon}
+...
+# Le soir
+{npc-story off Léa froide}
+{npc-story off Léa soupcon}
+{npc-story on Léa amicale}
+{npc-story on Léa chatons}
+```
+
+- **L'état se prolonge.** Une commande vaut à partir de l'acte où elle est écrite (ou du premier acte du
+  titre qui la porte) **pour tous les actes suivants**, même hors de ce titre, jusqu'à un autre `on` ou
+  `off`. C'est la durée de `{npc-delta}`, pas celle de `{npc-mode}` ni des niveaux d'activité (valables pour
+  la seule section où ils sont écrits).
+- Au départ **aucun tag n'est actif**. Un tag actif depuis le début s'active dans le titre ou le premier acte.
+- **Public ou secret** : la place de la section dans la fiche décide (§3). Un tag public actif est lu aussi
+  par les autres PNJ ; un tag secret n'est lu que par son personnage. Un tag ne change jamais de camp.
+- **Du secret au public** : deux tags, un secret et un public, avec un texte différent (le personnage sait
+  tout, mais ne dit publiquement que ce qu'il avoue) : `off` sur le premier, `on` sur le second, dans le même
+  acte.
+- Ce qui est permanent (le texte hors tag, avant et après `# SECRET`) ne se désactive pas.
+- `SECRET` n'est pas un tag : `{npc-story … SECRET}` est une erreur.
+- Interdit dans la prémisse. Un personnage ou un tag inconnu empêche le chargement.
+- Recalculé à partir des actes 1 à l'acte courant : retour en arrière, sauvegarde et ⟳ redonnent l'état de
+  l'acte retrouvé. Seuls les tags actifs partent dans le prompt : un tag désactivé ne coûte rien.
+- Le validateur avertit d'un tag que rien n'active jamais, et d'un `off` sur un tag qui n'est pas actif.
+
+**Tag ou delta ?** Le tag pour ce qui peut se défaire ou revenir, ou qui est long : le texte vit dans la fiche,
+avec le reste du personnage. Le delta pour un fait unique, court, qu'on n'aura jamais à retirer.
+
+Démo : `demo-npc-story`.
+
 ### 2.9 Validation du scénario
 
 À chaque chargement d'un scénario, ses fichiers sont vérifiés et **toutes** les erreurs sont listées avec
@@ -393,11 +444,14 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 | Erreur | Exemple |
 |---|---|
 | Ancienne syntaxe | `[PICK: x]`, `[NPC STARTS]` (à réécrire avec les accolades) |
-| Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{delta-pnj Elena : …}` (visibilité manquante) |
-| Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}` ou `{delta-pnj …}` au milieu d'une phrase |
+| Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{npc-delta Elena : …}` (visibilité manquante), `{npc-story on Léa}` (tag manquant) |
+| Ancien nom de commande | `{delta-pnj …}` (devenu `{npc-delta …}`) |
+| Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}`, `{npc-delta …}` ou `{npc-story …}` au milieu d'une phrase |
+| Tag de fiche incorrect | `## SECRET`, `##` sans nom, tag vide, deux tags de même nom dans une fiche (§3) |
+| Tag ou personnage inconnu | `{npc-story on Léa inconnu}` (pas de section `## inconnu` dans sa fiche), `{npc-story on Léa SECRET}` |
 | Fichier ou paragraphes manquants | `picks/x.txt` absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
 | Bloc `repeat` incorrect | pas de `{end-repeat}`, bloc imbriqué ou vide, `{n}` ou `{item}` hors d'un bloc, `{repeat plain x}` (mode manquant), nombre trop grand, paragraphe qui n'a pas le même nombre de morceaux que les `{itemK}` du gabarit |
-| Personnage inconnu | `{npc-starts Zorglub}`, `{npc-do Zorglub}`, `{delta-pnj secret Zorglub : …}`, `{npc-active Zorglub}`, `{npc-mode do on Zorglub}` |
+| Personnage inconnu | `{npc-starts Zorglub}`, `{npc-do Zorglub}`, `{npc-delta secret Zorglub : …}`, `{npc-active Zorglub}`, `{npc-mode do on Zorglub}` |
 | Mode inconnu ou mal écrit | `{npc-mode fly on Elena}`, `{npc-mode do on}` (nom manquant) |
 | Activité incohérente | `{npc-active …}` au milieu d'une phrase ; scène où tout le monde est absent ; même PNJ nommé deux fois dans un titre |
 
@@ -565,9 +619,32 @@ Elena a autrefois volé dans un temple... (fiche secrète)
 | Ligne `# SECRET` | Optionnelle, seule sur sa ligne, insensible à la casse. Sépare fiche publique et fiche secrète. Absente : tout est public. |
 | Qui lit quoi | Le PNJ qui parle reçoit sa fiche complète. Les autres PNJ, présents ou absents, reçoivent la fiche **publique** ; un `# SECRET` ne va jamais à un autre PNJ (§2.7). |
 | Statut de la fiche | Le modèle la reçoit comme une note privée de l'auteur : il ne doit pas la citer. |
+| Section `## tag` | Optionnelle. Du texte qui n'entre dans la fiche que lorsqu'un `{npc-story on nom tag}` l'active (§2.8 bis). Le **premier mot** de la ligne est le tag, le reste est un commentaire pour l'auteur, jamais envoyé au modèle. La section va jusqu'au prochain `##` ou jusqu'à `# SECRET`. |
+| Visibilité d'un tag | Donnée par sa **place** : un `##` **avant** `# SECRET` est **public** une fois actif (les autres PNJ le lisent aussi), un `##` **après** est **secret** (son personnage seul). Il ne change jamais de camp. |
+| Texte hors tag | Permanent : le texte sous `# Nom` (public) et sous `# SECRET` (secret) est toujours en vigueur, comme avant. Les `# xxx` simples restent du texte ordinaire. |
 
 Les fiches publiques sont lues par les autres PNJ comme des coéquipiers déjà établis. Des secrets qui se
 répondent entre eux (aspirations, envies, non-dits) donnent du relief sans casser l'histoire.
+
+Avec des tags (§2.8 bis) :
+
+```
+# Léa
+Léa, vingt-six ans, réservée.             ← permanent, public
+
+## froide  distante au début               ← tag PUBLIC : le premier mot est le tag
+Avec Marc, elle reste distante.
+
+# SECRET
+Léa déteste se tromper sur les gens.      ← permanent, secret
+
+## chatons  ce qu'elle a vu dans le bois    ← tag SECRET (après # SECRET)
+Elle l'a vu nourrir des chatons : elle le trouve adorable.
+```
+
+**Attention à la place d'un `##`** : déplacer une section de l'autre côté de `# SECRET` change sa
+visibilité sans aucun message. Un secret écrit au-dessus de `# SECRET` serait lu par tous les autres PNJ une
+fois actif. Le texte de base (hors tag) s'écrit **avant** le premier `##` de sa zone.
 
 **Rôle de la fiche : qui est le personnage, pas ce qui lui arrive.** La fiche est envoyée en entier dès
 le tour 1, à chaque tour, sans aucun filtre par acte. Tout ce qu'elle contient est donc su du PNJ
@@ -1062,7 +1139,7 @@ Conséquences de §2.7 :
    joueur, il peut y en avoir plusieurs à la suite, et l'action peut différer ou échouer selon ce qui se
    passe : la formulation doit le laisser ouvert. (Hypothèse d'écriture à vérifier selon le modèle : un
    petit modèle peut quand même suivre le plan à la lettre.) Un plan connu d'un seul PNJ peut aussi aller
-   dans son `# SECRET` ou un `{delta-pnj secret nom : …}` (§2.8), mais ce n'est pas obligatoire.
+   dans son `# SECRET` ou un `{npc-delta secret nom : …}` (§2.8), mais ce n'est pas obligatoire.
 5. Les lignes `[...]` d'un acte sont connues de tous les PNJ dès l'arrivée de l'acte.
 6. Le PNJ ne voit pas l'acte suivant : une condition ne peut s'appuyer que sur le texte de l'acte
    courant.
@@ -1161,7 +1238,7 @@ Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bi
 | Commande citée en exemple | Chargement refusé : `{npc-starts}` « doit être seul sur sa ligne », ou `{pick …}` mal formé | Une commande écrite entre accolades est toujours exécutée ou validée, même dans une note : décrire la commande avec des mots (`npc-starts`) sans les accolades (§2.9) |
 | Style qui parle d'histoire | Le style annonce ou impose des événements, tous les PNJ le lisent à chaque tour | `style.txt` ne décrit que la manière d'écrire (§2.10) ; les événements vont dans les actes |
 | « De temps en temps » appliqué à chaque réponse | « Mets en valeur la tenue des filles de temps en temps » : le modèle le fait à chaque réplique | Un petit modèle n'a pas de hasard interne et lit toute consigne présente dans son prompt. Pour la rareté, calculer la probabilité **avant** de construire le prompt : `{N%}` dans une ligne de `style.txt` (§2.10) ; la ligne n'est donnée que N % du temps. L'idée vaut pour toute consigne à fréquence voulue |
-| Secret dans le texte de l'acte | Un autre PNJ réagit à une information privée | Écrire l'information privée avec `{delta-pnj secret nom : …}` (§2.8), jamais dans le corps de l'acte, lu par tous |
+| Secret dans le texte de l'acte | Un autre PNJ réagit à une information privée | Écrire l'information privée avec `{npc-delta secret nom : …}` (§2.8), jamais dans le corps de l'acte, lu par tous |
 | Échange coupé | `[NEXT ACT]` en plein dialogue | Condition qui laisse de la marge ; un filet existe dans le prompt |
 | Saut de scène | Le `[...]` du nouvel acte ne raccorde pas à la scène précédente | Un `[...]` n'est pas généré par le modèle : l'écrire en lien avec l'état précédent |
 | Tirade d'interjection | Un PNJ secondaire fait un discours | Fiche à la voix courte ; un filet existe dans le prompt |

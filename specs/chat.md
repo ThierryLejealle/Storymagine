@@ -446,12 +446,12 @@ Retour au #12 : suppression de 000013.md, 000013-compaction-f000012.md, 000014.m
 
 Un scénario à l'ancienne structure (fichiers de session ou dossiers générés à la racine, fiches personnage hors de `characters/`) est refusé au chargement avec un message « format non pris en charge » ; il n'y a plus de programme de conversion.
 
-# Évolution d'un personnage — `{delta-pnj public|secret nom : texte}`
+# Évolution d'un personnage — `{npc-delta public|secret nom : texte}`
 
 Syntaxe et usage : `chatscenarios/guide-redaction-chat.md` §2.8. Ici, la mécanique.
 
 - **Concepts** : `CharacterDelta` (visibilité `PUBLIC`/`SECRET`, nom, texte), `CharacterDeltaMarker`
-  (extrait les lignes seules et complètes ; toute occurrence restante de `{delta-pnj` est une erreur),
+  (extrait les lignes seules et complètes ; toute occurrence restante de `{npc-delta` est une erreur),
   `ScenarioAct.deltas` (deltas des nœuds nouvellement entrés, comme les beats et l'ouverture),
   `ChatScenario.sheetAt(npc, acte)`.
 - **Chargement** : `ScenarioOutlineParser` retire les lignes du corps de chaque titre (le texte d'acte va à
@@ -465,6 +465,29 @@ Syntaxe et usage : `chatscenarios/guide-redaction-chat.md` §2.8. Ici, la mécan
   le `Cast` : ⟳ recharge les fiches sans perdre les deltas. Aucune chaîne de prompt n'est modifiée : les
   lignes s'ajoutent à la fiche comme si l'auteur les y avait écrites.
 
+# Sections de fiche — `## tag` et `{npc-story on|off nom tag}`
+
+Syntaxe et usage : guide §2.8 bis et §3. Ici, la mécanique.
+
+- **Concepts** : `StoryTag` (nom, visibilité, texte) porté par `Npc.tags`, `NpcSheetParser` (lit la fiche :
+  coupe sur `# SECRET`, puis chaque zone sur les lignes `##`), `StoryDirective` / `StoryDirectiveMarker`
+  (le tag est le dernier mot de la commande), `ScenarioAct.stories`, `StoryResolver`.
+- **Fiche** : le texte hors `##` de chaque zone est permanent (`publicInfo` / `secretInfo`, comme avant ; une
+  fiche sans `##` se lit à l'identique). Le premier mot d'un `##` est le tag, le reste de la ligne est un
+  commentaire jamais envoyé. Visibilité = zone de la section. Erreurs : tag sans nom, `SECRET`, section vide,
+  nom en double (casse ignorée, toutes zones).
+- **Durée** : celle des deltas, pas celle des modes. Les commandes sont rattachées au premier acte du titre qui
+  les porte (`ScenarioOutlineParser`, comme `deltas`) ; `StoryResolver.activeTags` rejoue les actes 1..N dans
+  l'ordre. Rien n'est stocké : undo, rollback, « Précédent », sauvegarde et ⟳ redonnent l'état de l'acte.
+- **Prompt** : `ChatScenario.sheetAt` applique d'abord `Npc.withActiveTags` (texte des tags actifs, dans
+  l'ordre de la fiche, ajouté en bloc à la partie publique ou secrète), puis les deltas. Aucune chaîne de
+  prompt n'est modifiée. Un tag secret n'atteint jamais un autre PNJ (même chemin que `# SECRET`).
+- **Validation** : `checkSources` (commande seule sur sa ligne, `SECRET` interdit, personnage et tag connus),
+  `ChatScenario` refuse un tag inconnu au chargement, la prémisse est refusée, `checkScenario` avertit d'un tag
+  jamais activé et d'un `off` sans effet. Une fiche invalide est rapportée par `validateScenario` sans lever.
+- **Renommage** : `{delta-pnj}` est devenu `{npc-delta}` ; l'ancien nom est refusé par `LegacyCommandSyntax`
+  avec le nouveau.
+
 # Validation du scénario
 
 Syntaxe des erreurs : guide §2.9. Ici, la mécanique.
@@ -473,7 +496,7 @@ Syntaxe des erreurs : guide §2.9. Ici, la mécanique.
   (`ERROR` / `WARNING`, lieu `fichier:ligne` ou acte, message). `ScenarioValidationException`
   (`IllegalStateException`) liste toutes les erreurs.
 - **`checkSources`** (erreurs, sur le texte écrit par l'auteur, ligne par ligne) : ancienne syntaxe,
-  commande inconnue ou mal écrite, `npc-starts` / `npc-do` / `delta-pnj` / `npc-active|present|passive|absent|reset` / `npc-mode`
+  commande inconnue ou mal écrite, `npc-starts` / `npc-do` / `npc-delta` / `npc-active|present|passive|absent|reset` / `npc-mode`
   pas seuls sur leur ligne, personnage inconnu (dont les noms d'une commande d'activité), bibliothèque `picks/` absente ou trop courte, `unique` plus nombreux que les paragraphes, blocs `repeat` incorrects (`RepeatExpander`, fichier par fichier).
 - **`checkScenario`** (avertissements, sur le scénario analysé) : acte non final sans `[NEXT ACT]`, PNJ
   jamais cité dans la prémisse ni le premier acte.

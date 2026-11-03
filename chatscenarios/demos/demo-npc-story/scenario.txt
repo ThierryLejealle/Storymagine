@@ -1,0 +1,32 @@
+Joueur : Marc
+Langue : français
+
+#SCENARIO
+Monde : Un petit immeuble au bord d'un bois, un matin d'automne.
+Prémisse : Marc, un voisin discret, croise Léa, sa jeune voisine, devant l'immeuble. Léa se méfie de lui sans trop savoir pourquoi.
+Ton : Calme, un peu mystérieux, puis tendre.
+
+# Le voisin
+{npc-story on Léa froide}
+{npc-story on Léa soupcon}
+[Marc sort de l'immeuble avec un gros sac et croise Léa devant la porte.]
+
+## Le bonjour
+Point de départ : Marc et Léa se croisent devant l'immeuble.
+Ce qui doit se passer : ils se disent bonjour, Léa reste réservée et ne s'attarde pas.
+Quand écrire [NEXT ACT] : Dès qu'ils se sont salués et que Marc part vers le bois avec son gros sac.
+
+## La filature
+[Léa voit Marc s'enfoncer dans le bois avec son gros sac. Intriguée, elle le suit de loin.]
+Point de départ : Léa suit Marc discrètement entre les arbres.
+Ce qui doit se passer : Marc s'arrête dans une clairière et nourrit des chatons abandonnés. Léa le voit.
+Quand écrire [NEXT ACT] : Dès que Léa a vu Marc nourrir les chatons.
+
+# Le soir
+{npc-story off Léa froide}
+{npc-story off Léa soupcon}
+{npc-story on Léa amicale}
+{npc-story on Léa chatons}
+[Le soir, Léa recroise Marc dans l'escalier de l'immeuble.]
+Point de départ : Léa aborde Marc dans l'escalier.
+Ce qui doit se passer : ils discutent, Léa n'est plus la même qu'au matin.

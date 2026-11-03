@@ -9,6 +9,8 @@ import storymagine.chat.coeur.domaine.scenario.LegacyCommandSyntax;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
+import storymagine.chat.coeur.domaine.scenario.StoryDirective;
+import storymagine.chat.coeur.domaine.scenario.StoryDirectiveMarker;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
 import java.util.ArrayList;
@@ -70,10 +72,13 @@ final class ScenarioOutlineParser {
         return new Outline(premise.text().strip(), leaves, premise.opening());
     }
 
-    /** A "{delta-pnj}" in the premise would have nothing to apply to and would reach every character as text. */
+    /** A "{npc-delta}" in the premise would have nothing to apply to and would reach every character as text. */
     private static void requireNoDelta(String premise) {
         if (!CharacterDeltaMarker.extract(premise).deltas().isEmpty()) {
-            throw new IllegalArgumentException("{delta-pnj ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
+            throw new IllegalArgumentException("{npc-delta ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
+        }
+        if (!StoryDirectiveMarker.extract(premise).directives().isEmpty()) {
+            throw new IllegalArgumentException("{npc-story ...} ne peut etre ecrit que dans un acte, pas dans la premisse.");
         }
         if (!ActivityDirectiveMarker.extract(premise).directives().isEmpty()) {
             throw new IllegalArgumentException("{npc-active ...}, {npc-present ...}, {npc-passive ...}, {npc-absent ...}, "
@@ -127,6 +132,7 @@ final class ScenarioOutlineParser {
         NpcOpening opening = NpcOpening.NONE;
         List<CharacterDelta> deltas = new ArrayList<>();
         List<ActivityDirective> activity = new ArrayList<>();
+        List<StoryDirective> stories = new ArrayList<>();
         List<Node> children = new ArrayList<>();
     }
 
@@ -139,10 +145,12 @@ final class ScenarioOutlineParser {
             node.title = h.title;
             NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(h.body.strip());
             CharacterDeltaMarker.Extracted withoutDeltas = CharacterDeltaMarker.extract(body.text());
-            ActivityDirectiveMarker.Extracted withoutActivity = ActivityDirectiveMarker.extract(withoutDeltas.text());
+            StoryDirectiveMarker.Extracted withoutStories = StoryDirectiveMarker.extract(withoutDeltas.text());
+            ActivityDirectiveMarker.Extracted withoutActivity = ActivityDirectiveMarker.extract(withoutStories.text());
             node.body     = withoutActivity.text().strip();
             node.opening  = body.opening();
             node.deltas   = withoutDeltas.deltas();
+            node.stories  = withoutStories.directives();
             node.activity = withoutActivity.directives();
 
             int depth = Math.min(h.depth, stack.size() + 1); // tolerate a heading level skip
@@ -174,13 +182,15 @@ final class ScenarioOutlineParser {
             List<String> beats = new ArrayList<>();
             NpcOpening opening = NpcOpening.NONE;
             List<CharacterDelta> deltas = new ArrayList<>();
+            List<StoryDirective> stories = new ArrayList<>();
             for (Node entered : newlyEntered(path, previousPath)) {
                 beats.addAll(Teaser.extractAll(entered.body));
                 deltas.addAll(entered.deltas);
+                stories.addAll(entered.stories);
                 if (opening.isNone()) opening = entered.opening; // le premier marqueur, de la racine a la feuille, decide
             }
             List<List<ActivityDirective>> activityPath = path.stream().map(n -> n.activity).toList();
-            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas, activityPath));
+            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas, activityPath, stories));
             previousPath.clear();
             previousPath.addAll(path);
         } else {

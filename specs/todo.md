@@ -25,20 +25,34 @@
 ## Chat - idees (point au 2026-10-28)
 
 Realise le 2026-10-28 (voir evols/2026-10-28-*) : commandes de scenario entre accolades
-`{commande sous-type argument : texte}` (pick random / unique / all / N, npc-starts, delta-pnj),
-`[...]` et `[NEXT ACT]` inchanges, tableau des tirages Fichier / Type / Valeur, delta-pnj public / secret
+`{commande sous-type argument : texte}` (pick random / unique / all / N, npc-starts, npc-delta),
+`[...]` et `[NEXT ACT]` inchanges, tableau des tirages Fichier / Type / Valeur, npc-delta public / secret
 calcule depuis les actes, validation du scenario a chaque chargement (+ `validation-scenarios.bat`),
 migration de la syntaxe (faite, programme supprime ensuite). Fiches "lore" : remplacees par `{pick all nom}`.
 
 Reste a faire / a decider :
 
-- `{pick ...}` utilisable dans le texte d'un `{delta-pnj ...}` (aujourd'hui interdit : un paragraphe tire
+- `{pick ...}` utilisable dans le texte d'un `{npc-delta ...}` (aujourd'hui interdit : un paragraphe tire
   peut contenir des sauts de ligne ou des accolades).
 - Deltas decides en cours de partie par un agent : imposerait de les stocker (comme les compactions) au
   lieu de les recalculer depuis les actes.
 - Les deltas s'accumulent et pesent sur le budget de contexte du PNJ : a surveiller sur un long scenario.
 - Validation : verifications possibles en plus (premier acte qui ne presente pas tous les PNJ de facon plus
   fine, blocs `[...]` mal fermes, fiches sans section attendue, personnages jamais utilises).
+
+## Chat - sections de fiche et noms de commandes (realise le 2026-11-02)
+
+Realise : `## tag` dans les fiches et `{npc-story on|off nom tag}` (etat qui se prolonge, public ou secret selon
+la place par rapport a `# SECRET`), `{delta-pnj}` renomme `{npc-delta}` (ancien nom refuse avec le nouveau),
+demo `demo-npc-story` (voir `evols/2026-11-02-npc-story-et-renommage-npc-delta.md`, guide §2.8 et §2.8 bis).
+
+Reste a faire / a decider :
+
+- Essayer avec un vrai LLM : changement de ton d'un PNJ quand un tag est remplace par un autre.
+- Recapitulatif "tags publics / tags secrets" par fiche dans le rapport de validation (il n'existe que
+  ERREUR et AVERTISSEMENT, pas de niveau d'information) : parade a la visibilite implicite par la place.
+- Separation du style en deux sections, `global-adds-content.txt` / `{import xxx}` / `/contents` : decrite, pas
+  decidee ni codee.
 
 ## Chat - mode DO temporaire pour les PNJ (realise le 2026-11-01)
 

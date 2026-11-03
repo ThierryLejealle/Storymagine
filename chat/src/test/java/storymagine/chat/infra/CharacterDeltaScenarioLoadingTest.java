@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** How "{delta-pnj}" travels from scenario.txt to ChatScenario, and what a character's sheet is at each act. */
+/** How "{npc-delta}" travels from scenario.txt to ChatScenario, and what a character's sheet is at each act. */
 class CharacterDeltaScenarioLoadingTest {
 
     private static final String SCENARIO = """
@@ -26,16 +26,16 @@ class CharacterDeltaScenarioLoadingTest {
 
         # Parent
         Texte commun du parent.
-        {delta-pnj public Elena : Elle boite depuis l'embuscade.}
+        {npc-delta public Elena : Elle boite depuis l'embuscade.}
 
         ## Un
         Corps un.
-        {delta-pnj secret Marcus : Il a reconnu le chef des bandits.}
+        {npc-delta secret Marcus : Il a reconnu le chef des bandits.}
 
         ## Deux
         Corps deux.
-        {delta-pnj public Elena : Elle a perdu un oeil.}
-        {delta-pnj secret Elena : Elle veut quitter le groupe.}
+        {npc-delta public Elena : Elle a perdu un oeil.}
+        {npc-delta secret Elena : Elle veut quitter le groupe.}
         """;
 
     private static void write(Path root, String scenarioText) throws IOException {
@@ -61,7 +61,7 @@ class CharacterDeltaScenarioLoadingTest {
         ChatScenario scenario = load(root);
 
         for (var act : scenario.acts()) {
-            assertFalse(act.text().contains("delta-pnj"), act.text());
+            assertFalse(act.text().contains("npc-delta"), act.text());
             assertFalse(act.text().contains("trahir") || act.text().contains("reconnu"), act.text());
         }
         assertTrue(scenario.acts().get(0).text().contains("Texte commun du parent."));
@@ -111,10 +111,10 @@ class CharacterDeltaScenarioLoadingTest {
 
     @Test
     void aDeltaInThePremiseOrOnAnUnknownCharacterFailsAtLoading(@TempDir Path root) throws IOException {
-        write(root, "Monde.\n{delta-pnj secret Elena : fuite}\n\n# Un\nCorps.\n");
+        write(root, "Monde.\n{npc-delta secret Elena : fuite}\n\n# Un\nCorps.\n");
         assertThrows(IllegalArgumentException.class, () -> load(root));
 
-        write(root, "Monde.\n\n# Un\n{delta-pnj secret Zorglub : x}\nCorps.\n");
+        write(root, "Monde.\n\n# Un\n{npc-delta secret Zorglub : x}\nCorps.\n");
         ScenarioValidationException e = assertThrows(ScenarioValidationException.class, () -> load(root));
         assertTrue(e.getMessage().contains("Zorglub"), e.getMessage());
     }

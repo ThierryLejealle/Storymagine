@@ -17,11 +17,18 @@ import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
+import storymagine.chat.coeur.domaine.scenario.StoryDirective;
+import storymagine.chat.coeur.domaine.scenario.StoryDirectiveMarker;
+import storymagine.chat.coeur.domaine.scenario.StoryTag;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +44,7 @@ import java.util.regex.Pattern;
 public final class ScenarioValidator {
 
     private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode");
-    private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "delta-pnj", "npc-active", "npc-present",
+    private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
         "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-do", "repeat", "end-repeat", "n", "item");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
@@ -86,9 +93,12 @@ public final class ScenarioValidator {
             String name = start.group(1).toLowerCase(Locale.ROOT);
             Matcher text = COMMAND_TEXT.matcher(line.substring(start.start()));
             String command = text.find() ? text.group() : line.substring(start.start());
+            if (name.equals("delta-pnj")) {
+                continue; // the old name is already reported, with the new one, by LegacyCommandSyntax
+            }
             if (!COMMANDS.contains(name)) {
-                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, npc-starts, delta-pnj, "
-                    + "npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode, npc-do)"));
+                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, npc-starts, npc-do, "
+                    + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode)"));
             } else if (REPEAT_COMMANDS.contains(name)) {
                 continue;
             } else if (name.equals("pick")) {
@@ -97,6 +107,8 @@ public final class ScenarioValidator {
                 checkNpcStarts(where, line, cast, issues, name);
             } else if (ACTIVITY_COMMANDS.contains(name)) {
                 checkActivity(where, line, cast, issues);
+            } else if (name.equals("npc-story")) {
+                checkStory(where, line, cast, issues);
             } else {
                 checkDelta(where, line, cast, issues);
             }
@@ -135,11 +147,34 @@ public final class ScenarioValidator {
         }
     }
 
+    private static void checkStory(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+        try {
+            List<StoryDirective> directives = StoryDirectiveMarker.extract(line + "\n").directives();
+            if (directives.isEmpty()) {
+                issues.add(ScenarioIssue.error(where, "{npc-story} doit etre seul sur sa ligne : {npc-story on|off nom tag}"));
+            }
+            for (StoryDirective directive : directives) {
+                String command = "{npc-story " + (directive.on() ? "on " : "off ") + directive.npcName() + " " + directive.tag() + "}";
+                Optional<Npc> npc = cast.findByName(directive.npcName());
+                if (directive.tag().equalsIgnoreCase("SECRET")) {
+                    issues.add(ScenarioIssue.error(where, command + " : SECRET n'est pas un tag, le texte de \"# SECRET\" est permanent"));
+                } else if (npc.isEmpty()) {
+                    issues.add(ScenarioIssue.error(where, command + " : aucun personnage de ce nom dans characters/"));
+                } else if (!npc.get().hasTag(directive.tag())) {
+                    issues.add(ScenarioIssue.error(where, command + " : la fiche de " + npc.get().label()
+                        + " n'a pas de section \"## " + directive.tag() + "\""));
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            issues.add(ScenarioIssue.error(where, e.getMessage()));
+        }
+    }
+
     private static void checkDelta(String where, String line, Cast cast, List<ScenarioIssue> issues) {
         try {
             for (CharacterDelta delta : CharacterDeltaMarker.extract(line + "\n").deltas()) {
                 if (cast.findByName(delta.npcName()).isEmpty()) {
-                    issues.add(ScenarioIssue.error(where, "{delta-pnj " + delta.npcName() + "} : aucun personnage de ce nom dans characters/"));
+                    issues.add(ScenarioIssue.error(where, "{npc-delta " + delta.npcName() + "} : aucun personnage de ce nom dans characters/"));
                 }
             }
         } catch (IllegalArgumentException e) {
@@ -213,6 +248,7 @@ public final class ScenarioValidator {
             issues.add(ScenarioIssue.warning(STYLE_FILE, scenario.style().text().length() + " caracteres : long pour un petit contexte"
                 + " (au-dela de " + STYLE_WARNING_LENGTH + ", il pese sur chaque reponse)"));
         }
+        checkStories(scenario, issues);
         String opening = acts.isEmpty() ? scenario.premise() : scenario.premise() + "\n" + acts.get(0).text() + "\n" + String.join("\n", acts.get(0).beats());
         String openingNormalized = normalize(opening);
         for (Npc npc : scenario.cast().npcs()) {
@@ -223,6 +259,35 @@ public final class ScenarioValidator {
             }
         }
         return new ScenarioReport(issues);
+    }
+
+    /** A "## tag" that no command ever switches on is dead text ; an "off" on a tag that is not on does nothing. */
+    private static void checkStories(ChatScenario scenario, List<ScenarioIssue> issues) {
+        Map<String, Set<String>> activeById = new HashMap<>();
+        Set<String> everOn = new HashSet<>();
+        for (ScenarioAct act : scenario.acts()) {
+            for (StoryDirective directive : act.stories()) {
+                Npc npc = scenario.cast().findByName(directive.npcName()).orElse(null);
+                if (npc == null) continue;
+                String tag = directive.tag().toLowerCase(Locale.ROOT);
+                Set<String> active = activeById.computeIfAbsent(npc.id(), id -> new HashSet<>());
+                if (directive.on()) {
+                    active.add(tag);
+                    everOn.add(npc.id() + "/" + tag);
+                } else if (!active.remove(tag)) {
+                    issues.add(ScenarioIssue.warning("acte " + act.number(), "{npc-story off " + directive.npcName() + " " + directive.tag()
+                        + "} : ce tag n'est pas actif a cet endroit, la commande ne fait rien"));
+                }
+            }
+        }
+        for (Npc npc : scenario.cast().npcs()) {
+            for (StoryTag tag : npc.tags()) {
+                if (!everOn.contains(npc.id() + "/" + tag.name().toLowerCase(Locale.ROOT))) {
+                    issues.add(ScenarioIssue.warning("fiche " + npc.id(), "le tag \"## " + tag.name()
+                        + "\" n'est jamais active par un {npc-story on " + npc.label() + " " + tag.name() + "} : son texte ne sera jamais lu"));
+                }
+            }
+        }
     }
 
     private static String normalize(String s) {

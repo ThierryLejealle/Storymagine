@@ -110,6 +110,8 @@ public final class ScenarioScaffolder {
 
             # SECRET
             (Ce que personne d'autre ne sait sur %1$s. Cette partie est optionnelle : sans la ligne « # SECRET », toute la fiche est publique.)
+
+            (Optionnel : un texte qui s'active et se désactive pendant l'histoire s'écrit dans une section « ## tag », avant « # SECRET » pour un texte public, après pour un texte secret, avec la commande npc-story dans le guide de rédaction. Supprimer cette consigne sinon.)
             """.formatted(npcName);
     }
 

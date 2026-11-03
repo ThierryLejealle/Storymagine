@@ -57,6 +57,10 @@ Elena a volé autrefois dans un temple et craint d'être reconnue. (ce que seul 
 - Ligne 1 `# Nom` obligatoire (devient le nom affiché).
 - `# SECRET` seul sur sa ligne, optionnel. Absent = tout est public.
 - Le PNJ qui parle reçoit public + secret ; les autres PNJ ne voient que le public.
+- `## tag commentaire` : section qui n'entre dans la fiche que quand `{npc-story on nom tag}` l'active
+  (le premier mot est le tag, le reste est ignoré). Avant `# SECRET` : public une fois actif ; après :
+  secret. La place décide de la visibilité : ne pas déplacer un `##` de l'autre côté sans y penser. Le
+  texte hors tag est permanent. Guide §2.8 bis et §3.
 - Écrire des traits observables (comportement, voix, motivation) plutôt qu'une liste d'adjectifs.
   Petits modèles : court, concret, un exemple de réplique si le ton est particulier.
 
@@ -175,12 +179,23 @@ manière d'écrire (voix, rythme, ton), en positif et court (moins de 1 500 cara
 n'importe où dans la ligne : elle n'est donnée au modèle que dans 20 % des réponses (tirage à chaque
 réponse), sinon elle disparaît entière. Guide §2.10.
 
-### Faire évoluer un personnage : `{delta-pnj public|secret nom : texte}`
+### Faire évoluer un personnage : `{npc-delta public|secret nom : texte}`
 
-Une ligne seule dans un acte ajoute une ligne à la fiche du personnage à partir de cet acte :
-`public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel objectif,
-découverte gardée pour soi). La visibilité est obligatoire. La ligne est retirée du texte de l'acte,
-donc un secret ne fuit pas. Détails : `chatscenarios/guide-redaction-chat.md` §2.8.
+Le petit delta : une ligne seule dans un acte ajoute une ligne à la fiche du personnage à partir de cet
+acte : `public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel
+objectif, découverte gardée pour soi). La visibilité est obligatoire. La ligne est retirée du texte de
+l'acte, donc un secret ne fuit pas. Il sait ajouter, jamais retirer ; son texte peut dépendre d'un tirage
+(`{repeat}`) et il complète une fiche partagée sans la modifier. Ancien nom `{delta-pnj}` : refusé.
+Détails : `chatscenarios/guide-redaction-chat.md` §2.8.
+
+### Activer / désactiver un texte de la fiche : `{npc-story on|off nom tag}`
+
+Une ligne seule : active (`on`) ou retire (`off`) la section `## tag` de la fiche du personnage. Le tag est
+le dernier mot. L'état vaut à partir de l'acte où la commande est écrite et pour **tous les suivants**, même
+hors du titre qui la porte, jusqu'à un autre `on`/`off`. Au départ aucun tag n'est actif. `SECRET` n'est pas
+un tag. Un secret devenu public = deux tags (`off` du secret, `on` du public). Interdit dans la prémisse ;
+tag ou personnage inconnu = erreur ; tag jamais activé = avertissement. Le tag pour ce qui se défait ou
+revient, le delta pour un fait unique. Guide §2.8 bis.
 
 ### Qui parle dans une scène : `{npc-active|present|passive|absent noms}`, `{npc-reset}`
 

@@ -12,7 +12,8 @@ de `chat.bat`, choisir « 3 - Démos du projet ». Chaque dossier a un `README.m
 | `demo-pnj` | deux amis au café | plusieurs personnages | §4.2 |
 | `demo-npc-starts` | une boulangère | `npc-starts` | §4.5 |
 | `demo-npc-do` | une visite guidée | `npc-mode do`, `npc-do` | §2.12, §4.5 |
-| `demo-delta-pnj` | un anniversaire | `delta-pnj` | §2.8 |
+| `demo-npc-delta` | un anniversaire | `npc-delta` | §2.8 |
+| `demo-npc-story` | le voisin louche | `## tag`, `npc-story` | §2.8 bis, §3 |
 | `demo-secret` | un carton mystérieux | section `# SECRET` | §3 |
 | `demo-activite` | le palier | `npc-active` et co | §2.11 |
 | `demo-style` | la météo | `style.txt` | §2.10 |

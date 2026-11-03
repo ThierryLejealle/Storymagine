@@ -212,7 +212,7 @@ public final class ChatPromptBuilder {
      */
     public static ChatPrompt build(ChatScenario scenario, Scene sceneAtStart, int currentAct, String summary,
                                     List<ChatTurn> recentTurns) {
-        // Sheets as they are at this act : the scenario's {delta-pnj} changes, public or secret.
+        // Sheets as they are at this act : the scenario's {npc-delta} changes, public or secret.
         Scene scene = sceneAtStart.mapNpcs(npc -> scenario.sheetAt(npc, currentAct));
         StringBuilder system = new StringBuilder();
         system.append(SYSTEM_INTRO.replace(LANGUAGE_PLACEHOLDER,

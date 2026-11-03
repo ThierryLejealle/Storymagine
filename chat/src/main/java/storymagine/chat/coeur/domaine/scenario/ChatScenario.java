@@ -40,11 +40,24 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
             requireKnownNpc(cast, act.opening(), "l'acte " + act.number());
             for (CharacterDelta delta : act.deltas()) {
                 if (cast.findByName(delta.npcName()).isEmpty()) {
-                    throw new IllegalArgumentException("{delta-pnj " + delta.npcName() + "} dans l'acte " + act.number()
+                    throw new IllegalArgumentException("{npc-delta " + delta.npcName() + "} dans l'acte " + act.number()
                         + " : aucun personnage de ce nom dans characters/.");
                 }
             }
+            for (StoryDirective story : act.stories()) requireKnownTag(cast, story, act);
             requireValidActivity(cast, act);
+        }
+    }
+
+    /** A story command that names nobody known, or a tag the character's sheet does not have, fails loudly here. */
+    private static void requireKnownTag(Cast cast, StoryDirective story, ScenarioAct act) {
+        String command = "{npc-story " + (story.on() ? "on " : "off ") + story.npcName() + " " + story.tag() + "}";
+        Npc npc = cast.findByName(story.npcName()).orElseThrow(() -> new IllegalArgumentException(
+            command + " dans l'acte " + act.number() + " : aucun personnage de ce nom dans characters/."));
+        if (!npc.hasTag(story.tag())) {
+            throw new IllegalArgumentException(command + " dans l'acte " + act.number() + " : la fiche de " + npc.label()
+                + " n'a pas de section \"## " + story.tag() + "\" (tags : "
+                + (npc.tags().isEmpty() ? "aucun" : npc.tags().stream().map(StoryTag::name).collect(java.util.stream.Collectors.joining(", "))) + ").");
         }
     }
 
@@ -112,13 +125,14 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
     }
 
     /**
-     * npc as it is at act `act` (1-based ; 0 = no acts in use) : its sheet plus every delta written in
-     * acts 1..act that targets it, in order. Computed on demand from the acts, never stored, so
-     * rolling back, going to the previous act, loading a save or reloading the scenario need no
+     * npc as it is at act `act` (1-based ; 0 = no acts in use) : its sheet, plus the "## tag" sections
+     * switched on by the "{npc-story}" commands of acts 1..act (see StoryResolver), plus every delta
+     * written in acts 1..act that targets it, in order. Computed on demand from the acts, never stored,
+     * so rolling back, going to the previous act, loading a save or reloading the scenario need no
      * special handling.
      */
     public Npc sheetAt(Npc npc, int act) {
-        Npc result = npc;
+        Npc result = npc.withActiveTags(StoryResolver.activeTags(cast, acts, act, npc));
         for (int i = 0; i < Math.min(act, acts.size()); i++) {
             for (CharacterDelta delta : acts.get(i).deltas()) {
                 boolean targetsNpc = cast.findByName(delta.npcName()).map(n -> n.id().equals(npc.id())).orElse(false);
