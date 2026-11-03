@@ -154,6 +154,13 @@ distribué), `{pick 3 nom}` (3 différents), `{pick all nom}` (tous, dans l'ordr
 « Recommencer ». Sur une ligne `[...]`, les paragraphes doivent tenir sur une seule ligne. Exemple et
 détails : `chatscenarios/guide-redaction-chat.md` §2.6.
 
+### Bibliothèque commune à plusieurs scénarios : `/lib/nom`
+
+Un nom de bibliothèque écrit `/lib/nom` (ou `/lib/dossier/nom`) lit `lib/nom.txt` dans le dossier `lib/` **à côté
+des dossiers de scénarios** (la racine choisie au menu), pour `{pick …}` comme pour `{repeat …}` ; même format
+que `picks/`. Le scénario n'est alors plus autonome (le copier demande son `lib/`). Tirage figé pour la partie,
+`lib/` pas listé comme scénario. Exemple : `chatscenarios/demos/demo-lib/`. Guide §2.6.
+
 ### Répéter une séquence : `{repeat mode nom}`
 
 Un bloc `{repeat order|random [N] nom}` … `{end-repeat}` (chaque commande seule sur sa ligne) est un gabarit

@@ -40,6 +40,17 @@ Reste a faire / a decider :
 - Validation : verifications possibles en plus (premier acte qui ne presente pas tous les PNJ de facon plus
   fine, blocs `[...]` mal fermes, fiches sans section attendue, personnages jamais utilises).
 
+## Chat - bibliotheque commune /lib/ (realise le 2026-11-03)
+
+Realise : `{pick … /lib/nom}` et `{repeat … /lib/nom}` lisent `lib/nom.txt` a cote des dossiers de scenarios (voir
+`evols/2026-11-03-bibliotheque-commune-lib-2.md`, guide §2.6, demo `demo-lib`).
+
+Reste a faire / a decider :
+
+- Un scenario qui utilise `/lib/` n'est plus autonome : le copier a la main demande aussi `lib/`. Les sauvegardes 💾 et
+  archives (zip de la partie) restent jouables sans `lib/` car elles emportent le scenario deja tire.
+- Idee non decidee, pas faite : `style.txt` partage et directive `{import xxx}` / dossier `contents` (voir echanges du 2026-11-02).
+
 ## Chat - variables de casting (realise le 2026-11-03)
 
 Realise : `{cast NOM [unique] [reuse-possible] [(liste)]}`, `%NOM%`, `{repeat … cast NOM}`, `{repeat N}`, retour en
@@ -48,7 +59,6 @@ arriere sur les tirages (voir `evols/2026-11-03-variables-de-casting-cast.md`, g
 Reste a faire / a decider :
 
 - Essayer avec un vrai LLM une partie de `demo-cast`.
-- Bibliotheques communes `/lib/...` : evolution suivante (fiche `2026-11-03-bibliotheque-commune-lib-2`).
 - Une variable pour une valeur autre qu'un personnage (un lieu tire une fois, reutilise plus bas) : non fait.
 
 ## Chat - sections de fiche et noms de commandes (realise le 2026-11-02)

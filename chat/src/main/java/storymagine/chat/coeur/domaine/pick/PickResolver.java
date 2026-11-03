@@ -103,13 +103,13 @@ public final class PickResolver {
                 List<Integer> notYet = everything.stream().filter(i -> !alreadyDrawn.contains(i)).toList();
                 if (notYet.isEmpty()) {
                     throw new IllegalStateException("{pick unique " + tag + "} : les " + size
-                        + " paragraphe(s) de picks/" + tag + ".txt ont deja tous ete tires.");
+                        + " paragraphe(s) de " + tag.file() + " ont deja tous ete tires.");
                 }
                 return drawFrom(notYet, 1);
             default:
                 if (mode.count() > size) {
-                    throw new IllegalStateException("{pick " + mode.count() + " " + tag + "} : picks/" + tag
-                        + ".txt ne contient que " + size + " paragraphe(s).");
+                    throw new IllegalStateException("{pick " + mode.count() + " " + tag + "} : " + tag.file()
+                        + " ne contient que " + size + " paragraphe(s).");
                 }
                 return drawFrom(everything, mode.count());
         }

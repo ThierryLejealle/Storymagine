@@ -172,6 +172,14 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   (le `{pick}` d'un gabarit est donc tiré par copie) ; les tirages des blocs précèdent ceux des `pick`
   dans `picks.txt`, avec les types `repeat-order` / `repeat-random` (`PickMode.parseRecorded`). Le
   scénario déplié est ce qu'écrit `resolved/` : le jeu ne voit jamais de `repeat`.
+- **Bibliothèque commune `/lib/nom`** (guide §2.6) : `PickTag` accepte `nom` (fichier de `picks/`) ou
+  `/lib/chemin` (chaque partie en lettres, chiffres, `_`, `-`, donc jamais de `..` ni de `.`) ; `isShared()`,
+  `sharedPath()` et `file()` (`picks/x.txt` / `lib/x.txt`) servent aux messages. `PickFileLibrary` lit
+  `{dossier des scénarios}/lib/{chemin}.txt`, le dossier des scénarios étant le parent du dossier du scénario
+  (donc la racine choisie au menu, démos comprises). `listScenarioNames` ne liste pas `lib/` (pas de
+  `scenario.txt`). Tout le reste (tirage `unique` par tag, `PickDraw`, `picks.txt`, figeage dans `resolved/`)
+  est inchangé : le tag complet `/lib/x` sert de clé. Un scénario copié sans son `lib/` échoue au chargement
+  en nommant le fichier.
 - **Variables de casting `{cast NOM [unique] [reuse-possible] [(liste)]}` et `%NOM%`** (guide §2.6 ter) :
   concepts `CastCommand` (une ligne ; erreurs de syntaxe), `CastPool` (la liste ou tout le casting, un mot par
   personnage via `Cast.findAllByName` : inconnu, ambigu ou doublon = erreur), `CastResolver`. Ordre du

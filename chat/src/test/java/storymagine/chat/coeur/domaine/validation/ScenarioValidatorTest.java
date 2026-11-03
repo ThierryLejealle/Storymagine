@@ -207,6 +207,14 @@ class ScenarioValidatorTest {
     }
 
     @Test
+    void aLibraryNameThatCouldLeaveTheLibFolderIsAnError() {
+        ScenarioReport report = check("Monde. {pick random /lib/../secret}\n{pick random a.b}\n");
+
+        assertEquals(2, report.errors().size(), report.issues().toString());
+        assertTrue(report.errors().get(0).message().contains("Nom de pick invalide"), report.errors().get(0).message());
+    }
+
+    @Test
     void theOldDeltaNameIsRefusedAndTheNewNameIsGiven() {
         ScenarioReport report = check("# Un\n{delta-pnj public Elena : Elle boite.}\n");
 

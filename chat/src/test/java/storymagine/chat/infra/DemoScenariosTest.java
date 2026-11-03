@@ -29,6 +29,7 @@ class DemoScenariosTest {
         Map.entry("demo-repeat",          new int[]{5, 1}),   // intro, 3 tasks drawn from the file, pause
         Map.entry("demo-actes",           new int[]{3, 1}),
         Map.entry("demo-cast",            new int[]{4, 3}),   // 3 recettes (une par personnage) puis le dessert
+        Map.entry("demo-lib",             new int[]{1, 1}),   // lit ../lib/evenements.txt
         Map.entry("demo-multi-fichiers",  new int[]{3, 1}),
         Map.entry("demo-pnj",             new int[]{1, 2}),
         Map.entry("demo-npc-starts",      new int[]{2, 1}),

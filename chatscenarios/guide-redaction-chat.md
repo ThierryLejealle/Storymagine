@@ -276,9 +276,34 @@ picks/lieu.txt ont deja tous ete tires.`
 - Le paragraphe est inséré tel quel. Dans une ligne `[...]`, il doit tenir sur **une seule ligne**.
   Ailleurs (prémisse, texte d'accompagnement), plusieurs lignes sont acceptées.
 - Le joueur ne voit un paragraphe que s'il tombe dans un texte affiché (une ligne `[...]`).
-- Pas de tirage imbriqué (une commande dans un paragraphe tiré n'est pas résolue). Les fiches personnage ne
-  sont pas concernées.
+- Pas de tirage imbriqué (une commande dans un paragraphe tiré n'est pas résolue ; un `%NOM%` de `{cast}`
+  l'est, §2.6 ter). Les fiches personnage ne sont pas concernées.
 - Fichier `picks/nom.txt` absent ou sans paragraphe : échec du chargement, avec le nom du fichier.
+
+**Bibliothèque commune à plusieurs scénarios : `/lib/nom`.** Au lieu de recopier le même fichier dans les
+`picks/` de chaque scénario, on le range une fois dans un dossier `lib/` **à côté des dossiers de scénarios**
+(dans la racine choisie au menu de `chat.bat`, par exemple `chatscenarios/lib/evenements.txt`) et on l'appelle
+avec un chemin qui commence par `/lib/` :
+
+```
+{pick random /lib/evenements}
+{pick unique /lib/lieux/ville}
+{repeat order /lib/defis}
+```
+
+- Valable partout où un nom de bibliothèque est attendu : `{pick …}` (tous les types) et `{repeat …}`. Le
+  fichier a le même format que ceux de `picks/` (paragraphes séparés par `---`, morceaux par `-`).
+- Sous-dossiers permis (`/lib/lieux/ville` lit `lib/lieux/ville.txt`). Chaque partie du chemin ne contient que
+  lettres, chiffres, `_` et `-` : impossible de sortir de `lib/`.
+- `unique` compte ce que la bibliothèque a déjà donné, comme pour un fichier de `picks/`.
+- La racine est celle du menu : les démos (`chatscenarios/demos/`) lisent `chatscenarios/demos/lib/`.
+- Le dossier `lib/` n'est pas un scénario et n'apparaît pas dans la liste.
+- Le tirage est figé dans la partie comme tout `pick` : modifier la bibliothèque ne change pas une partie en
+  cours. En revanche **le scénario n'est plus autonome** : copié ou envoyé ailleurs, il doit être accompagné
+  du dossier `lib/` ; sinon le chargement échoue avec « lib/nom.txt : fichier introuvable ».
+- Le tableau 🎲 affiche la bibliothèque sous le nom `/lib/nom`.
+
+Exemple : `chatscenarios/demos/demo-lib/`.
 
 ### 2.6 bis Séquence répétée : `{repeat mode nom}`
 
@@ -501,7 +526,8 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 | Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}`, `{npc-delta …}` ou `{npc-story …}` au milieu d'une phrase |
 | Tag de fiche incorrect | `## SECRET`, `##` sans nom, tag vide, deux tags de même nom dans une fiche (§3) |
 | Tag ou personnage inconnu | `{npc-story on Léa inconnu}` (pas de section `## inconnu` dans sa fiche), `{npc-story on Léa SECRET}` |
-| Fichier ou paragraphes manquants | `picks/x.txt` absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
+| Fichier ou paragraphes manquants | `picks/x.txt` ou `lib/x.txt` (`/lib/x`) absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |
+| Nom de bibliothèque invalide | `{pick random /lib/../x}`, `{pick random /lib/}`, `{pick random a.b}` |
 | Bloc `repeat` incorrect | pas de `{end-repeat}`, bloc imbriqué ou vide, `{n}` ou `{item}` hors d'un bloc, `{repeat plain x}` (mode manquant), nombre trop grand, paragraphe qui n'a pas le même nombre de morceaux que les `{itemK}` du gabarit |
 | Personnage inconnu | `{npc-starts Zorglub}`, `{npc-do Zorglub}`, `{npc-delta secret Zorglub : …}`, `{npc-active Zorglub}`, `{npc-mode do on Zorglub}` |
 | Mode inconnu ou mal écrit | `{npc-mode fly on Elena}`, `{npc-mode do on}` (nom manquant) |

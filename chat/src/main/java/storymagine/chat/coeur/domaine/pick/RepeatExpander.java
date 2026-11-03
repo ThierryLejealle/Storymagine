@@ -179,12 +179,12 @@ public final class RepeatExpander {
         PickParagraphs paragraphs = library.paragraphs(tag);
         int count = mode.takesEverything() ? paragraphs.size() : mode.count();
         if (count > paragraphs.size()) {
-            throw new IllegalArgumentException(header + " : picks/" + tag + ".txt ne contient que " + paragraphs.size() + " paragraphe(s).");
+            throw new IllegalArgumentException(header + " : " + tag.file() + " ne contient que " + paragraphs.size() + " paragraphe(s).");
         }
         List<Integer> indexes = indexes(mode, paragraphs.size(), count);
         List<String> taken = indexes.stream().map(paragraphs::get).toList();
         draws.add(new PickDraw(mode.recordedMode(), tag, taken));
-        return new Items(taken, List.of(), indexes.size(), null, "picks/" + tag + ".txt");
+        return new Items(taken, List.of(), indexes.size(), null, tag.file());
     }
 
     private Items castItems(String header, String variable, List<String> listed, RepeatMode mode, List<PickDraw> draws) {

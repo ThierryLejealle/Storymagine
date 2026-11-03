@@ -1,0 +1,12 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un petit marché de village, un matin.
+Prémisse : Alex flâne sur le marché et discute avec Nina, une maraîchère. {pick random /lib/evenements}
+Ton : Détendu et chaleureux.
+
+# Au marché
+[Alex arrive devant l'étal de Nina.]
+Point de départ : Alex salue Nina.
+Ce qui doit se passer : ils bavardent, et l'événement du jour finit par intervenir.

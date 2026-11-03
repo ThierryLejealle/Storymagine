@@ -6,6 +6,7 @@ de `chat.bat`, choisir « 3 - Démos du projet ». Chaque dossier a un `README.m
 | Démo | Sujet | Mécanisme | Guide |
 |---|---|---|---|
 | `demo-pick` | un goûter | `pick` | §2.6 |
+| `demo-lib` | un marché | `/lib/…` (bibliothèque commune) | §2.6 |
 | `demo-repeat` | le ménage du samedi | `repeat` | §2.6 bis |
 | `demo-actes` | une promenade | actes, `[...]`, `[NEXT ACT]` | §2.3 à §2.5 |
 | `demo-cast` | un atelier de cuisine | `cast`, `%NOM%`, `repeat … cast` | §2.6 ter |
