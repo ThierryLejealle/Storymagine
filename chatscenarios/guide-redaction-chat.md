@@ -302,6 +302,9 @@ Quand écrire [NEXT ACT] : {item3}
 | `{repeat order 2 nom}` | Les 2 premiers paragraphes du fichier. |
 | `{repeat random nom}` | Tout le fichier, dans un ordre aléatoire. |
 | `{repeat random 3 nom}` | 3 paragraphes **différents**, tirés au hasard. |
+| `{repeat 3}` | 3 copies, **sans fichier** : seul `{n}` existe (pas de `{item}`). |
+| `{repeat order cast NOM}` | Une copie par **personnage** du casting, dans l'ordre du casting ; `{item}` et `%NOM%` = son nom (§2.6 ter). |
+| `{repeat random 2 cast NOM (jack, mia, john)}` | 2 personnages **différents** de la liste, au hasard (liste et nombre facultatifs). |
 
 - Le mode est obligatoire ; le nombre est facultatif (sans lui, tout le fichier). Un paragraphe ne sort
   jamais deux fois dans un même bloc ; deux blocs sur le même fichier sont indépendants. Un nombre
@@ -328,6 +331,53 @@ Quand écrire [NEXT ACT] : {item3}
   une modification.
 
 Exemple complet : `chatscenarios/demos/demo-repeat/`.
+
+### 2.6 ter Choisir un personnage : `{cast NOM …}` et `%NOM%`
+
+Pour que le scénario choisisse lui-même un personnage du casting (qui est le chef du jour, qui est le
+coupable…) et le désigne ensuite dans le texte et les commandes.
+
+```
+{cast PNJ_1 (jack, mia, john)}
+{cast PNJ_2 unique (jack, mia, john)}
+{cast PNJ_3 reuse-possible}
+```
+
+| Écriture | Effet |
+|---|---|
+| `{cast NOM}` | Un personnage de **tout le casting**, **autre que ceux que tiennent les autres variables** à cet endroit. |
+| `(jack, mia, john)` | Liste facultative : le tirage se limite à ces personnages. **Un seul mot par personnage** (son identifiant, ou un mot de son nom). |
+| `unique` | Cette variable ne reprend **jamais un personnage qu'elle a déjà eu** : dans un `{repeat}`, un personnage différent à chaque copie. |
+| `reuse-possible` | Peut reprendre le personnage d'une autre variable (le même personnage dans deux rôles). |
+
+`unique` et `reuse-possible` se combinent. La commande est **seule sur sa ligne** et ne s'affiche pas.
+
+- **`%NOM%`** vaut le nom complet du personnage, de la commande jusqu'à la fin du scénario (ou du bloc
+  `repeat` qui l'a déclarée). Il s'écrit dans le texte, dans les `[...]` et **dans les commandes** : `{npc-starts %PNJ_1%}`,
+  `{npc-story on %PNJ_1% dette}`, `{npc-delta secret %PNJ_2% : …}`. Un nom : une lettre puis lettres,
+  chiffres ou `_`. Utilisé avant d'être déclaré, c'est une erreur.
+- **Exclusivité** : par défaut, deux variables ne désignent jamais le même personnage. Sans `reuse-possible`,
+  écrire `{cast A}` puis `{cast B}` donne deux personnages différents. Attention : le casting doit avoir assez
+  de personnages pour toutes les variables en même temps.
+- **Dans un `repeat`** : `{repeat order cast CHEF}` fait une copie par personnage et `%CHEF%` vaut le
+  personnage de la copie ; `{cast COMMIS}` dans le bloc choisit un autre personnage que le chef (par défaut).
+  Les variables déclarées dans une copie sont **oubliées à la fin de la copie** ; celles déclarées avant le
+  `repeat` restent valables dedans, et leur personnage est exclu. La variable d'un `repeat … cast` parcourt
+  toute la liste quoi qu'il arrive : elle n'est pas soumise à l'exclusivité, seuls les `cast` le sont.
+- **Les commandes sont résolues dans l'ordre**, mais le tirage est cherché **globalement** : si un tirage
+  empêche une commande suivante de trouver quelqu'un, il est défait et un autre est essayé. Le chargement
+  échoue seulement quand **aucune combinaison** n'existe (par exemple deux variables sur un seul
+  personnage, ou `unique` dans un `{repeat 4}` pour 3 personnages) ; le message nomme la commande.
+- **Dans une bibliothèque** : un `%NOM%` écrit dans un paragraphe tiré par `{pick}` est lui aussi remplacé,
+  à condition que le `{cast NOM}` soit plus haut dans le texte.
+- Comme `pick`, le tirage se fait **une fois par partie** (« Recommencer » pour en changer). Le bouton 🎲
+  affiche une ligne par `cast` (type `cast`, nom de la variable, personnage).
+- La validation vérifie : les mots clés, que chaque personnage de la liste existe, qu'il est désigné sans
+  ambiguïté et une seule fois, que chaque `%NOM%` est déclaré plus haut, et qu'une combinaison existe.
+  Une commande qui contient un `%NOM%` est contrôlée avec un personnage du casting à sa place (le tag d'un
+  `{npc-story}` n'est vérifié qu'une fois le personnage tiré).
+
+Exemple complet : `chatscenarios/demos/demo-cast/`.
 
 ### 2.7 Ce que voit chaque PNJ
 
@@ -446,6 +496,8 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 | Ancienne syntaxe | `[PICK: x]`, `[NPC STARTS]` (à réécrire avec les accolades) |
 | Commande inconnue ou mal écrite | `{teleport}`, `{pick lieu}` (type manquant), `{npc-delta Elena : …}` (visibilité manquante), `{npc-story on Léa}` (tag manquant) |
 | Ancien nom de commande | `{delta-pnj …}` (devenu `{npc-delta …}`) |
+| Variable de casting incorrecte | `{cast A libre}` (mot clé inconnu), personnage inconnu ou ambigu dans la liste, `%A%` avant `{cast A}`, `{cast …}` au milieu d'une phrase, nom de variable invalide |
+| Combinaison de casting impossible | `{cast A (jack)}` puis `{cast B (jack)}` ; `unique` dans un `{repeat 4}` pour 3 personnages ; `{repeat 3}` sur une liste de 2 personnages |
 | Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}`, `{npc-delta …}` ou `{npc-story …}` au milieu d'une phrase |
 | Tag de fiche incorrect | `## SECRET`, `##` sans nom, tag vide, deux tags de même nom dans une fiche (§3) |
 | Tag ou personnage inconnu | `{npc-story on Léa inconnu}` (pas de section `## inconnu` dans sa fiche), `{npc-story on Léa SECRET}` |

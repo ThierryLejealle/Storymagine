@@ -168,7 +168,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         Path temp = null;
         try {
             temp = Files.createTempDirectory("storymagine-validation");
-            List<String> resolved = new PickResolver(new PickFileLibrary(dir), randomness).resolveAll(texts);
+            List<String> resolved = new PickResolver(new PickFileLibrary(dir), randomness, cast).resolveAll(texts);
             for (int i = 0; i < sources.size(); i++) {
                 writeAtomically(temp.resolve(sources.get(i).getFileName()), resolved.get(i));
             }
@@ -213,7 +213,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         if (report.hasErrors()) throw new ScenarioValidationException(report);
         if (texts.stream().noneMatch(PickResolver::containsTag)) return scenarioDir;
 
-        PickResolution resolution = new PickResolver(new PickFileLibrary(scenarioDir), randomness).resolve(texts);
+        PickResolution resolution = new PickResolver(new PickFileLibrary(scenarioDir), randomness, cast).resolve(texts);
         // Draws first : scenario.txt is what marks the run as resolved, so a crash between the two
         // never leaves a resolved scenario without its draws.
         writeAtomically(resolvedDir.resolve(RunLayout.PICKS_FILE), PickDrawsFile.format(resolution.draws()));

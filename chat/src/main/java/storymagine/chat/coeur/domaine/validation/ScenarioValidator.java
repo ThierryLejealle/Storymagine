@@ -3,6 +3,8 @@ package storymagine.chat.coeur.domaine.validation;
 import storymagine.chat.coeur.domaine.activity.ActivityDirective;
 import storymagine.chat.coeur.domaine.activity.ActivityDirectiveMarker;
 import storymagine.chat.coeur.domaine.activity.ActivityResolver;
+import storymagine.chat.coeur.domaine.pick.CastCommand;
+import storymagine.chat.coeur.domaine.pick.CastPool;
 import storymagine.chat.coeur.domaine.pick.PickLibrary;
 import storymagine.chat.coeur.domaine.pick.PickResolver;
 import storymagine.chat.coeur.domaine.pick.RepeatExpander;
@@ -44,12 +46,16 @@ import java.util.regex.Pattern;
 public final class ScenarioValidator {
 
     private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode");
-    private static final Set<String> COMMANDS = Set.of("pick", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
+    private static final Set<String> COMMANDS = Set.of("pick", "cast", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
         "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-do", "repeat", "end-repeat", "n", "item");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
     private static final Pattern COMMAND_START = Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
     private static final Pattern COMMAND_TEXT = Pattern.compile("\\{[^}]*}");
+    /** "%NAME%" (group 1 : NAME) : a character drawn by a {cast}. */
+    private static final Pattern VARIABLE_USE = Pattern.compile("%([A-Za-z][A-Za-z0-9_]*)%");
+    private static final Pattern REPEAT_LINE = Pattern.compile("^\\{\\s*repeat(?![\\p{L}\\p{N}_-])([^}]*)}$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CAST_SOURCE = Pattern.compile("(?:^|\\s)cast\\s+([A-Za-z][A-Za-z0-9_]*)");
 
     public static final String STYLE_FILE = "style.txt";
     /** Beyond this many characters the style advice starts to weigh on a small model's context. */
@@ -66,16 +72,17 @@ public final class ScenarioValidator {
                 checkLine(source.fileName() + ":" + (i + 1), lines[i], cast, library, issues);
             }
         }
-        checkRepeatBlocks(sources, library, issues);
-        if (issues.isEmpty()) checkUniqueDoesNotRunOut(sources, library, issues);
+        checkRepeatBlocks(sources, library, cast, issues);
+        checkVariables(sources, issues);
+        if (issues.isEmpty()) checkUniqueDoesNotRunOut(sources, library, cast, issues);
         return new ScenarioReport(issues);
     }
 
     /** Each file on its own, to name the file : blocks closed, zones inside a block, library long enough, pieces count right. */
-    private static void checkRepeatBlocks(List<ScenarioSource> sources, PickLibrary library, List<ScenarioIssue> issues) {
+    private static void checkRepeatBlocks(List<ScenarioSource> sources, PickLibrary library, Cast cast, List<ScenarioIssue> issues) {
         for (ScenarioSource source : sources) {
             try {
-                new RepeatExpander(library, bound -> 0).expand(List.of(source.text()));
+                new RepeatExpander(library, bound -> 0, cast).expand(List.of(source.text()));
             } catch (IllegalArgumentException | IllegalStateException e) {
                 issues.add(ScenarioIssue.error(source.fileName(), e.getMessage()));
             }
@@ -88,29 +95,84 @@ public final class ScenarioValidator {
         } catch (IllegalArgumentException e) {
             issues.add(ScenarioIssue.error(where, e.getMessage()));
         }
-        Matcher start = COMMAND_START.matcher(line);
+        // A %NAME% stands for a character drawn when the game starts : the line is checked with one of the cast in its place.
+        boolean usesVariable = VARIABLE_USE.matcher(line).find();
+        String checked = usesVariable ? VARIABLE_USE.matcher(line).replaceAll(Matcher.quoteReplacement(standIn(cast))) : line;
+        Matcher start = COMMAND_START.matcher(checked);
         while (start.find()) {
             String name = start.group(1).toLowerCase(Locale.ROOT);
-            Matcher text = COMMAND_TEXT.matcher(line.substring(start.start()));
-            String command = text.find() ? text.group() : line.substring(start.start());
+            Matcher text = COMMAND_TEXT.matcher(checked.substring(start.start()));
+            String command = text.find() ? text.group() : checked.substring(start.start());
             if (name.equals("delta-pnj")) {
                 continue; // the old name is already reported, with the new one, by LegacyCommandSyntax
             }
             if (!COMMANDS.contains(name)) {
-                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, npc-starts, npc-do, "
+                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, cast, npc-starts, npc-do, "
                     + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode)"));
             } else if (REPEAT_COMMANDS.contains(name)) {
                 continue;
             } else if (name.equals("pick")) {
                 checkPick(where, command, library, issues);
+            } else if (name.equals("cast")) {
+                checkCast(where, checked, cast, issues);
             } else if (name.equals("npc-starts") || name.equals("npc-do")) {
-                checkNpcStarts(where, line, cast, issues, name);
+                checkNpcStarts(where, checked, cast, issues, name);
             } else if (ACTIVITY_COMMANDS.contains(name)) {
-                checkActivity(where, line, cast, issues);
+                checkActivity(where, checked, cast, issues);
             } else if (name.equals("npc-story")) {
-                checkStory(where, line, cast, issues);
+                checkStory(where, checked, cast, issues, usesVariable);
             } else {
-                checkDelta(where, line, cast, issues);
+                checkDelta(where, checked, cast, issues);
+            }
+        }
+    }
+
+    private static String standIn(Cast cast) {
+        return cast.npcs().isEmpty() ? "x" : cast.npcs().get(0).label();
+    }
+
+    /** The command is well formed and every character it lists exists, once. Whether a combination exists is checked by the draw itself. */
+    private static void checkCast(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+        try {
+            Optional<CastCommand> command = CastCommand.parseLine(line);
+            if (command.isEmpty()) return;
+            try {
+                CastPool.of(command.get().candidates(), cast);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(command.get().source() + " : " + e.getMessage());
+            }
+        } catch (IllegalArgumentException e) {
+            issues.add(ScenarioIssue.error(where, e.getMessage()));
+        }
+    }
+
+    /** %NAME% must be declared by a {cast NAME} (or a {repeat ... cast NAME}) above it, and is forgotten at the end of the repeat block that declared it. */
+    private static void checkVariables(List<ScenarioSource> sources, List<ScenarioIssue> issues) {
+        Set<String> declared = new HashSet<>();
+        Set<String> beforeBlock = null;
+        for (ScenarioSource source : sources) {
+            String[] lines = source.text().replace("\r\n", "\n").replace("\r", "\n").split("\n", -1);
+            for (int i = 0; i < lines.length; i++) {
+                String where = source.fileName() + ":" + (i + 1);
+                Matcher use = VARIABLE_USE.matcher(lines[i]);
+                while (use.find()) {
+                    if (!declared.contains(use.group(1).toLowerCase(Locale.ROOT))) {
+                        issues.add(ScenarioIssue.error(where, use.group() + " n'est pas declaree avant cette ligne : ecrire {cast "
+                            + use.group(1) + "} plus haut (ou {repeat ... cast " + use.group(1) + "})"));
+                    }
+                }
+                Matcher repeat = REPEAT_LINE.matcher(lines[i].strip());
+                if (repeat.matches()) {
+                    beforeBlock = new HashSet<>(declared);
+                    Matcher castSource = CAST_SOURCE.matcher(repeat.group(1));
+                    if (castSource.find()) declared.add(castSource.group(1).toLowerCase(Locale.ROOT));
+                } else if (lines[i].strip().toLowerCase(Locale.ROOT).startsWith("{end-repeat") && beforeBlock != null) {
+                    declared = beforeBlock;
+                    beforeBlock = null;
+                } else {
+                    String variable = declaredBy(lines[i]);
+                    if (variable != null) declared.add(variable);
+                }
             }
         }
     }
@@ -147,13 +209,24 @@ public final class ScenarioValidator {
         }
     }
 
-    private static void checkStory(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+    /** The lowercase variable a "{cast NAME ...}" line declares ; null for any other line, or a cast badly written (reported by checkLine). */
+    private static String declaredBy(String line) {
+        try {
+            return CastCommand.parseLine(line).map(command -> command.variable().toLowerCase(Locale.ROOT)).orElse(null);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** variableUsed : the character is a %NAME% drawn later, so whether it has the tag cannot be known here (ChatScenario checks it once drawn). */
+    private static void checkStory(String where, String line, Cast cast, List<ScenarioIssue> issues, boolean variableUsed) {
         try {
             List<StoryDirective> directives = StoryDirectiveMarker.extract(line + "\n").directives();
             if (directives.isEmpty()) {
                 issues.add(ScenarioIssue.error(where, "{npc-story} doit etre seul sur sa ligne : {npc-story on|off nom tag}"));
             }
             for (StoryDirective directive : directives) {
+                if (variableUsed) continue;
                 String command = "{npc-story " + (directive.on() ? "on " : "off ") + directive.npcName() + " " + directive.tag() + "}";
                 Optional<Npc> npc = cast.findByName(directive.npcName());
                 if (directive.tag().equalsIgnoreCase("SECRET")) {
@@ -183,9 +256,9 @@ public final class ScenarioValidator {
     }
 
     /** Every command is fine on its own ; together, "unique" may still ask for more than a library holds. */
-    private static void checkUniqueDoesNotRunOut(List<ScenarioSource> sources, PickLibrary library, List<ScenarioIssue> issues) {
+    private static void checkUniqueDoesNotRunOut(List<ScenarioSource> sources, PickLibrary library, Cast cast, List<ScenarioIssue> issues) {
         try {
-            new PickResolver(library, bound -> 0).resolve(sources.stream().map(ScenarioSource::text).toList());
+            new PickResolver(library, bound -> 0, cast).resolve(sources.stream().map(ScenarioSource::text).toList());
         } catch (IllegalArgumentException | IllegalStateException e) {
             issues.add(ScenarioIssue.error("scenario", e.getMessage()));
         }

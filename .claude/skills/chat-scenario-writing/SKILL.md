@@ -161,7 +161,19 @@ recopié une fois par paragraphe de `picks/nom.txt` (tout le fichier sans N). `{
 `{item}` = paragraphe entier, `{item1}`, `{item2}`… = morceaux d'un paragraphe, séparés par une ligne qui ne
 contient qu'un `-`. Tous les paragraphes doivent avoir autant de morceaux que le plus grand `{itemK}` du
 gabarit. Déplié une fois par partie, avant `pick`. Exemple : `chatscenarios/demos/demo-repeat/`. Détails :
-`chatscenarios/guide-redaction-chat.md` §2.6 bis.
+`chatscenarios/guide-redaction-chat.md` §2.6 bis. Deux autres formes : `{repeat 3}` (3 copies sans fichier,
+seul `{n}` existe) et `{repeat order|random [N] cast NOM [(jack, mia)]}` (une copie par personnage).
+
+### Choisir un personnage : `{cast NOM [unique] [reuse-possible] [(jack, mia)]}` et `%NOM%`
+
+Une ligne seule (qui ne s'affiche pas) choisit un personnage du casting (la liste facultative le restreint ;
+un seul mot par personnage) et le garde dans `%NOM%`, utilisable plus bas dans le texte, les `[...]` et les
+commandes (`{npc-starts %NOM%}`). Par défaut le personnage est **différent de ceux des autres variables** ;
+`reuse-possible` le permet ; `unique` : la variable ne reprend jamais un personnage déjà eu (dans un `repeat`,
+un différent par copie). Dans `{repeat order cast CHEF}`, `%CHEF%` est le personnage de la copie et un
+`{cast COMMIS}` du bloc en prend un autre ; les variables d'une copie sont oubliées à sa fin. Le tirage est
+cherché globalement (retour en arrière) : erreur seulement si aucune combinaison n'existe. Une fois par
+partie. Exemple : `chatscenarios/demos/demo-cast/`. Détails : guide §2.6 ter.
 
 ### Mode DO d'un PNJ : `{npc-mode do on|off nom|*}`
 

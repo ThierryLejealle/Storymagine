@@ -1,0 +1,25 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un atelier de cuisine amateur, un samedi après-midi.
+Prémisse : Alex participe à un atelier de cuisine avec Jack, Mia et John. À chaque recette, l'un d'eux est le chef du jour et un autre est son commis.
+Ton : Léger et bienveillant.
+
+# Les recettes
+{repeat order cast CHEF}
+## Recette {n} : le tour de %CHEF%
+{cast COMMIS}
+{npc-starts %CHEF%}
+[C'est la recette {n}. %CHEF% est le chef du jour et %COMMIS% est son commis.]
+Point de départ : %CHEF% présente la recette, %COMMIS% prépare les ingrédients.
+Ce qui doit se passer : ils cuisinent ensemble, Alex goûte le plat et donne son avis.
+Quand écrire [NEXT ACT] : Dès qu'Alex a goûté le plat.
+{end-repeat}
+
+# Le dessert
+{cast PATISSIER (mia, john)}
+{npc-starts %PATISSIER%}
+[Pour finir, %PATISSIER% prépare le dessert pour tout le monde.]
+Point de départ : %PATISSIER% prépare le dessert pendant que les autres rangent.
+Ce qui doit se passer : Alex goûte le dessert et remercie tout le monde.

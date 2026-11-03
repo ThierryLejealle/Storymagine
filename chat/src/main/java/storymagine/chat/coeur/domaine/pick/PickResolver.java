@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.pick;
 
+import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.ports.RandomnessPort;
 
 import java.util.ArrayList;
@@ -19,8 +20,8 @@ import java.util.stream.IntStream;
  * command hands out counts as "already drawn" for a later "unique" on the same library, which fails
  * when nothing is left. Several paragraphs are joined by a blank line. A drawn paragraph is inserted
  * as is : a command inside it is not resolved. The "{repeat}" blocks are unfolded first (see
- * RepeatExpander), so a "{pick}" written in a block is drawn once per copy. Pure : same library and
- * same draws, same result.
+ * RepeatExpander), so a "{pick}" written in a block is drawn once per copy. The "{cast}" commands run
+ * last (see CastResolver). Pure : same library and same draws, same result.
  */
 public final class PickResolver {
 
@@ -31,14 +32,20 @@ public final class PickResolver {
 
     private final PickLibrary library;
     private final RandomnessPort randomness;
+    private final Cast cast;
 
     public PickResolver(PickLibrary library, RandomnessPort randomness) {
+        this(library, randomness, new Cast(List.of()));
+    }
+
+    public PickResolver(PickLibrary library, RandomnessPort randomness, Cast cast) {
         this.library = library;
         this.randomness = randomness;
+        this.cast = cast;
     }
 
     public static boolean containsTag(String text) {
-        return COMMAND.matcher(text).find() || RepeatExpander.containsTag(text);
+        return COMMAND.matcher(text).find() || RepeatExpander.containsTag(text) || CastCommand.appearsIn(text);
     }
 
     /**
@@ -51,12 +58,18 @@ public final class PickResolver {
 
     /** Same as resolveAll, and keeps the draws made, in the order of the commands. */
     public PickResolution resolve(List<String> texts) {
-        RepeatExpansion unfolded = new RepeatExpander(library, randomness).expand(texts);
+        RepeatExpansion unfolded = new RepeatExpander(library, randomness, cast).expand(texts);
         Map<PickTag, Set<Integer>> drawn = new HashMap<>();
         List<PickDraw> draws = new ArrayList<>(unfolded.draws());
         List<String> resolved = new ArrayList<>();
         for (String text : unfolded.texts()) {
             resolved.add(COMMAND.matcher(text).replaceAll(match -> Matcher.quoteReplacement(draw(match, drawn, draws))));
+        }
+        // Last : the "{cast}" commands and their %NAME% variables, so a variable written in a paragraph drawn above is replaced too.
+        if (resolved.stream().anyMatch(CastResolver::isNeeded)) {
+            CastResolver.Resolution casted = new CastResolver(cast, randomness).resolve(resolved);
+            resolved = new ArrayList<>(casted.texts());
+            draws.addAll(casted.draws());
         }
         return new PickResolution(resolved, new PickDraws(draws));
     }

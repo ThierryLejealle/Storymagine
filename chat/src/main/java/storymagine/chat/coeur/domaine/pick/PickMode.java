@@ -6,18 +6,20 @@ import java.util.Locale;
  * How a "{pick mode name}" command draws from its library : random (one paragraph, repeats allowed),
  * unique (one paragraph never handed out yet), all (every paragraph, file order, no chance involved)
  * or a number N (N different paragraphs, drawn at random). label() is the mode as the author wrote it.
- * Two more kinds only label the draws of a "{repeat ...}" block (see RepeatMode) : they are recorded, never
- * written in a "{pick ...}" command.
+ * Three more kinds only label draws that are not a "{pick ...}" : the two of a "{repeat ...}" block (see
+ * RepeatMode) and the "{cast ...}" commands (see CastCommand) : they are recorded, never written in a
+ * "{pick ...}" command.
  */
 public record PickMode(Kind kind, int count) {
 
-    public enum Kind { RANDOM, UNIQUE, ALL, COUNT, REPEAT_ORDER, REPEAT_RANDOM }
+    public enum Kind { RANDOM, UNIQUE, ALL, COUNT, REPEAT_ORDER, REPEAT_RANDOM, CAST }
 
     public static final PickMode RANDOM = new PickMode(Kind.RANDOM, 1);
     public static final PickMode UNIQUE = new PickMode(Kind.UNIQUE, 1);
     public static final PickMode ALL    = new PickMode(Kind.ALL, 0);
     public static final PickMode REPEAT_ORDER  = new PickMode(Kind.REPEAT_ORDER, 0);
     public static final PickMode REPEAT_RANDOM = new PickMode(Kind.REPEAT_RANDOM, 0);
+    public static final PickMode CAST = new PickMode(Kind.CAST, 1);
 
     public static PickMode ofCount(int count) {
         if (count < 1) throw new IllegalArgumentException("Un nombre de tirages doit etre superieur ou egal a 1 : " + count);
@@ -42,6 +44,7 @@ public record PickMode(Kind kind, int count) {
         return switch (word.strip().toLowerCase(Locale.ROOT)) {
             case "repeat-order"  -> REPEAT_ORDER;
             case "repeat-random" -> REPEAT_RANDOM;
+            case "cast"          -> CAST;
             default -> parse(word);
         };
     }
@@ -54,6 +57,7 @@ public record PickMode(Kind kind, int count) {
             case COUNT  -> Integer.toString(count);
             case REPEAT_ORDER  -> "repeat-order";
             case REPEAT_RANDOM -> "repeat-random";
+            case CAST          -> "cast";
         };
     }
 }

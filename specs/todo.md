@@ -40,6 +40,17 @@ Reste a faire / a decider :
 - Validation : verifications possibles en plus (premier acte qui ne presente pas tous les PNJ de facon plus
   fine, blocs `[...]` mal fermes, fiches sans section attendue, personnages jamais utilises).
 
+## Chat - variables de casting (realise le 2026-11-03)
+
+Realise : `{cast NOM [unique] [reuse-possible] [(liste)]}`, `%NOM%`, `{repeat … cast NOM}`, `{repeat N}`, retour en
+arriere sur les tirages (voir `evols/2026-11-03-variables-de-casting-cast.md`, guide §2.6 ter, demo `demo-cast`).
+
+Reste a faire / a decider :
+
+- Essayer avec un vrai LLM une partie de `demo-cast`.
+- Bibliotheques communes `/lib/...` : evolution suivante (fiche `2026-11-03-bibliotheque-commune-lib-2`).
+- Une variable pour une valeur autre qu'un personnage (un lieu tire une fois, reutilise plus bas) : non fait.
+
 ## Chat - sections de fiche et noms de commandes (realise le 2026-11-02)
 
 Realise : `## tag` dans les fiches et `{npc-story on|off nom tag}` (etat qui se prolonge, public ou secret selon

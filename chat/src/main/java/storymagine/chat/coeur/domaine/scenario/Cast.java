@@ -34,6 +34,13 @@ public final class Cast {
         return npcs.stream().filter(n -> matches(n, wanted)).findFirst();
     }
 
+    /** Every Npc the name could mean (see findByName) : more than one means the name is ambiguous. */
+    public List<Npc> findAllByName(String name) {
+        String wanted = normalize(name);
+        if (wanted.isEmpty()) return List.of();
+        return npcs.stream().filter(n -> matches(n, wanted)).toList();
+    }
+
     private static boolean matches(Npc npc, String wanted) {
         if (normalize(npc.id()).equals(wanted) || normalize(npc.name()).equals(wanted)) return true;
         for (String word : normalize(npc.name()).split("\\s+")) {

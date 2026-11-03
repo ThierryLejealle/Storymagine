@@ -8,6 +8,7 @@ de `chat.bat`, choisir « 3 - Démos du projet ». Chaque dossier a un `README.m
 | `demo-pick` | un goûter | `pick` | §2.6 |
 | `demo-repeat` | le ménage du samedi | `repeat` | §2.6 bis |
 | `demo-actes` | une promenade | actes, `[...]`, `[NEXT ACT]` | §2.3 à §2.5 |
+| `demo-cast` | un atelier de cuisine | `cast`, `%NOM%`, `repeat … cast` | §2.6 ter |
 | `demo-multi-fichiers` | une salade de fruits | `scenario-N.txt` | §1 |
 | `demo-pnj` | deux amis au café | plusieurs personnages | §4.2 |
 | `demo-npc-starts` | une boulangère | `npc-starts` | §4.5 |

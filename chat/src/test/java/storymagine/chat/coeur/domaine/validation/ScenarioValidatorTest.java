@@ -170,6 +170,43 @@ class ScenarioValidatorTest {
     }
 
     @Test
+    void castIsCheckedLineByLineAndItsVariablesMustBeDeclaredAbove() {
+        assertTrue(check("# Un\n{cast A (elena)}\n{cast B}\n{npc-starts %A%}\nTexte avec %A% et %B%.\n").issues().isEmpty());
+
+        ScenarioReport report = check("# Un\n%A% entre.\n{cast A (zorglub)}\n{cast B libre}\n{cast C}\nEn {cast D} milieu\n");
+
+        List<String> where = report.errors().stream().map(ScenarioIssue::where).sorted().toList();
+        assertEquals(List.of("scenario.txt:2", "scenario.txt:3", "scenario.txt:4", "scenario.txt:6"), where, report.issues().toString());
+    }
+
+    @Test
+    void aVariableOfARepeatBlockIsForgottenAfterTheBlock() {
+        assertTrue(check("# Un\n{repeat order cast H}\n%H%\n{end-repeat}\n").issues().isEmpty());
+
+        ScenarioReport report = check("# Un\n{repeat order cast H}\n%H%\n{end-repeat}\n%H%\n");
+
+        assertEquals(List.of("scenario.txt:5"), report.errors().stream().map(ScenarioIssue::where).toList(), report.issues().toString());
+    }
+
+    @Test
+    void anImpossibleCastCombinationIsAnErrorNamingTheCommand() {
+        ScenarioReport report = check("# Un\n{cast A (elena)}\n{cast B (elena)}\n");
+
+        assertEquals(1, report.errors().size(), report.issues().toString());
+        assertTrue(report.errors().get(0).message().contains("{cast B (elena)}"), report.errors().get(0).message());
+    }
+
+    @Test
+    void theCommandsOfARepeatOverTheCastAreCheckedToo() {
+        assertTrue(check("# Un\n{repeat 2}\nEtape {n}\n{end-repeat}\n{repeat random 2 cast H (elena, marcus)}\n%H%\n{end-repeat}\n").issues().isEmpty());
+
+        ScenarioReport report = check("# Un\n{repeat order 3 cast H (elena, marcus)}\n%H%\n{end-repeat}\n");
+
+        assertEquals(1, report.errors().size(), report.issues().toString());
+        assertTrue(report.errors().get(0).message().contains("2 personnage"), report.errors().get(0).message());
+    }
+
+    @Test
     void theOldDeltaNameIsRefusedAndTheNewNameIsGiven() {
         ScenarioReport report = check("# Un\n{delta-pnj public Elena : Elle boite.}\n");
 

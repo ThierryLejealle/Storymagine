@@ -172,6 +172,26 @@ Syntaxe, format de `picks/nom.txt` et exemple complet : `chatscenarios/guide-red
   (le `{pick}` d'un gabarit est donc tiré par copie) ; les tirages des blocs précèdent ceux des `pick`
   dans `picks.txt`, avec les types `repeat-order` / `repeat-random` (`PickMode.parseRecorded`). Le
   scénario déplié est ce qu'écrit `resolved/` : le jeu ne voit jamais de `repeat`.
+- **Variables de casting `{cast NOM [unique] [reuse-possible] [(liste)]}` et `%NOM%`** (guide §2.6 ter) :
+  concepts `CastCommand` (une ligne ; erreurs de syntaxe), `CastPool` (la liste ou tout le casting, un mot par
+  personnage via `Cast.findAllByName` : inconnu, ambigu ou doublon = erreur), `CastResolver`. Ordre du
+  pipeline dans `PickResolver.resolve` : dépliage des `repeat`, tirages `pick`, puis casts (un `%NOM%` écrit
+  dans un paragraphe tiré est donc remplacé aussi). `RepeatExpander` accepte `{repeat N}` (copies sans
+  éléments) et `{repeat order|random [N] cast NOM [(liste)]}` ; une copie qui contient un `cast` ou lie une
+  variable est entourée de deux lignes internes (`{copy-start}` / `{copy-end}`, plus `{cast-bind NOM id}` pour
+  la variable du repeat) que lit `CastResolver` et que l'auteur n'écrit jamais (inconnues du validateur).
+  `CastResolver` lit les lignes dans l'ordre, puis cherche les personnages **tous ensemble par retour en
+  arrière** (ordre des candidats mélangé par `RandomnessPort`, budget `MAX_NODES` de 200 000 appels) : une
+  commande sans candidat défait le tirage précédent. Candidats d'une commande = sa liste, moins les
+  personnages tenus par les autres variables (sauf `reuse-possible`), moins ceux déjà eus par cette variable
+  (si `unique`) ; l'état (variables par copie, historique par variable) est immuable, ce qui rend le retour en
+  arrière gratuit. La variable d'un `repeat … cast` est liée sans contrainte. Échec : `IllegalStateException`
+  nommant la commande la plus avancée qui n'a trouvé personne. `PickMode.CAST` étiquette les tirages (🎲 :
+  type `cast`, tag = nom de variable).
+  Validation : `ScenarioValidator.checkLine` contrôle la syntaxe et la liste de chaque `{cast`,
+  `checkVariables` (par fichier et ligne, une variable d'un bloc `repeat` est oubliée à son `{end-repeat}`)
+  les `%NOM%` ; une ligne qui contient un `%NOM%` est contrôlée avec un personnage du casting à sa place ;
+  `checkUniqueDoesNotRunOut` lance la résolution complète (hasard fixé) et rapporte une combinaison impossible.
 - **Debug 🐞** : `ChatService.scenarioPrompt` → `GET /scenario-prompt` : la prémisse et le texte de l'acte
   courant tels que `ChatPromptBuilder` les insère (aucune requête LLM, pas d'historique).
 - **Cycle de vie** : `resolved/` fait partie de `current/` — supprimé par `resetSession` (donc tirage
