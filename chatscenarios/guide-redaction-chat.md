@@ -4,7 +4,7 @@ Référence pour écrire ou modifier un scénario dans `chatscenarios/`. Les fai
 vérifiés dans le code.
 
 **Plan.** *Spécification* (ce que fait l'appli) : §1 fichiers, §2 format de `scenario.txt`, §3 fiche
-personnage, §4 mécanismes de jeu, §5 vérification, §6 dossier `run/`. *Conseils et pièges*
+personnage, §4 mécanismes de jeu, §5 vérification, §6 dossier `run/` (§2.0 : toutes les commandes en un tableau). *Conseils et pièges*
 (recommandations, hors spécification) : §7. À lire avant d'écrire les actes : §2.3, §2.7 et §7.
 
 **Maintenance.** Ce guide est mis à jour à chaque fonctionnalité du module chat qui touche l'auteur
@@ -85,6 +85,33 @@ Elena a volé autrefois dans un temple et craint d'être reconnue.
 - Sans ligne `# SECRET`, toute la fiche est publique.
 
 ## 2. Format de `scenario.txt`
+
+### 2.0 Toutes les commandes en un coup d'œil
+
+Une commande s'écrit entre accolades `{…}`. Les commandes `npc-…` et `cast` commencent sur **une ligne seule**
+(seul le texte de `{npc-delta}` peut s'étendre sur plusieurs lignes, jusqu'au `}`) ;
+une commande inconnue ou mal écrite empêche le chargement (§2.9). Les lignes `[…]` et `Quand écrire [NEXT ACT]`
+ne sont pas des commandes entre accolades mais font partie de la même boîte à outils.
+
+| Famille | Commande | Rôle | Où / portée | § |
+|---|---|---|---|---|
+| Texte aléatoire | `{pick random\|unique\|N\|all nom}` | Insère un ou plusieurs paragraphes d'un fichier `picks/nom.txt` (ou `/lib/nom`, commun à tous les scénarios) | Dans le texte ; tirage figé pour la partie | 2.6 |
+| | `{repeat order\|random [N] nom}` … `{end-repeat}` | Répète un gabarit, une copie par paragraphe du fichier | Bloc de lignes ; `{n}` = numéro, `{item}` = paragraphe | 2.6 bis |
+| | `{repeat N}` … `{end-repeat}` | Répète un gabarit N fois, sans fichier | Bloc de lignes ; `{n}` seulement | 2.6 bis |
+| Casting | `{cast NOM [unique] [reuse-possible] [(a, b, c)]}` | Choisit un personnage (autre que ceux des autres variables) et l'appelle `%NOM%` | Ligne seule ; `%NOM%` ensuite dans le texte et les commandes | 2.6 ter |
+| | `{repeat order\|random [N] cast NOM}` … `{end-repeat}` | Une copie par personnage du casting | Bloc de lignes ; `%NOM%` = le personnage de la copie | 2.6 ter |
+| Fiche d'un personnage | `{npc-delta public\|secret nom : texte}` | **Ajoute** un texte, sur une ou plusieurs lignes, à la fiche (jamais de retrait) | Dès l'acte qui l'écrit, pour tous les suivants | 2.8 |
+| | `{npc-story on\|off nom tag}` | Active ou désactive une section `## tag` de la fiche | Dès l'acte qui l'écrit, jusqu'au prochain `on`/`off`, même hors de ce titre | 2.8 bis |
+| Présence en scène | `{npc-active\|present\|passive\|absent noms}` | Fixe le niveau d'activité de personnages | Le titre qui l'écrit et ses sous-actes | 2.11 |
+| | `{npc-reset}` | Tout le monde repasse en `present` | Idem | 2.11 |
+| | `{npc-mode do on\|off nom\|*}` | Un personnage tient la plume du narrateur (mode DO) tant que le mode est `on` | Le titre qui l'écrit et ses sous-actes | 2.12 |
+| Ouverture | `{npc-starts [Nom]}` | Un personnage ouvre la scène en parlant le premier, sans message du joueur | En-tête (ouvre l'histoire) ou acte (ouvre l'acte) | 4.5 |
+| | `{npc-do [Nom]}` | Idem, mais avec la plume du narrateur (bulle `DO:` vide) | Idem | 4.5 |
+| Ce que voit le joueur | `[texte]` | Ligne affichée au joueur à l'entrée de l'acte, aussi envoyée aux PNJ | Corps d'un acte | 2.4 |
+| Progression | `Quand écrire [NEXT ACT] : condition` | Condition de passage à l'acte suivant, évaluée par l'analyse 🔍 | Dans la feuille (pas dans un parent) | 4.5 |
+
+Pour les noms de personnage, les commandes acceptent l'id de fichier, le nom complet ou **un seul mot** du nom
+(`Elena` pour `Elena Voss`). Un nom inconnu empêche le chargement.
 
 ### 2.1 En-tête : lignes `Joueur` et `Langue`
 
@@ -450,8 +477,9 @@ dans un gabarit `{repeat}`, §2.6 bis), et il complète une fiche partagée entr
 modifier.
 
 Ajoute une ligne à la fiche d'un personnage **à partir de l'acte où la commande est écrite**, pour tous
-les actes suivants. La commande tient sur **une ligne seule** ; la visibilité est obligatoire (deuxième
-mot), le nom du personnage vient en troisième.
+les actes suivants. La commande **commence sur sa propre ligne** et se termine à son `}` : son texte peut
+tenir sur **plusieurs lignes**. La visibilité est obligatoire (deuxième mot), le nom du personnage vient en
+troisième.
 
 > Ancien nom : `{delta-pnj …}` est refusé au chargement avec le message « la commande s'appelle maintenant
 > npc-delta ». Remplacer le nom, le reste de la commande ne change pas.
@@ -459,7 +487,16 @@ mot), le nom du personnage vient en troisième.
 ```
 {npc-delta public Elena : Elle a perdu un œil dans l'embuscade.}
 {npc-delta secret Marcus : Il a reconnu le chef des bandits et décide de le suivre.}
+
+{npc-delta secret Elena : Elle veut quitter le groupe.
+Elle ne le dira à personne avant d'avoir retrouvé sa sœur.
+Si on la questionne, elle change de sujet.}
 ```
+
+Sur plusieurs lignes, les retours à la ligne sont conservés dans la fiche (les espaces en début de ligne sont
+retirés). Le texte ne peut pas contenir de `}` (il ferme la commande), et aucune de ses lignes ne doit
+commencer par `#` (ce serait un titre, qui couperait l'acte). Rien ne peut suivre le `}` sur sa ligne. Une
+commande jamais refermée est signalée par la validation, à la ligne où elle commence.
 
 | Visibilité | Effet |
 |---|---|
@@ -528,7 +565,7 @@ leur fichier et leur ligne ; une erreur empêche le chargement.
 | Ancien nom de commande | `{delta-pnj …}` (devenu `{npc-delta …}`) |
 | Variable de casting incorrecte | `{cast A libre}` (mot clé inconnu), personnage inconnu ou ambigu dans la liste, `%A%` avant `{cast A}`, `{cast …}` au milieu d'une phrase, nom de variable invalide |
 | Combinaison de casting impossible | `{cast A (jack)}` puis `{cast B (jack)}` ; `unique` dans un `{repeat 4}` pour 3 personnages ; `{repeat 3}` sur une liste de 2 personnages |
-| Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}`, `{npc-delta …}` ou `{npc-story …}` au milieu d'une phrase |
+| Commande qui doit être seule sur sa ligne | `{npc-starts}`, `{npc-do}` ou `{npc-story …}` au milieu d'une phrase ; `{npc-delta …}` au milieu d'une phrase, suivi de texte après son `}`, ou jamais refermé |
 | Tag de fiche incorrect | `## SECRET`, `##` sans nom, tag vide, deux tags de même nom dans une fiche (§3) |
 | Tag ou personnage inconnu | `{npc-story on Léa inconnu}` (pas de section `## inconnu` dans sa fiche), `{npc-story on Léa SECRET}` |
 | Fichier ou paragraphes manquants | `picks/x.txt` ou `lib/x.txt` (`/lib/x`) absent, `{pick 9 x}` pour 3 paragraphes, trop de `unique` |

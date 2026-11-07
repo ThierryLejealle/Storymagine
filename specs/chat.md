@@ -249,6 +249,10 @@ cliquant la vignette (`POST /cycle-activity`) : `ForcedActivity`, accroché au t
 disparaît quand l'histoire en sort, persisté dans `state.txt`. Pastille : point blanc explicite, gris
 implicite, rouge forcé. Détail : `chatscenarios/guide-redaction-chat.md` §2.11 et §4.
 
+**Popup de survol d'une vignette** : statut (niveau et origine), puis la partie publique de la fiche à l'acte
+courant (`NpcView.publicSheet` = `ChatScenario.sheetAt(...).publicInfo()`, tags et deltas publics appliqués,
+lignes de titre `#` retirées par `ChatWebServer.withoutHeadings`). Le `# SECRET` n'est jamais envoyé à la page.
+
 **Continue** : `ChatService.continueScene` (`POST /continue`, bouton ▶ Continue) joue un tour de PNJ sans
 message du joueur : `SpeakerSelector.select` avec un message vide, jamais d'interjection, aucun tour joueur
 (`ChatTurnResult.playerTurn` nul). Le prompt reste le prompt habituel. Annuler et Régénérer inchangés : ils
@@ -490,7 +494,8 @@ Un scénario à l'ancienne structure (fichiers de session ou dossiers générés
 Syntaxe et usage : `chatscenarios/guide-redaction-chat.md` §2.8. Ici, la mécanique.
 
 - **Concepts** : `CharacterDelta` (visibilité `PUBLIC`/`SECRET`, nom, texte), `CharacterDeltaMarker`
-  (extrait les lignes seules et complètes ; toute occurrence restante de `{npc-delta` est une erreur),
+  (extrait les commandes commençant sur leur propre ligne et fermées par `}`, texte sur une ou plusieurs lignes ;
+  toute occurrence restante de `{npc-delta` est une erreur ; la validation lit le bloc jusqu'au `}`),
   `ScenarioAct.deltas` (deltas des nœuds nouvellement entrés, comme les beats et l'ouverture),
   `ChatScenario.sheetAt(npc, acte)`.
 - **Chargement** : `ScenarioOutlineParser` retire les lignes du corps de chaque titre (le texte d'acte va à

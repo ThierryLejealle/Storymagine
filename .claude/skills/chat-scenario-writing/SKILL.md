@@ -133,6 +133,24 @@ naturelle » : imprécis, à éviter.
   phrase (`Quand écrire [NEXT ACT] : ...`) — c'est ce qui l'empêche d'être pris pour une
   réplique `[...]` à afficher.
 
+### Toutes les commandes en un coup d'œil
+
+Les commandes `{…}` `npc-…` et `cast` tiennent sur une ligne seule. Détail et portée : `chatscenarios/guide-redaction-chat.md` §2.0.
+
+| Famille | Commande | Rôle |
+|---|---|---|
+| Texte aléatoire | `{pick random\|unique\|N\|all nom}` | Paragraphes d'un fichier `picks/nom.txt` (ou `/lib/nom`) |
+| | `{repeat order\|random [N] nom}` … `{end-repeat}` | Gabarit répété ; `{n}`, `{item}` |
+| | `{repeat N}` … `{end-repeat}` | Gabarit répété N fois, sans fichier |
+| Casting | `{cast NOM [unique] [reuse-possible] [(a, b)]}` | Choisit un personnage, `%NOM%` ensuite |
+| | `{repeat order\|random [N] cast NOM}` … `{end-repeat}` | Une copie par personnage |
+| Fiche | `{npc-delta public\|secret nom : texte}` | Ajoute un texte (une ou plusieurs lignes) à la fiche (jamais de retrait) |
+| | `{npc-story on\|off nom tag}` | Active/désactive une section `## tag` |
+| Présence | `{npc-active\|present\|passive\|absent noms}`, `{npc-reset}` | Niveau d'activité par titre |
+| | `{npc-mode do on\|off nom\|*}` | Le PNJ tient la plume du narrateur |
+| Ouverture | `{npc-starts [Nom]}`, `{npc-do [Nom]}` | Un PNJ parle en premier (le second avec la plume) |
+| Joueur / progression | `[texte]`, `Quand écrire [NEXT ACT] : …` | Ligne affichée au joueur ; condition de l'acte suivant |
+
 ### Faire parler un PNJ en premier : `{npc-starts}` ou `{npc-do}`
 
 Toutes les commandes de l'auteur s'écrivent entre **accolades** (`[...]` reste réservé à la narration
@@ -200,8 +218,9 @@ réponse), sinon elle disparaît entière. Guide §2.10.
 
 ### Faire évoluer un personnage : `{npc-delta public|secret nom : texte}`
 
-Le petit delta : une ligne seule dans un acte ajoute une ligne à la fiche du personnage à partir de cet
-acte : `public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel
+Le petit delta : une commande qui commence sur sa propre ligne dans un acte, fermée par son `}` (son texte
+peut tenir sur plusieurs lignes, sans `}` ni ligne commençant par `#`), ajoute un texte à la fiche du
+personnage à partir de cet acte : `public` (tout le monde la lit : blessure, changement visible) ou `secret` (seul lui : nouvel
 objectif, découverte gardée pour soi). La visibilité est obligatoire. La ligne est retirée du texte de
 l'acte, donc un secret ne fuit pas. Il sait ajouter, jamais retirer ; son texte peut dépendre d'un tirage
 (`{repeat}`) et il complète une fiche partagée sans la modifier. Ancien nom `{delta-pnj}` : refusé.
