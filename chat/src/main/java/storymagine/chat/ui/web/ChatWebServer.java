@@ -594,8 +594,17 @@ public class ChatWebServer {
                 activity.levelOf(npc.id()).keyword(),
                 activity.stateOf(npc.id()).source().name().toLowerCase(java.util.Locale.ROOT),
                 scenarioActivity.levelOf(npc.id()).keyword(),
-                session.npcIdsInMode(NpcMode.DO).contains(npc.id())))
+                session.npcIdsInMode(NpcMode.DO).contains(npc.id()),
+                withoutHeadings(session.scenario().sheetAt(npc, session.currentAct()).publicInfo())))
             .toList();
+    }
+
+    /** The sheet text without its "#" heading lines (the name is already on the vignette), blank edges trimmed. */
+    static String withoutHeadings(String sheet) {
+        return sheet.lines()
+            .filter(line -> !line.stripLeading().startsWith("#"))
+            .collect(java.util.stream.Collectors.joining("\n"))
+            .strip();
     }
 
     /** Display-only title of the current act (see ScenarioAct.title), null if there is none active. */

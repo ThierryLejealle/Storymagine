@@ -147,6 +147,12 @@ button:disabled{background:#9ca3af;cursor:default}
 .npc-badge.explicit::after{background:#fff}
 .npc-badge.forced::after{background:#ef4444}
 .npc-badge.implicit{opacity:.8}
+/* Popup au survol d'une vignette : statut puis partie publique de la fiche (jamais le SECRET). */
+#npcPopup{position:fixed;z-index:50;display:none;max-width:22rem;max-height:60vh;overflow-y:auto;background:#fff;
+            border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.15);padding:.5rem .65rem;
+            font-size:.78rem;line-height:1.35;color:#374151;pointer-events:none}
+#npcPopup .npc-popup-status{color:#6b7280;font-style:italic}
+#npcPopup .npc-popup-sheet{margin-top:.4rem;white-space:pre-wrap}
 .cast-empty{font-size:.72rem;color:#9ca3af;font-style:italic}
 .speaker-label{font-size:.72rem;font-weight:700;color:#6b7280;margin-bottom:.25rem}
 .speaker-row{display:flex;align-items:center;gap:.35rem}
@@ -488,7 +494,38 @@ const ACTIVITY_SOURCE_HELP = {
   forced: 'forcé par vous (cliquer fait défiler, jusqu\'au retour au scénario)'
 };
 
+// Popup de survol d'une vignette : statut, puis partie publique de la fiche (texte brut, titres # retires cote serveur).
+const npcPopupEl = document.createElement('div');
+npcPopupEl.id = 'npcPopup';
+document.body.appendChild(npcPopupEl);
+
+function showNpcPopup(anchor, statusText, publicSheet) {
+  npcPopupEl.innerHTML = '';
+  const status = document.createElement('div');
+  status.className = 'npc-popup-status';
+  status.textContent = statusText;
+  npcPopupEl.appendChild(status);
+  if (publicSheet) {
+    const sheet = document.createElement('div');
+    sheet.className = 'npc-popup-sheet';
+    sheet.textContent = publicSheet;
+    npcPopupEl.appendChild(sheet);
+  }
+  npcPopupEl.style.display = 'block';
+  const a = anchor.getBoundingClientRect();
+  const w = npcPopupEl.offsetWidth, h = npcPopupEl.offsetHeight;
+  // a gauche de la vignette si la place le permet, sinon a droite ; toujours dans la fenetre
+  const left = a.left - w - 8 >= 8 ? a.left - w - 8 : Math.min(a.right + 8, window.innerWidth - w - 8);
+  npcPopupEl.style.left = Math.max(8, left) + 'px';
+  npcPopupEl.style.top = Math.max(8, Math.min(a.top, window.innerHeight - h - 8)) + 'px';
+}
+
+function hideNpcPopup() {
+  npcPopupEl.style.display = 'none';
+}
+
 function updateCastPanel(cast) {
+  hideNpcPopup();
   castById = {};
   if (!cast || !cast.length) {
     castListEl.innerHTML = '<p class="cast-empty">—</p>';
@@ -503,8 +540,10 @@ function updateCastPanel(cast) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'npc-vignette' + (npc.level === 'absent' ? ' absent' : '');
-    btn.title = ACTIVITY_HELP[npc.level] + ' — ' + ACTIVITY_SOURCE_HELP[npc.source]
+    const statusText = ACTIVITY_HELP[npc.level] + ' — ' + ACTIVITY_SOURCE_HELP[npc.source]
       + (npc.source === 'forced' ? ' (scénario : ' + npc.scenarioLevel + ')' : '');
+    btn.addEventListener('mouseenter', () => showNpcPopup(btn, statusText, npc.publicSheet));
+    btn.addEventListener('mouseleave', hideNpcPopup);
     btn.disabled = generating; // pas de changement en plein round, voir setControlsDisabled
 
     const badge = document.createElement('span');

@@ -159,6 +159,25 @@ class ChatWebServerEndpointsTest {
     }
 
     @Test
+    void theCastViewCarriesThePublicSheetWithoutItsHeadingsAndNeverTheSecret(@TempDir Path root) throws Exception {
+        int port = startServer(root, "Une nuit d'orage.\n", null);
+        Files.writeString(root.resolve("inn/characters/elena.txt"),
+            "# Elena\nUne aubergiste bourrue.\n\n# SECRET\nElle cache une dette.", StandardCharsets.UTF_8);
+        call("POST", port, "/reload-scenario");
+
+        String answer = call("GET", port, "/history");
+
+        assertTrue(answer.contains("\"publicSheet\":\"Une aubergiste bourrue.\""), answer);
+        assertTrue(!answer.contains("dette"), "le secret n'est jamais envoye : " + answer);
+    }
+
+    @Test
+    void headingLinesAreDroppedFromASheetText() {
+        assertEquals("Une aubergiste.\n\nBourrue.",
+            ChatWebServer.withoutHeadings("# Elena\n\nUne aubergiste.\n  ## Humeur\n\nBourrue.\n"));
+    }
+
+    @Test
     void theOriginOfAReplyAnswersWithAClearErrorBeforeAnyReply(@TempDir Path root) throws Exception {
         int port = startServer(root, "Une nuit d'orage.\n", null);
 
