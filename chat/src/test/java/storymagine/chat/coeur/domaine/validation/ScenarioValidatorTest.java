@@ -64,6 +64,22 @@ class ScenarioValidatorTest {
     }
 
     @Test
+    void aDeltaOverSeveralLinesIsValidAndTheLinesAfterItAreStillChecked() {
+        ScenarioReport report = check("Monde.\n# Un\n{npc-delta secret Marcus : Il ment.\nIl hésite.\n}\n{teleport elena}\n");
+
+        assertEquals(1, report.errors().size(), report.issues().toString());
+        assertEquals("scenario.txt:6", report.errors().get(0).where());
+    }
+
+    @Test
+    void aDeltaNeverClosedIsReportedAtItsFirstLine() {
+        ScenarioReport report = check("Monde.\n# Un\n{npc-delta secret Marcus : Il ment.\nSuite du texte.\n# Deux\nCorps.\n");
+
+        assertEquals(1, report.errors().size(), report.issues().toString());
+        assertEquals("scenario.txt:3", report.errors().get(0).where());
+    }
+
+    @Test
     void everyProblemIsListedWithItsFileAndLine() {
         ScenarioReport report = check("Monde.\n[PICK: lieu]\n{pick lieu}\n{pick random inconnu}\n{pick 9 lieu}\n"
             + "{npc-starts Zorglub}\nTexte {npc-starts} au milieu\n{npc-delta Elena : sans visibilite}\n"

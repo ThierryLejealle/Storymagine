@@ -24,6 +24,28 @@ class CharacterDeltaMarkerTest {
     }
 
     @Test
+    void theBracesDelimitTheCommandSoItsTextMaySpanSeveralLines() {
+        CharacterDeltaMarker.Extracted e = CharacterDeltaMarker.extract("""
+            Avant.
+            {npc-delta secret Marcus : Il a reconnu le chef.
+                Il décide de le suivre,
+            sans rien dire aux autres.
+            }
+            Après.
+            """);
+
+        assertEquals(List.of(new CharacterDelta(CharacterDelta.Visibility.SECRET, "Marcus",
+            "Il a reconnu le chef.\nIl décide de le suivre,\nsans rien dire aux autres.")), e.deltas());
+        assertEquals("Avant.\nAprès.\n", e.text());
+    }
+
+    @Test
+    void aMultiLineDeltaNeverClosedIsAnError() {
+        assertThrows(IllegalArgumentException.class, () -> CharacterDeltaMarker.extract(
+            "{npc-delta secret Marcus : Il a reconnu le chef.\nAction suivante sans accolade fermante.\n"));
+    }
+
+    @Test
     void aTextWithoutDeltaIsUntouched() {
         CharacterDeltaMarker.Extracted e = CharacterDeltaMarker.extract("[Alex entre.]\nCorps.");
 

@@ -55,6 +55,26 @@ class CharacterDeltaScenarioLoadingTest {
     }
 
     @Test
+    void aDeltaWrittenOverSeveralLinesJoinsTheSheetAndNeverLeaksIntoTheActText(@TempDir Path root) throws IOException {
+        write(root, """
+            Monde.
+
+            # Un
+            Corps un.
+            {npc-delta secret Marcus : Il a reconnu le chef des bandits.
+            Il décide de le suivre en silence.}
+            Fin du corps.
+            """);
+
+        ChatScenario scenario = load(root);
+
+        assertEquals("Corps un.\nFin du corps.", scenario.acts().get(0).text().strip());
+        assertTrue(npc(scenario, "marcus").secretInfo().isEmpty());
+        assertEquals("Il a reconnu le chef des bandits.\nIl décide de le suivre en silence.",
+            scenario.sheetAt(npc(scenario, "marcus"), 1).secretInfo());
+    }
+
+    @Test
     void deltaLinesNeverReachTheActTextSentToEveryCharacter(@TempDir Path root) throws IOException {
         write(root, SCENARIO);
 

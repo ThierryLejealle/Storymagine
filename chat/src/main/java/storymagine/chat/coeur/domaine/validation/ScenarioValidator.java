@@ -50,7 +50,9 @@ public final class ScenarioValidator {
         "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-do", "repeat", "end-repeat", "n", "item");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
-    private static final Pattern COMMAND_START = Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
+    /** A line that opens an "{npc-delta" : the command may then run over several lines, see checkDeltaBlock. */
+    private static final Pattern DELTA_START = Pattern.compile("^\\s*\\{\\s*npc-delta", Pattern.CASE_INSENSITIVE);
+    private static final Pattern COMMAND_START =Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
     private static final Pattern COMMAND_TEXT = Pattern.compile("\\{[^}]*}");
     /** "%NAME%" (group 1 : NAME) : a character drawn by a {cast}. */
     private static final Pattern VARIABLE_USE = Pattern.compile("%([A-Za-z][A-Za-z0-9_]*)%");
@@ -69,7 +71,12 @@ public final class ScenarioValidator {
         for (ScenarioSource source : sources) {
             String[] lines = source.text().replace("\r\n", "\n").replace("\r", "\n").split("\n", -1);
             for (int i = 0; i < lines.length; i++) {
-                checkLine(source.fileName() + ":" + (i + 1), lines[i], cast, library, issues);
+                String where = source.fileName() + ":" + (i + 1);
+                if (DELTA_START.matcher(lines[i]).find()) {
+                    i = checkDeltaBlock(where, lines, i, cast, issues);
+                } else {
+                    checkLine(where, lines[i], cast, library, issues);
+                }
             }
         }
         checkRepeatBlocks(sources, library, cast, issues);
@@ -241,6 +248,22 @@ public final class ScenarioValidator {
         } catch (IllegalArgumentException e) {
             issues.add(ScenarioIssue.error(where, e.getMessage()));
         }
+    }
+
+    /**
+     * A "{npc-delta ...}" starting at lines[first] : its text may span several lines, up to the line holding the closing
+     * brace (or to the next heading if it is never closed). Returns the index of the last line it covers.
+     */
+    private static int checkDeltaBlock(String where, String[] lines, int first, Cast cast, List<ScenarioIssue> issues) {
+        int last = first;
+        while (lines[last].indexOf('}') < 0 && last + 1 < lines.length && !lines[last + 1].stripLeading().startsWith("#")) {
+            last++;
+        }
+        String block = String.join("\n", java.util.Arrays.copyOfRange(lines, first, last + 1));
+        boolean usesVariable = VARIABLE_USE.matcher(block).find();
+        String checked = usesVariable ? VARIABLE_USE.matcher(block).replaceAll(Matcher.quoteReplacement(standIn(cast))) : block;
+        checkDelta(where, checked, cast, issues);
+        return last;
     }
 
     private static void checkDelta(String where, String line, Cast cast, List<ScenarioIssue> issues) {
