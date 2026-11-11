@@ -28,7 +28,7 @@ chatscenarios/mon-scenario/
 Les fiches personnage vont dans `characters/` (structure cible, voir `chatscenarios/guide-redaction-chat.md` §1).
 Ne jamais créer ni éditer à la main le dossier `run/` (partie en cours, sauvegardes, archives, logs :
 voir `chatscenarios/guide-redaction-chat.md` §6). Pour partager un scénario, copier le dossier sans `run/`.
-Dans `characters/`, tout `.txt` dont la première ligne n'est pas `# Nom` est ignoré.
+Dans `characters/`, tout `.txt` dont la première ligne n'est pas `# Nom` est ignoré (la validation le signale).
 
 ## 2. Mono ou multi-personnage
 
@@ -66,8 +66,12 @@ Elena a volé autrefois dans un temple et craint d'être reconnue. (ce que seul 
 
 ## 4. `scenario.txt`
 
+Langue : `Langue : English` (défaut si la ligne manque ; préférer l'anglais pour écrire, le joueur peut passer en français
+en jeu avec le sélecteur 🌐 du panneau ⚙, « Auto » = la langue du scénario). Voir le guide §2.1.
+
 ```
 Joueur : Mila
+Langue : English
 
 #SCENARIO
 Monde : ...
@@ -148,6 +152,9 @@ Les commandes `{…}` `npc-…` et `cast` tiennent sur une ligne seule. Détail 
 | | `{npc-story on\|off nom tag}` | Active/désactive une section `## tag` |
 | Présence | `{npc-active\|present\|passive\|absent noms}`, `{npc-reset}` | Niveau d'activité par titre |
 | | `{npc-mode do on\|off nom\|*}` | Le PNJ tient la plume du narrateur |
+| Entrée / sortie | `{npc-only noms}` | Au départ seuls ces PNJ sont dans l'histoire (avant le 1er `[NEXT ACT]`, une fois ; sans elle tous y sont) |
+| | `{npc-arrives noms}` / `{npc-arrives modèle Nom1, Nom2}` | Fait entrer des PNJ, ou en crée depuis une fiche modèle (`%NPC%` = le nom) |
+| | `{npc-leaves noms}` | Fait sortir des PNJ de l'histoire (≠ `absent` : plus de vignette ni de fiche chez les autres) |
 | Ouverture | `{npc-starts [Nom]}`, `{npc-do [Nom]}` | Un PNJ parle en premier (le second avec la plume) |
 | Joueur / progression | `[texte]`, `Quand écrire [NEXT ACT] : …` | Ligne affichée au joueur ; condition de l'acte suivant |
 
@@ -156,9 +163,10 @@ Les commandes `{…}` `npc-…` et `cast` tiennent sur une ligne seule. Détail 
 Toutes les commandes de l'auteur s'écrivent entre **accolades** (`[...]` reste réservé à la narration
 et à `[NEXT ACT]`). Celle-ci s'écrit **seule sur sa ligne** (sinon le chargement échoue) :
 `{npc-starts}` (PNJ au hasard) ou `{npc-starts Elena}`. Dans l'en-tête avant le premier acte, il
-ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : un seul PNJ parle, **sans message du joueur**
-(ouverture normale). `{npc-do}` / `{npc-do Elena}` : même chose, mais le PNJ ouvre avec la plume du narrateur
-(comme un clic sur DO sans texte, il peut narrer et agir pour les autres). Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
+ouvre l'histoire ; dans un acte, il ouvre cet acte. Effet : un PNJ parle, **sans message du joueur**
+(ouverture normale). Plusieurs noms séparés par des virgules (`{npc-starts Elena, Marcus}`) : Elena ouvre, Marcus
+enchaîne dans la même ronde, dans l'ordre écrit (un PNJ peut revenir : `Elena, Marcus, Elena` ; nom inconnu ou PNJ pas encore dans l'histoire = refus). `{npc-do}` / `{npc-do Elena}` : même chose, mais le PNJ ouvre avec la plume du narrateur
+(comme un clic sur DO sans texte, il peut narrer et agir pour les autres ; avec plusieurs noms, tous ont la plume). Nom inconnu = scénario refusé au chargement. La ligne est retirée du texte vu par le LLM.
 Ne pas le mettre sur chaque acte « par défaut » : réserver-le aux scènes où quelqu'un agit
 réellement avant le joueur (arrivée, interpellation, événement).
 
@@ -216,6 +224,15 @@ manière d'écrire (voix, rythme, ton), en positif et court (moins de 1 500 cara
 n'importe où dans la ligne : elle n'est donnée au modèle que dans 20 % des réponses (tirage à chaque
 réponse), sinon elle disparaît entière. Guide §2.10.
 
+### Style par scène et détail au hasard : `{style nom}` et `{N%}`
+
+`{style foret-sombre}` seule sur sa ligne sous un titre ajoute `styles/foret-sombre.txt` au style global, pour la
+scène et ses sous-scènes (il s'ajoute après `style.txt`, ne le remplace pas ; un `{style}` plus bas remplace celui du
+parent). Plusieurs `{style}` sous un même titre s'ajoutent dans l'ordre ; dans la prémisse, ils s'ajoutent à
+`style.txt` pour toute l'histoire. `{30%}` en tête d'une ligne de scène : gardée ou supprimée une fois au début de la partie (comme un pick),
+lue par tous les PNJ à chaque tour : l'écrire comme un état, pas comme une action ponctuelle. Guide §2.10 bis, démo
+`demo-scene-style`.
+
 ### Faire évoluer un personnage : `{npc-delta public|secret nom : texte}`
 
 Le petit delta : une commande qui commence sur sa propre ligne dans un acte, fermée par son `}` (son texte
@@ -248,6 +265,17 @@ Interdit dans la prémisse ; nom inconnu, PNJ nommé deux fois dans un titre ou 
 Le joueur peut forcer un niveau en cliquant la vignette (point rouge). Guide §2.11 et §4.1.
 Bouton **▶ Continue** (joueur) : un tour de PNJ sans message du joueur, prompt habituel, sans interjection
 (guide §4.9).
+
+Pour écrire un scénario **entier** avec une IA à petit contexte : skill `chat-scenario-builder` (`chat/scenario-builder/`).
+
+### Faire arriver / partir un PNJ : `{npc-only}`, `{npc-arrives}`, `{npc-leaves}`
+
+Un PNJ **hors de l'histoire** (pas encore arrivé, ou parti) n'a ni vignette ni fiche chez les autres, et ne parle
+jamais. `{npc-arrives modèle Nom1, Nom2}` crée des figurants depuis `characters/modèle.txt` (le fichier utilisé
+avec un nom est un modèle, pas un PNJ ; `%NPC%` = le nom ; l'hostilité etc. via `{npc-delta}`). Limites : l'historique
+est commun, un arrivant sait tout ce qui s'est dit avant (le faire mettre au courant) ; l'arrivée est liée à un acte,
+pas à un événement ; un figurant n'a ni secret ni tag propre ; le joueur ne peut pas ajouter/retirer un PNJ.
+`{npc-only}` mal placé (après le 1er `[NEXT ACT]`) = erreur. Guide §2.13, démo `demo-arrivals`.
 
 Outils de diagnostic en jeu : 🔍 (analyse où en est la condition, sans écrire dans l'historique),
 ❓ (pistes : quels passages du prompt correspondent à la dernière réponse, lesquels de ses éléments

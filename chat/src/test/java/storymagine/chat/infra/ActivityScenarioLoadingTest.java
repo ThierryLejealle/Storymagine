@@ -49,6 +49,18 @@ class ActivityScenarioLoadingTest {
     }
 
     @Test
+    void aFileOfCharactersWithoutNameHeadingIsReportedAsIgnored(@TempDir Path root) throws IOException {
+        write(root, SCENARIO);
+        Files.writeString(root.resolve("inn/characters/draft.txt"), "Juste une note, pas de titre.", StandardCharsets.UTF_8);
+
+        var warnings = new ChatFileStorageAdapter().validateScenario(root, "inn").warnings();
+
+        assertTrue(warnings.stream().anyMatch(w -> w.where().equals("characters/draft.txt") && w.message().contains("# Nom")),
+            warnings.toString());
+        assertEquals(2, load(root).cast().npcs().size(), "the file is really ignored");
+    }
+
+    @Test
     void theCommandLinesNeverReachTheActTextSentToEveryCharacter(@TempDir Path root) throws IOException {
         write(root, SCENARIO);
 

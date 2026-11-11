@@ -3,20 +3,36 @@ package storymagine.chat.coeur.domaine.scenario;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The full roster of every Npc a scenario can play — not session presence (see ChatSession for
  * which of them are currently active in the scene). npcs() preserves a stable order (the order
  * given at construction, expected to be alphabetical by id from file discovery) : callers that
  * need determinism across calls, like SpeakerSelector's rotation fallback, rely on it.
+ * templateIds are the ids of the sheets used as templates by "{npc-arrives template Name}" : they are
+ * not Npcs of the Cast (the characters created from them are, see CastInstantiator).
  */
 public final class Cast {
 
     private final List<Npc> npcs;
+    private final Set<String> templateIds;
 
     public Cast(List<Npc> npcs) {
-        this.npcs = List.copyOf(npcs);
+        this(npcs, Set.of());
     }
+
+    public Cast(List<Npc> npcs, Set<String> templateIds) {
+        this.npcs = List.copyOf(npcs);
+        this.templateIds = Set.copyOf(templateIds);
+    }
+
+    /** True if `id` is a sheet used as a template (case ignored) : not a character, a model to create some from. */
+    public boolean isTemplate(String id) {
+        return templateIds.stream().anyMatch(t -> t.equalsIgnoreCase(id == null ? "" : id.strip()));
+    }
+
+    public Set<String> templateIds() { return templateIds; }
 
     public List<Npc> npcs() { return npcs; }
 

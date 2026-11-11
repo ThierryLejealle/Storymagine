@@ -1,0 +1,21 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Un village au bord d'une forêt, à la tombée de la nuit.
+Prémisse : Alex voyage avec Joe, un chasseur de primes, et fait étape dans l'auberge de Nell.
+Ton : Aventure.
+
+# À l'auberge
+{style auberge}
+[Alex et Joe poussent la porte de l'auberge de Nell, où brûle un grand feu.]
+{30%} Un ménestrel accorde son luth dans un coin de la salle.
+Point de départ : Alex et Joe viennent d'entrer.
+Ce qui doit se passer : Nell leur parle de la forêt voisine.
+Quand écrire [NEXT ACT] : Dès qu'Alex a décidé de partir pour la forêt.
+
+# Dans la forêt
+{style foret-sombre}
+[Alex et Joe marchent entre les arbres, la nuit est tombée.]
+Point de départ : Le sentier se perd dans les fourrés.
+Ce qui doit se passer : Joe repère des traces fraîches.

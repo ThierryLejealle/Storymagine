@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.session;
 
+import storymagine.chat.coeur.domaine.activity.ActivityResolver;
 import storymagine.chat.coeur.domaine.activity.ActivitySource;
 import storymagine.chat.coeur.domaine.activity.CastActivity;
 import storymagine.chat.coeur.domaine.activity.ForcedActivity;
@@ -9,6 +10,7 @@ import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
 import java.util.ArrayList;
@@ -33,6 +35,10 @@ public class ChatSession {
     private record Entry(ChatTurn turn, int act) {}
 
     private       ChatScenario     scenario;
+    /** The language the scenario file declares ; scenario carries the one in force (see chooseLanguage). */
+    private       ScenarioLanguage authoredLanguage;
+    /** The language the player picked for this game, null = the scenario's own ("Auto"). */
+    private       ScenarioLanguage chosenLanguage;
     private final List<Entry>      entries;
     private       int              firstTurnNumber;
     private       String           summary;
@@ -55,6 +61,7 @@ public class ChatSession {
     private ChatSession(ChatScenario scenario, int firstTurnNumber, List<Entry> entries, String summary,
                          int currentAct, Map<String, ForcedActivity> forced) {
         this.scenario        = scenario;
+        this.authoredLanguage = scenario.language();
         this.firstTurnNumber = firstTurnNumber;
         this.entries         = new ArrayList<>(entries);
         this.summary         = summary == null ? "" : summary;
@@ -125,6 +132,26 @@ public class ChatSession {
     }
 
     public ChatScenario scenario() { return scenario; }
+
+    /**
+     * The language the player picked for this game, or null for "Auto" (the scenario's own). It applies from
+     * the next reply on ; the turns already written stay in the former language. Every agent reads
+     * scenario().language(), so none needs to know about the choice.
+     */
+    public void chooseLanguage(ScenarioLanguage language) {
+        this.chosenLanguage = language;
+        applyChosenLanguage();
+    }
+
+    /** The player's pick, null for "Auto". */
+    public ScenarioLanguage chosenLanguage() { return chosenLanguage; }
+
+    /** The language the scenario file itself declares (what "Auto" means). */
+    public ScenarioLanguage authoredLanguage() { return authoredLanguage; }
+
+    private void applyChosenLanguage() {
+        scenario = scenario.withLanguage(chosenLanguage != null ? chosenLanguage : authoredLanguage);
+    }
 
     public List<ChatTurn> turns() {
         return entries.stream().map(Entry::turn).toList();
@@ -216,7 +243,7 @@ public class ChatSession {
     public CastActivity activity() {
         CastActivity activity = scenarioActivity();
         for (Map.Entry<String, ForcedActivity> entry : forced.entrySet()) {
-            if (!holdsHere(entry.getValue())) continue;
+            if (!holdsHere(entry.getValue()) || activity.levelOf(entry.getKey()).isOutside()) continue; // never brings anyone back into the story
             activity = activity.with(entry.getKey(), new NpcActivityState(entry.getValue().level(), ActivitySource.FORCED));
         }
         // Un forcage ne doit jamais vider la scene : quelqu'un doit pouvoir repondre.
@@ -231,20 +258,23 @@ public class ChatSession {
 
     /**
      * True if the pending opening is a DO (the opening Npc holds the narrator's pen) : "{npc-do}", or
-     * "{npc-starts Name}" for a character whose DO mode is on. A nameless "{npc-starts}" stays a normal
-     * opening : the character is only drawn when it speaks.
+     * "{npc-starts Name}" for a character whose DO mode is on (the first named decides when there are
+     * several, they all share the round). A nameless "{npc-starts}" stays a normal opening : the
+     * character is only drawn when it speaks.
      */
     public boolean pendingOpeningUsesPen() {
         NpcOpening opening = pendingNpcOpening();
         if (opening.isNone()) return false;
         if (opening.doPen()) return true;
-        if (!opening.isNamed()) return false;
-        return scenario.cast().findByName(opening.npcName())
+        return ActivityResolver.openingNpcs(scenario.cast(), opening).stream().findFirst()
             .map(npc -> npcIdsInMode(NpcMode.DO).contains(npc.id())).orElse(false);
     }
 
-    /** Ids of the Npcs in the scene (every level but ABSENT). */
+    /** Ids of the Npcs in the scene (every level but ABSENT and OUTSIDE). */
     public Set<String> presentNpcIds() { return activity().inSceneIds(); }
+
+    /** Ids of the Npcs outside the story right now (see NpcActivity.OUTSIDE) : not shown, not in anyone's prompt. */
+    public Set<String> outsideNpcIds() { return activity().outsideIds(); }
 
     /** The forced levels still holding at the current act, by npc id — what gets persisted. */
     public Map<String, ForcedActivity> forcedActivities() {
@@ -263,6 +293,7 @@ public class ChatSession {
     public boolean cycleActivity(String npcId) {
         if (scenario.cast().find(npcId).isEmpty()) return false;
         NpcActivity base = scenarioActivity().levelOf(npcId);
+        if (base.isOutside()) return false; // not in the story : there is no vignette to click
         List<NpcActivity> steps = List.of(base.next(), base.next().next(), base.next().next().next(), base);
         ForcedActivity current = forced.get(npcId) != null && holdsHere(forced.get(npcId)) ? forced.get(npcId) : null;
         int position = current == null ? -1 : steps.indexOf(current.level());
@@ -427,7 +458,9 @@ public class ChatSession {
      */
     public void reloadScenario(ChatScenario freshScenario) {
         Set<String> freshIds = allNpcIds(freshScenario);
+        this.authoredLanguage = freshScenario.language();
         this.scenario = freshScenario;
+        applyChosenLanguage();
         forced.keySet().retainAll(freshIds);
         dropStaleForced();
     }

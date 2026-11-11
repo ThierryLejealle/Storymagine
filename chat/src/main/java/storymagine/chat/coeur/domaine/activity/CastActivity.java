@@ -37,7 +37,23 @@ public final class CastActivity {
         return new CastActivity(next);
     }
 
-    /** Ids whose level is not ABSENT, in Cast order. */
+    /** Everybody present, implicit, except the characters of outsideIds, who are not in the story yet (see StartingRoster). */
+    public static CastActivity defaults(Cast cast, Set<String> outsideIds) {
+        CastActivity activity = defaults(cast);
+        for (String id : outsideIds) {
+            activity = activity.with(id, new NpcActivityState(NpcActivity.OUTSIDE, ActivitySource.IMPLICIT));
+        }
+        return activity;
+    }
+
+    /** Ids of the characters outside the story right now (not arrived yet, or gone), in Cast order. */
+    public Set<String> outsideIds() {
+        Set<String> ids = new LinkedHashSet<>();
+        states.forEach((id, state) -> { if (state.level().isOutside()) ids.add(id); });
+        return ids;
+    }
+
+    /** Ids in the scene : every level but ABSENT and OUTSIDE, in Cast order. */
     public Set<String> inSceneIds() {
         Set<String> ids = new LinkedHashSet<>();
         states.forEach((id, state) -> { if (state.level().isInScene()) ids.add(id); });

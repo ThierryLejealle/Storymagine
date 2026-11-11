@@ -37,7 +37,7 @@ class NpcOpeningScenarioLoadingTest {
 
         ChatScenario scenario = load(root);
 
-        assertEquals("elena", scenario.storyOpening().npcName());
+        assertEquals("elena", scenario.storyOpening().namesText());
         assertFalse(scenario.premise().contains("npc-starts"));
         assertTrue(scenario.openingOfAct(1).isNamed(), "l'ouverture de l'histoire est aussi celle du 1er acte");
         assertTrue(scenario.openingOfAct(2).isNone());
@@ -51,7 +51,7 @@ class NpcOpeningScenarioLoadingTest {
 
         assertTrue(scenario.storyOpening().isNone());
         assertTrue(scenario.openingOfAct(1).isNone());
-        assertEquals("Marcus", scenario.openingOfAct(2).npcName());
+        assertEquals("Marcus", scenario.openingOfAct(2).namesText());
         assertFalse(scenario.acts().get(1).text().contains("npc-starts"));
         assertEquals(java.util.List.of("Un bruit dans la nuit."), scenario.acts().get(1).beats());
         assertEquals(java.util.List.of("Un bruit dans la nuit."), Teaser.extractAll(scenario.acts().get(1).text()));
@@ -74,6 +74,26 @@ class NpcOpeningScenarioLoadingTest {
         ScenarioValidationException e = assertThrows(ScenarioValidationException.class, () -> load(root));
 
         assertTrue(e.getMessage().contains("Zorglub"));
+    }
+
+    @Test
+    void severalNamesAreAcceptedWithCommasOrSpacesAndAMultiWordNameIsKept(@TempDir Path root) throws IOException {
+        write(root, "Monde.\n\n# Un\n{npc-starts Elena Voss, Marcus}\nCorps.\n\n# Deux\n{npc-do Marcus Elena}\nCorps.\n");
+
+        ChatScenario scenario = load(root);
+
+        assertEquals("Elena Voss, Marcus", scenario.openingOfAct(1).namesText());
+        assertEquals("Marcus Elena", scenario.openingOfAct(2).namesText());
+    }
+
+    @Test
+    void aNpcMayBeNamedSeveralTimesButAnUnknownOneInAListFailsLoudlyAtLoading(@TempDir Path root) throws IOException {
+        write(root, "Monde.\n{npc-starts Marcus, Elena, Marcus}\n");
+        assertEquals("Marcus, Elena, Marcus", load(root).storyOpening().namesText());
+
+        write(root, "Monde.\n{npc-starts Marcus, Zorglub}\n");
+        ScenarioValidationException unknown = assertThrows(ScenarioValidationException.class, () -> load(root));
+        assertTrue(unknown.getMessage().contains("Zorglub"), unknown.getMessage());
     }
 
     @Test

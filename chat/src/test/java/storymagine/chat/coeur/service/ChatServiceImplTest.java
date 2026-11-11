@@ -1549,6 +1549,45 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void severalNamedNpcsOpenTheStoryInTheOrderWrittenInOneRound(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus, Elena}\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        ChatTurnResult result = service.openScene(root, session, ExchangeProgressListener.NOOP);
+
+        assertEquals(List.of("marcus", "elena"), result.replyTurns().stream().map(ChatTurn::npcId).toList());
+        assertTrue(session.pendingNpcOpening().isNone(), "une fois la ronde jouee, plus rien n'est en attente");
+    }
+
+    @Test
+    void aNpcNamedTwiceSpeaksTwiceInTheOpeningRound(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus, Elena, Marcus}\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+
+        ChatTurnResult result = service.openScene(root, session, ExchangeProgressListener.NOOP);
+
+        assertEquals(List.of("marcus", "elena", "marcus"), result.replyTurns().stream().map(ChatTurn::npcId).toList());
+    }
+
+    @Test
+    void severalNpcsOpenWithThePenOnAnEmptyDoInTheOrderWritten(@TempDir Path root) throws IOException {
+        writeTwoNpcScenarioFiles(root, "inn");
+        Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-do Marcus, Elena}\n", StandardCharsets.UTF_8);
+        ChatServiceImpl service = newService(32_768);
+        ChatSession session = service.openSession(root, service.loadScenario(root, "inn"), true);
+        session.updateGenerationSettings(alwaysInterject());
+
+        ChatTurnResult result = service.sendMessage(root, session, "DO:");
+
+        assertEquals(List.of("marcus", "elena"), result.replyTurns().stream().map(ChatTurn::npcId).toList());
+    }
+
+    @Test
     void emptyDoOpensTheStoryWithTheNpcNamedByTheMarkerAndNobodyElse(@TempDir Path root) throws IOException {
         writeTwoNpcScenarioFiles(root, "inn");
         Files.writeString(root.resolve("inn/scenario.txt"), "A stormy night at the inn.\n{npc-starts Marcus}\n", StandardCharsets.UTF_8);

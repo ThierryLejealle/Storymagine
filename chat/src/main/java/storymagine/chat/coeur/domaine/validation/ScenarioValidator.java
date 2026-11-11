@@ -15,10 +15,13 @@ import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.LegacyCommandSyntax;
 import storymagine.chat.coeur.domaine.scenario.NextActMarker;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.NpcOnlyMarker;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
+import storymagine.chat.coeur.domaine.scenario.SceneStyleMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
+import storymagine.chat.coeur.domaine.scenario.StartingRoster;
 import storymagine.chat.coeur.domaine.scenario.StoryDirective;
 import storymagine.chat.coeur.domaine.scenario.StoryDirectiveMarker;
 import storymagine.chat.coeur.domaine.scenario.StoryTag;
@@ -34,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * Static checks of a scenario, no LLM involved. checkSources reads what the author wrote, line by
@@ -45,9 +49,10 @@ import java.util.regex.Pattern;
  */
 public final class ScenarioValidator {
 
-    private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode");
-    private static final Set<String> COMMANDS = Set.of("pick", "cast", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
-        "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-do", "repeat", "end-repeat", "n", "item");
+    private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode",
+        "npc-arrives", "npc-leaves");
+    private static final Set<String> COMMANDS = Set.of("pick", "cast", "style", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
+        "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-arrives", "npc-leaves", "npc-only", "npc-do", "repeat", "end-repeat", "n", "item");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
     /** A line that opens an "{npc-delta" : the command may then run over several lines, see checkDeltaBlock. */
@@ -79,6 +84,7 @@ public final class ScenarioValidator {
                 }
             }
         }
+        for (ScenarioSource source : sources) checkChanceMarkers(source.fileName(), source.text(), issues);
         checkRepeatBlocks(sources, library, cast, issues);
         checkVariables(sources, issues);
         if (issues.isEmpty()) checkUniqueDoesNotRunOut(sources, library, cast, issues);
@@ -114,10 +120,16 @@ public final class ScenarioValidator {
                 continue; // the old name is already reported, with the new one, by LegacyCommandSyntax
             }
             if (!COMMANDS.contains(name)) {
-                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, cast, npc-starts, npc-do, "
-                    + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode)"));
+                issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, cast, style, npc-starts, npc-do, "
+                    + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode, npc-arrives, npc-leaves, npc-only)"));
             } else if (REPEAT_COMMANDS.contains(name)) {
                 continue;
+            } else if (name.equals("style")) {
+                try {
+                    SceneStyleMarker.extract(checked);
+                } catch (IllegalArgumentException e) {
+                    issues.add(ScenarioIssue.error(where, e.getMessage()));
+                }
             } else if (name.equals("pick")) {
                 checkPick(where, command, library, issues);
             } else if (name.equals("cast")) {
@@ -126,6 +138,8 @@ public final class ScenarioValidator {
                 checkNpcStarts(where, checked, cast, issues, name);
             } else if (ACTIVITY_COMMANDS.contains(name)) {
                 checkActivity(where, checked, cast, issues);
+            } else if (name.equals("npc-only")) {
+                checkNpcOnly(where, checked, cast, issues);
             } else if (name.equals("npc-story")) {
                 checkStory(where, checked, cast, issues, usesVariable);
             } else {
@@ -196,8 +210,12 @@ public final class ScenarioValidator {
         NpcOpening opening = NpcOpeningMarker.extract(line + "\n").opening();
         if (opening.isNone()) {
             issues.add(ScenarioIssue.error(where, "{" + command + "} doit etre seul sur sa ligne : {" + command + "} ou {" + command + " Nom}"));
-        } else if (opening.isNamed() && cast.findByName(opening.npcName()).isEmpty()) {
-            issues.add(ScenarioIssue.error(where, "{" + command + " " + opening.npcName() + "} : aucun personnage de ce nom dans characters/"));
+        } else {
+            try {
+                ActivityResolver.openingNpcs(cast, opening);
+            } catch (IllegalArgumentException e) {
+                issues.add(ScenarioIssue.error(where, "{" + command + " " + opening.namesText() + "} : " + e.getMessage()));
+            }
         }
     }
 
@@ -206,11 +224,29 @@ public final class ScenarioValidator {
             List<ActivityDirective> directives = ActivityDirectiveMarker.extract(line + "\n").directives();
             if (directives.isEmpty()) {
                 issues.add(ScenarioIssue.error(where, "une commande d'activite doit etre seule sur sa ligne : "
-                    + "{npc-active|present|passive|absent noms}, {npc-reset} ou {npc-mode mode on|off nom|*}"));
+                    + "{npc-active|present|passive|absent noms}, {npc-reset}, {npc-mode mode on|off nom|*}, {npc-arrives noms} ou {npc-leaves noms}"));
             }
             for (ActivityDirective directive : directives) {
-                if (!directive.isReset() && !directive.isUnnamed() && !directive.isAll() && !directive.isModeAll()) ActivityResolver.resolveNames(cast, directive.namesText());
+                if (directive.isArrives()) {
+                    ActivityResolver.arrivalTargets(cast, directive);
+                } else if (!directive.isReset() && !directive.isUnnamed() && !directive.isAll() && !directive.isModeAll()) {
+                    ActivityResolver.resolveNames(cast, directive.namesText());
+                }
             }
+        } catch (IllegalArgumentException e) {
+            issues.add(ScenarioIssue.error(where, e.getMessage()));
+        }
+    }
+
+    /** {npc-only names} is alone on its line and names characters of the Cast (where it sits is checked when the scenario is parsed). */
+    private static void checkNpcOnly(String where, String line, Cast cast, List<ScenarioIssue> issues) {
+        try {
+            List<String> found = NpcOnlyMarker.extract(line + "\n").namesTexts();
+            if (found.isEmpty()) {
+                issues.add(ScenarioIssue.error(where, "{npc-only} doit etre seul sur sa ligne : {npc-only Nom1, Nom2}"));
+                return;
+            }
+            new StartingRoster(found.get(0)).outsideIds(cast);
         } catch (IllegalArgumentException e) {
             issues.add(ScenarioIssue.error(where, e.getMessage()));
         }
@@ -289,23 +325,28 @@ public final class ScenarioValidator {
 
     /** style.txt is sent to the LLM as it is : a command in it would never be executed, and an old-style one would leak. */
     public static ScenarioReport checkStyleText(String text) {
+        return checkStyleText(text, STYLE_FILE);
+    }
+
+    /** Same check for any style file (style.txt, or styles/name.txt of a "{style name}"), issues reported under `where`. */
+    public static ScenarioReport checkStyleText(String text, String where) {
         List<ScenarioIssue> issues = new ArrayList<>();
         try {
             LegacyCommandSyntax.requireNone(text);
         } catch (IllegalArgumentException e) {
-            issues.add(ScenarioIssue.error(STYLE_FILE, e.getMessage()));
+            issues.add(ScenarioIssue.error(where, e.getMessage()));
         }
-        checkChanceMarkers(text == null ? "" : text, issues);
+        checkChanceMarkers(where, text == null ? "" : text, issues);
         Matcher command = COMMAND_START.matcher(text == null ? "" : text);
         if (command.find()) {
-            issues.add(ScenarioIssue.error(STYLE_FILE, "les commandes entre accolades ne sont pas prises en charge dans "
-                + STYLE_FILE + " (" + command.group() + " ...) : ecrire le style en texte simple"));
+            issues.add(ScenarioIssue.error(where, "les commandes entre accolades ne sont pas prises en charge dans "
+                + where + " (" + command.group() + " ...) : ecrire le style en texte simple"));
         }
         return new ScenarioReport(issues);
     }
 
-    /** {N%} chance markers of style.txt : one per line, 1 to 100, with a text to keep or drop. */
-    private static void checkChanceMarkers(String text, List<ScenarioIssue> issues) {
+    /** {N%} chance markers of a style file or of a scenario text : one per line, 1 to 100, with a text to keep or drop. */
+    private static void checkChanceMarkers(String where, String text, List<ScenarioIssue> issues) {
         for (String line : text.lines().toList()) {
             Matcher marker = ScenarioStyle.CHANCE_MARKER.matcher(line);
             int count = 0;
@@ -313,18 +354,18 @@ public final class ScenarioValidator {
                 count++;
                 int percent = Integer.parseInt(marker.group(1));
                 if (percent < 1 || percent > 100) {
-                    issues.add(ScenarioIssue.error(STYLE_FILE, marker.group() + " : le pourcentage doit etre entre 1 et 100"));
+                    issues.add(ScenarioIssue.error(where, marker.group() + " : le pourcentage doit etre entre 1 et 100"));
                 }
             }
             if (count > 1) {
-                issues.add(ScenarioIssue.error(STYLE_FILE, "plusieurs marqueurs de chance sur la meme ligne : " + line.strip()));
+                issues.add(ScenarioIssue.error(where, "plusieurs marqueurs de chance sur la meme ligne : " + line.strip()));
             }
             String rest = ScenarioStyle.CHANCE_MARKER.matcher(line).replaceAll("");
             if (count > 0 && rest.replaceAll("[\\s\\-*]", "").isEmpty()) {
-                issues.add(ScenarioIssue.error(STYLE_FILE, "marqueur de chance sans texte sur sa ligne : " + line.strip()));
+                issues.add(ScenarioIssue.error(where, "marqueur de chance sans texte sur sa ligne : " + line.strip()));
             }
             if (Pattern.compile("\\{\\s*\\d").matcher(rest).find()) {
-                issues.add(ScenarioIssue.error(STYLE_FILE, "marqueur de chance invalide (attendu {20%}) : " + line.strip()));
+                issues.add(ScenarioIssue.error(where, "marqueur de chance invalide (attendu {20%}) : " + line.strip()));
             }
         }
     }
@@ -344,10 +385,29 @@ public final class ScenarioValidator {
             issues.add(ScenarioIssue.warning(STYLE_FILE, scenario.style().text().length() + " caracteres : long pour un petit contexte"
                 + " (au-dela de " + STYLE_WARNING_LENGTH + ", il pese sur chaque reponse)"));
         }
+        Set<String> longSceneStyles = new HashSet<>();
+        for (int i = 0; i < acts.size(); i++) {
+            ScenarioAct act = acts.get(i);
+            int length = scenario.styleAt(i + 1).text().length();
+            if (act.sceneStyle().isPresent() && length > STYLE_WARNING_LENGTH && longSceneStyles.add(act.sceneStyle().text())) {
+                issues.add(ScenarioIssue.warning("acte " + act.number(), "style.txt + {style} : " + length + " caracteres : long pour un petit"
+                    + " contexte (au-dela de " + STYLE_WARNING_LENGTH + ", il pese sur chaque reponse)"));
+            }
+        }
         checkStories(scenario, issues);
         String opening = acts.isEmpty() ? scenario.premise() : scenario.premise() + "\n" + acts.get(0).text() + "\n" + String.join("\n", acts.get(0).beats());
         String openingNormalized = normalize(opening);
+        Set<String> outsideAtStart = scenario.startingRoster().outsideIds(scenario.cast());
         for (Npc npc : scenario.cast().npcs()) {
+            if (outsideAtStart.contains(npc.id())) {
+                boolean arrivesSomeday = IntStream.rangeClosed(1, acts.size())
+                    .anyMatch(act -> scenario.activityAt(act).inSceneIds().contains(npc.id()));
+                if (!arrivesSomeday) {
+                    issues.add(ScenarioIssue.warning("fiche " + npc.id(), npc.label() + " n'est pas dans {npc-only} et aucun "
+                        + "{npc-arrives} ne le fait venir : il n'apparaitra jamais"));
+                }
+                continue; // not there at the start : no reason to be named in the opening
+            }
             String firstWord = normalize(npc.label()).split("\\s+")[0];
             if (!firstWord.isEmpty() && !openingNormalized.contains(firstWord)) {
                 issues.add(ScenarioIssue.warning(acts.isEmpty() ? "premisse" : "acte " + acts.get(0).number(),

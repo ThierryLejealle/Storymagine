@@ -18,6 +18,8 @@ de `chat.bat`, choisir « 3 - Démos du projet ». Chaque dossier a un `README.m
 | `demo-npc-story` | le voisin louche | `## tag`, `npc-story` | §2.8 bis, §3 |
 | `demo-secret` | un carton mystérieux | section `# SECRET` | §3 |
 | `demo-activite` | le palier | `npc-active` et co | §2.11 |
+| `demo-arrivals` | arrivées et départs | `npc-only`, `npc-arrives`, `npc-leaves` | §2.13 |
 | `demo-style` | la météo | `style.txt` | §2.10 |
+| `demo-scene-style` | une auberge puis la forêt | `{style nom}`, `{N%}` dans une scène | §2.10 bis |
 
 Les parties jouées ne sont pas versionnées (`run/`, voir `.gitignore`).

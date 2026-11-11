@@ -12,7 +12,7 @@ d'un scénario, et à chaque limite ou piège découvert.
 
 ## 1. Fichiers
 
-Un scénario est un dossier. L'auteur n'y écrit que `scenario*.txt`, `style.txt`, `characters/` et `picks/` ;
+Un scénario est un dossier. L'auteur n'y écrit que `scenario*.txt`, `style.txt`, `styles/`, `characters/` et `picks/` ;
 l'appli n'écrit que dans `run/` (§6).
 
 ```
@@ -20,6 +20,8 @@ chatscenarios/mon-scenario/
   scenario.txt        obligatoire — ligne Joueur, prémisse, actes
   scenario-1.txt      optionnel — suite des actes (numéros consécutifs)
   style.txt           optionnel — conseil de style commun à tous les personnages (§2.10)
+  styles/             optionnel — styles de scène appelés par {style nom} (§2.10 bis)
+    auberge.txt
   characters/         obligatoire — un fichier par personnage
     elena.txt
     marcus.txt
@@ -31,7 +33,7 @@ chatscenarios/mon-scenario/
 | Élément | Règle |
 |---|---|
 | `scenario-N.txt` | Concaténés après `scenario.txt`, numéros consécutifs, arrêt au premier manquant. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
-| `characters/*.txt` | Un fichier = un personnage si sa **première ligne** est `# Nom`. Sinon le fichier est ignoré sans avertissement. Seul `characters/` est lu. |
+| `characters/*.txt` | Un fichier = un personnage si sa **première ligne** est `# Nom`. Sinon le fichier est ignoré (le jeu ne le charge pas) ; `validation-scenarios.bat` le signale par un avertissement. Seul `characters/` est lu. |
 | Id d'un personnage | Nom du fichier sans `.txt` : simple, sans espace ni accent (`marcus.txt`, pas `Marcus Dupont.txt`). |
 | Nombre de PNJ | Un seul fichier suffit : le scénario est alors mono-personnage. |
 | Liste de l'appli | Un scénario y figure s'il a un `scenario.txt` et au moins un personnage valide. |
@@ -96,6 +98,8 @@ ne sont pas des commandes entre accolades mais font partie de la même boîte à
 | Famille | Commande | Rôle | Où / portée | § |
 |---|---|---|---|---|
 | Texte aléatoire | `{pick random\|unique\|N\|all nom}` | Insère un ou plusieurs paragraphes d'un fichier `picks/nom.txt` (ou `/lib/nom`, commun à tous les scénarios) | Dans le texte ; tirage figé pour la partie | 2.6 |
+| Détail au hasard | `{N%}` en tête d'une ligne du scénario | La ligne est gardée (marqueur retiré) avec N % de chances, sinon supprimée ; tirage figé pour la partie, comme un `pick` | Une ligne de texte de scène | 2.10 bis |
+| Style de scène | `{style nom}` | Ajoute `styles/nom.txt` au style global, pour cette scène et ses sous-scènes | Seule sur sa ligne, sous un titre ou dans la prémisse | 2.10 bis |
 | | `{repeat order\|random [N] nom}` … `{end-repeat}` | Répète un gabarit, une copie par paragraphe du fichier | Bloc de lignes ; `{n}` = numéro, `{item}` = paragraphe | 2.6 bis |
 | | `{repeat N}` … `{end-repeat}` | Répète un gabarit N fois, sans fichier | Bloc de lignes ; `{n}` seulement | 2.6 bis |
 | Casting | `{cast NOM [unique] [reuse-possible] [(a, b, c)]}` | Choisit un personnage (autre que ceux des autres variables) et l'appelle `%NOM%` | Ligne seule ; `%NOM%` ensuite dans le texte et les commandes | 2.6 ter |
@@ -105,8 +109,11 @@ ne sont pas des commandes entre accolades mais font partie de la même boîte à
 | Présence en scène | `{npc-active\|present\|passive\|absent noms}` | Fixe le niveau d'activité de personnages | Le titre qui l'écrit et ses sous-actes | 2.11 |
 | | `{npc-reset}` | Tout le monde repasse en `present` | Idem | 2.11 |
 | | `{npc-mode do on\|off nom\|*}` | Un personnage tient la plume du narrateur (mode DO) tant que le mode est `on` | Le titre qui l'écrit et ses sous-actes | 2.12 |
-| Ouverture | `{npc-starts [Nom]}` | Un personnage ouvre la scène en parlant le premier, sans message du joueur | En-tête (ouvre l'histoire) ou acte (ouvre l'acte) | 4.5 |
-| | `{npc-do [Nom]}` | Idem, mais avec la plume du narrateur (bulle `DO:` vide) | Idem | 4.5 |
+| Entrée / sortie de l'histoire | `{npc-only noms}` | Au départ, seuls ces personnages sont dans l'histoire (les autres n'existent pas encore) | En-tête ou première scène, avant le premier `[NEXT ACT]` ; une seule fois | 2.13 |
+| | `{npc-arrives noms}` ou `{npc-arrives modèle Nom1, Nom2}` | Fait entrer des personnages, ou en crée à partir d'une fiche modèle | Le titre qui l'écrit et ses sous-actes | 2.13 |
+| | `{npc-leaves noms}` | Fait sortir des personnages de l'histoire | Idem | 2.13 |
+| Ouverture | `{npc-starts [Nom[, Nom...]]}` | Un personnage ouvre la scène en parlant le premier, sans message du joueur ; avec plusieurs noms, les suivants enchaînent dans la même ronde | En-tête (ouvre l'histoire) ou acte (ouvre l'acte) | 4.5 |
+| | `{npc-do [Nom[, Nom...]]}` | Idem, mais avec la plume du narrateur (bulle `DO:` vide), pour tous les noms | Idem | 4.5 |
 | Ce que voit le joueur | `[texte]` | Ligne affichée au joueur à l'entrée de l'acte, aussi envoyée aux PNJ | Corps d'un acte | 2.4 |
 | Progression | `Quand écrire [NEXT ACT] : condition` | Condition de passage à l'acte suivant, évaluée par l'analyse 🔍 | Dans la feuille (pas dans un parent) | 4.5 |
 
@@ -127,13 +134,23 @@ est du texte ordinaire.
 | Ligne | Effet | Défaut |
 |---|---|---|
 | `Joueur : X` | Nom du joueur : il remplace « Player » dans la transcription envoyée au modèle. | `Alex` |
-| `Langue : X` | Langue dans laquelle les PNJ écrivent leurs réponses. Code (`fr`, `en`, `es`, `de`, `it`, `pt`), nom français ou anglais, sans tenir compte de la casse ni des accents. Toute autre valeur est transmise telle quelle. | Non précisée : le PNJ choisit lui-même la langue (fiche et scénario). |
+| `Langue : X` | Langue dans laquelle les PNJ écrivent leurs réponses. Code (`fr`, `en`, `es`, `de`, `it`, `pt`), nom français ou anglais, sans tenir compte de la casse ni des accents. Toute autre valeur est transmise telle quelle. | `English`. |
 
 Convention du projet : toujours écrire les deux lignes. Sans `Langue :`, un petit modèle peut hésiter
 entre les langues du prompt, de la fiche et du joueur. La langue est donnée de la même façon à tous les
 appels du module (réponses des PNJ, résumé, analyses 🔍 et état d'esprit, testeur de scénario).
 
-**Scénarios sans ligne `Langue :`** : ils restent valides, la langue est alors simplement non précisée.
+**Scénarios sans ligne `Langue :`** : ils restent valides, la langue est alors l'anglais.
+
+**Quelle langue choisir pour écrire ?** Privilégier l'**anglais** : les petits modèles y sont meilleurs, et le
+joueur peut de toute façon changer la langue de la partie (voir ci-dessous). N'écrire le scénario en français
+que si l'on est sûr qu'il ne sera joué qu'en français.
+
+**Changer de langue en jeu.** Le panneau ⚙ a un sélecteur 🌐 *Langue* : **Auto** (la langue du scénario, celle de
+`Langue :`, ou l'anglais sans cette ligne), **English** ou **Français**. Le choix s'applique à la réponse
+suivante, est conservé avec la partie (`state.txt`) et vaut pour tous les appels (PNJ, résumé, analyses). Limites :
+l'historique déjà écrit, la prémisse, les textes de scène et les fiches restent dans leur langue d'origine, donc
+le modèle traduit à la volée et peut glisser dans l'ancienne langue ; mieux vaut changer en début de partie.
 
 ### 2.2 Prémisse
 
@@ -443,7 +460,7 @@ Prompt système envoyé au PNJ qui parle, à chaque tour, dans cet ordre :
 | # | Bloc | Contenu |
 |---|---|---|
 | 1 | Règles de jeu | Texte fixe : incarner le personnage, portée du tour, longueur, fiche = note privée |
-| 2 | `YOUR CHARACTER` | Sa fiche **complète** (publique + `# SECRET`) |
+| 2 | `YOUR CHARACTER — you are <Nom>` | Son nom, puis sa fiche **complète** (publique + `# SECRET`) |
 | 3 | `ALSO PRESENT` | Fiche **publique** des autres PNJ présents |
 | 4 | `NOT IN THE SCENE` | Fiche **publique** des PNJ absents (ne jamais les faire parler) |
 | 5 | `SCENARIO` | La **prémisse**, en entier |
@@ -624,6 +641,37 @@ Humour sec, sans exclamations.
   (vide si toutes les lignes ont été écartées), à la place du fichier, pour voir quelles lignes rares sont
   passées. Avant la première réponse, il montre le fichier.
 
+### 2.10 bis Style par scène : `{style nom}` et détails au hasard : `{N%}`
+
+**Style de scène.** Sous un titre, une ligne seule `{style nom}` ajoute le fichier `styles/nom.txt` au style
+global pour cette scène **et ses sous-scènes**. Le nom peut contenir des lettres, des chiffres, `-` et `_`
+(`{style foret-sombre}` lit `styles/foret-sombre.txt`).
+- Le style de scène **s'ajoute** à `style.txt` (il vient après lui, donc il l'emporte s'ils se contredisent) ; il ne le remplace pas.
+- Une sous-scène qui écrit son propre `{style}` remplace celui de son parent (le global reste).
+- Plusieurs `{style}` sous un même titre sont possibles : leurs fichiers s'ajoutent dans l'ordre écrit (un nom répété
+  compte une fois). Ils sont aussi permis dans la prémisse : ils s'ajoutent alors à `style.txt` pour toute l'histoire
+  (ordre : `style.txt`, prémisse, scène).
+- Le fichier suit les règles de `style.txt` (§2.10) : texte simple, pas de commande, lignes `{N%}` possibles
+  (tirées à chaque réponse). Relu à chaque chargement (⟳). Un fichier absent empêche le chargement, avec son nom.
+- L'avertissement des 1 500 caractères porte sur `style.txt` + le style de la scène.
+
+**Détail au hasard dans une scène.** `{N%}` en tête d'une ligne du texte de `scenario.txt` ou `scenario-N.txt`
+(prémisse, texte de scène, ligne `[...]`) : la ligne est gardée (marqueur retiré) avec N % de chances, supprimée
+sinon. Le tirage est fait **une fois, au début de la partie**, comme un `{pick}` : la scène contient ensuite le même
+texte pendant toute la partie, pour tous les PNJ, et un retry ou un retour en arrière ne le change pas. Une
+commande écrite sur une ligne supprimée ne tire rien (`{20%} {pick random incident}`). Dans un bloc `{repeat}`, le
+tirage est fait une fois pour le bloc, pas par copie.
+- **L'écrire comme un état, pas comme une action ponctuelle** : le texte reste dans le prompt à chaque tour de la
+  scène, donc « Joe a ses deux pistolets d'argent posés devant lui » convient, « Joe nettoie son flingue » serait
+  répété tour après tour.
+- Tous les PNJ de la scène le lisent : bon pour de l'ambiance (odeur, bruit, un figurant), à manier avec précaution
+  pour l'action d'un PNJ précis (les autres peuvent la commenter).
+- Les `{N%}` des fichiers de style, eux, restent tirés à chaque réponse : y mettre des **descriptions**, pas des
+  actions (ex. `{10%} Si Joe est le personnage actif, décris en quelques mots ses deux pistolets d'argent.` : la
+  condition est lue par le modèle, pas calculée).
+
+Démo : `chatscenarios/demos/demo-scene-style`.
+
 ### 2.11 Qui parle dans une scène : `{npc-active|present|passive|absent noms}` et `{npc-reset}`
 
 Fixent le **niveau d'activité** des personnages (§4.1) pour l'acte où la commande est écrite et tous ceux
@@ -721,6 +769,61 @@ un PNJ ne parle jamais à la place du personnage du joueur.
 - Technique : le moteur présente au PNJ en mode DO le dernier message du joueur avec le préfixe `DO: ` (une
   ligne `OOC:` ou déjà `DO:` n'est pas modifiée ; rien ne change pour le bouton Continue). Aucun prompt n'est
   modifié : la règle `DO:` du §4.9 s'applique telle quelle.
+
+### 2.13 Faire arriver et partir un personnage : `{npc-only}`, `{npc-arrives}`, `{npc-leaves}`
+
+`{npc-absent}` (§2.11) laisse le personnage visible : sa vignette reste là et les autres connaissent sa fiche
+publique. Ici le personnage **n'existe pas** dans l'histoire : ni vignette, ni fiche chez les autres PNJ, il ne parle jamais.
+
+| Commande | Où | Effet |
+|---|---|---|
+| `{npc-only Elena, Marc}` | En-tête ou première scène (avant le premier `[NEXT ACT]`), seule sur sa ligne, une seule fois | Au départ, seuls Elena et Marc sont dans l'histoire. **Sans cette commande, tous les personnages de `characters/` y sont**, comme avant. |
+| `{npc-arrives Orlo}` | Sous un titre d'acte, seule sur sa ligne | Orlo entre dans l'histoire à partir de cet acte (et ses sous-actes). Il arrive au niveau `present` ; on le règle ensuite avec `{npc-active Orlo}`, etc. |
+| `{npc-arrives gobelin Grik, Snak}` | Idem | Crée Grik et Snak à partir de la fiche `characters/gobelin.txt` (un modèle) et les fait entrer. |
+| `{npc-leaves Orlo}` | Idem | Orlo sort de l'histoire à partir de cet acte. Un `{npc-arrives Orlo}` plus loin le fait revenir. |
+
+**Un modèle** est une fiche utilisée avec un nom : elle n'apparaît pas elle-même comme personnage. Sa ligne `# Gobelin`
+devient `# Grik`, et chaque `%NPC%` du texte (fiche publique, secret, tags) est remplacé par le nom donné. Les noms
+sont séparés par des virgules et peuvent avoir plusieurs mots. Le même nom écrit deux fois pour le même modèle est le
+même personnage (il peut partir puis revenir). Ce que la scène a de particulier (hostile, pressé...) s'écrit avec
+`{npc-delta}`, pas dans le modèle, qui reste réutilisable. Un fichier ne peut pas être à la fois un modèle (avec un nom)
+et un personnage (sans nom) dans un même scénario.
+
+```
+{npc-only Elena}                       ← en-tête : seule Elena est là au départ
+
+# Le marché
+{npc-arrives Orlo}
+{npc-present Orlo}
+
+# L'embuscade
+{npc-leaves Orlo}
+{npc-arrives gobelin Grik, Snak}
+{npc-active Grik}
+{npc-delta public Grik : hostile, barre la route et exige la bourse d'Alex}
+```
+
+**Ce qui est refusé au chargement** : `{npc-only}` après le premier `[NEXT ACT]` ou écrit deux fois (au lieu de revenir
+silencieusement au mode classique) ; un nom inconnu ; un niveau (`{npc-active Orlo}`) demandé pour un personnage pas
+encore arrivé ; `{npc-starts Orlo}` pour un personnage qui n'est pas dans l'histoire à ce moment ; un nom d'instance
+déjà pris ; une scène où plus personne n'est présent. **Avertissement** : un personnage hors de `{npc-only}` que
+rien ne fait jamais arriver.
+
+**Limites** (voir aussi §7.4) :
+- **Pas de mémoire limitée à la présence.** L'historique est commun : un personnage qui arrive (ou revient) connaît tout ce
+  qui s'est dit avant, y compris pendant son absence. Faites-le mettre au courant par une réplique d'un autre personnage,
+  ou écrivez sa fiche pour qu'il n'en ait pas besoin.
+- **Un personnage parti n'est pas effacé** : ses répliques restent dans l'historique et les autres s'en souviennent.
+- **Une arrivée est liée à un acte, pas à un événement.** Pour une embuscade, écrivez un acte (ou sous-acte) dédié.
+- **Un figurant n'a ni secret ni tag propre** : tout vient du modèle, seul le nom change. Un figurant qui doit avoir une
+  histoire à lui a sa propre fiche dans `characters/`.
+- **Un combat ne retire personne** : seul `{npc-leaves}` le fait, à un changement d'acte.
+- **Le joueur ne peut ni ajouter ni retirer** un personnage de l'histoire : seul le scénario décide.
+- **Pas de `/lib/` pour les modèles** pour l'instant : le modèle est un fichier de `characters/`.
+- **`{cast NOM}` sans liste** tire parmi tout le casting, figurants créés compris : donnez une liste `(a, b)` si un
+  figurant ne doit pas être choisi.
+
+Exemple complet : `chatscenarios/demos/demo-arrivals/`.
 
 ## 3. Fiche personnage (`characters/nom.txt`)
 
@@ -916,6 +1019,8 @@ Par défaut, le joueur parle en premier. Pour qu'un PNJ ouvre, écrire sur **une
 {npc-starts Elena}
 {npc-do}
 {npc-do Elena}
+{npc-starts Elena, Marcus}
+{npc-do Elena, Marcus}
 ```
 
 - `{npc-starts}` : le PNJ ouvre **en mode normal** : il parle le premier, **sans aucun message du joueur** (pas
@@ -924,13 +1029,19 @@ Par défaut, le joueur parle en premier. Pour qu'un PNJ ouvre, écrire sur **une
   du joueur, puis le PNJ parle). Il peut avancer la scène, narrer et agir pour les autres.
 - Un `{npc-starts Nom}` devient une ouverture avec la plume si ce PNJ est en mode DO (`{npc-mode do on …}`, §2.12).
   Sans nom, `{npc-starts}` reste une ouverture normale.
+- **Plusieurs noms** (`{npc-starts Elena, Marcus}`) : Elena ouvre, puis Marcus parle à la suite dans la même ronde,
+  dans l'ordre écrit ; le joueur ne répond qu'après. Les noms se séparent par des virgules (ou des espaces, comme
+  `{npc-active}`) ; un nom de plusieurs mots (`Elena Voss`) est reconnu. Avec `{npc-do Elena, Marcus}`, **tous** les
+  PNJ de la ronde parlent avec la plume. Pour `{npc-starts}`, la plume est décidée par le premier nom (en mode DO ou pas).
+  Un même PNJ peut être nommé plusieurs fois (`Elena, Marcus, Elena` : Elena parle deux fois, en alternance). Un nom
+  inconnu ou un PNJ pas encore dans l'histoire empêche le chargement.
 
 | Sujet | Règle |
 |---|---|
 | Emplacement | En-tête du scénario (avant le premier acte) : ouvre l'histoire. Dans un acte : ouvre cet acte quand il devient courant (automatiquement ou par « Suivant »). |
 | Effet | Le PNJ parle seul, sans interjection. `{npc-starts}` : sans bulle du joueur ; `{npc-do}` : après une bulle `DO:` vide du joueur. |
 | Sans nom | Un PNJ présent est tiré au hasard. |
-| Avec nom | Id de fichier, nom complet ou un seul mot du nom (`Elena` pour `Elena Voss`), sans tenir compte des accents ni de la casse. Nom inconnu : le scénario refuse de se charger. PNJ nommé mais retiré de la scène : un autre PNJ présent le remplace. |
+| Avec nom | Id de fichier, nom complet ou un seul mot du nom (`Elena` pour `Elena Voss`), sans tenir compte des accents ni de la casse. Nom inconnu : le scénario refuse de se charger. PNJ nommé mais retiré de la scène : il est sauté ; si aucun des PNJ nommés n'est présent, un PNJ présent est tiré au hasard. |
 | Texte | La ligne est retirée : le modèle ne la lit jamais. Une mention au milieu d'une phrase est refusée au chargement (la commande doit être seule sur sa ligne). |
 | Joueur plus rapide | Si le joueur écrit avant que le PNJ ait parlé, son message compte : pas d'ouverture. |
 
@@ -1318,6 +1429,10 @@ Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bi
 
 ### 7.3 Écrire un long scénario avec un petit contexte
 
+> Pour faire écrire un scénario entier à une IA à petit contexte, le processus en phases du dossier
+> `chat/scenario-builder/` (en anglais : brief, plan d'une page, fiches, un fichier par étape) reprend et
+> développe la méthode ci-dessous.
+
 1. **Tableau d'actes dans un fichier temporaire** hors du dossier du scénario (l'appli ne le lit
    jamais), supprimé à la fin. Une ligne par acte :
 
@@ -1356,6 +1471,11 @@ Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bi
 | Émotion jouée comme preuve | Le PNJ sur-joue sa colère pour déclencher l'acte | Ancrer la condition sur le comportement du joueur |
 | Acte sauté | `[NEXT ACT]` dès le premier tour | Marqueur unique, fait d'ancrage (§7.2) |
 | Commande citée en exemple | Chargement refusé : `{npc-starts}` « doit être seul sur sa ligne », ou `{pick …}` mal formé | Une commande écrite entre accolades est toujours exécutée ou validée, même dans une note : décrire la commande avec des mots (`npc-starts`) sans les accolades (§2.9) |
+| Arrivant qui sait tout | Un PNJ qui vient d'arriver (`{npc-arrives}`) réagit à ce qui s'est dit avant son arrivée | L'historique est commun : faire dire à un autre personnage, dans l'acte d'arrivée, ce que l'arrivant doit savoir, ou écrire sa fiche pour qu'il n'en ait pas besoin (§2.13) |
+| Trop de PNJ actifs | Réponses lentes ou confuses après l'arrivée de figurants | Garder deux ou trois PNJ `active` à la fois : les figurants arrivent en `present` (§2.13), `{npc-active}` seulement pour qui doit mener la scène |
+| `{npc-only}` mal placé | Chargement refusé : « doit précéder le premier [NEXT ACT] » | L'écrire dans l'en-tête ou la première scène ; pour une arrivée plus tard, `{npc-arrives}` sous l'acte (§2.13) |
+| Détail de scène écrit comme une action | `{30%} Joe nettoie son flingue.` dans une scène : la ligne reste dans le prompt à chaque tour et le modèle la rejoue ou la commente sans fin | L'écrire comme un état (« Joe a ses pistolets posés devant lui ») (§2.10 bis) |
+| Style de scène qui contredit le global | `style.txt` : « phrases courtes », `styles/donjon.txt` : « descriptions amples » | Le style de scène est lu après le global et l'emporte ; garder le global minimal (langue, public) |
 | Style qui parle d'histoire | Le style annonce ou impose des événements, tous les PNJ le lisent à chaque tour | `style.txt` ne décrit que la manière d'écrire (§2.10) ; les événements vont dans les actes |
 | « De temps en temps » appliqué à chaque réponse | « Mets en valeur la tenue des filles de temps en temps » : le modèle le fait à chaque réplique | Un petit modèle n'a pas de hasard interne et lit toute consigne présente dans son prompt. Pour la rareté, calculer la probabilité **avant** de construire le prompt : `{N%}` dans une ligne de `style.txt` (§2.10) ; la ligne n'est donnée que N % du temps. L'idée vaut pour toute consigne à fréquence voulue |
 | Secret dans le texte de l'acte | Un autre PNJ réagit à une information privée | Écrire l'information privée avec `{npc-delta secret nom : …}` (§2.8), jamais dans le corps de l'acte, lu par tous |

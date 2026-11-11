@@ -114,10 +114,10 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
-    void loadScenarioLeavesTheLanguageUnspecifiedWithoutALanguageLine(@TempDir Path root) throws IOException {
+    void loadScenarioReadsEnglishWithoutALanguageLine(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn", "sheet", "Joueur : Kael\nA stormy night.");
 
-        assertFalse(adapter.loadScenario(root, "inn").language().isSpecified());
+        assertEquals("English", adapter.loadScenario(root, "inn").language().englishName());
     }
 
     @Test
@@ -126,7 +126,7 @@ class ChatFileStorageAdapterTest {
 
         ChatScenario scenario = adapter.loadScenario(root, "inn");
 
-        assertFalse(scenario.language().isSpecified());
+        assertEquals("English", scenario.language().englishName());
         assertTrue(scenario.premise().contains("Langue : français"));
     }
 
@@ -877,6 +877,43 @@ class ChatFileStorageAdapterTest {
             () -> adapter.deleteSavePoint(root, scenario, "../../etc/passwd"));
     }
 
+    // ── Arrivals : {npc-only}, {npc-arrives}, templates ─────────────────────
+
+    @Test
+    void aSheetUsedAsATemplateIsNotACharacterAndEachNameCreatesOneThatArrivesWithItsAct(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "road", "Elena sheet.", """
+            {npc-only Character}
+            The road.
+
+            # Crossroads
+            Calm.
+
+            # Ambush
+            {npc-arrives goblin Grik, Snak}
+            {npc-active Grik}
+            Goblins jump out.""");
+        writeCharacter(root, "road", "goblin.txt", "# Goblin\n%NPC% snarls.");
+
+        ChatScenario scenario = adapter.loadScenario(root, "road");
+
+        assertEquals(List.of("character", "grik", "snak"), scenario.cast().npcs().stream().map(n -> n.id()).toList());
+        assertEquals("# Grik\nGrik snarls.", scenario.cast().find("grik").orElseThrow().publicInfo());
+        assertEquals(Set.of("character"), scenario.activityAt(1).inSceneIds());
+        assertEquals(Set.of("character", "grik", "snak"), scenario.activityAt(2).inSceneIds());
+        assertEquals(NpcActivity.ACTIVE, scenario.activityAt(2).levelOf("grik"));
+    }
+
+    @Test
+    void aScenarioWithoutAnyArrivalLoadsExactlyAsBefore(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "Premise.\n\n# One\nBody.");
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+
+        assertEquals(1, scenario.cast().size());
+        assertTrue(scenario.startingRoster().isEverybody());
+        assertEquals(Set.of("character"), scenario.activityAt(1).inSceneIds());
+    }
+
     // ── Fixtures ────────────────────────────────────────────────────────────
 
     private static ChatSession threeTurnSession(ChatScenario scenario) {
@@ -933,5 +970,21 @@ class ChatFileStorageAdapterTest {
     private static void appendRawToScenario(Path root, String name, String raw) throws IOException {
         Path file = root.resolve(name).resolve("scenario.txt");
         Files.writeString(file, Files.readString(file, StandardCharsets.UTF_8) + "\n\n" + raw, StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void theLanguagePickedForTheGameIsKeptWithTheRunAndAutoIsTheDefault(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "Joueur : Kael\nLangue : French\nA stormy night.");
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        ChatSession session = ChatSession.fresh(scenario);
+        adapter.saveSession(root, session);
+        assertEquals("French", adapter.loadSession(root, scenario).scenario().language().englishName());
+
+        session.chooseLanguage(storymagine.chat.coeur.domaine.scenario.ScenarioLanguage.ENGLISH);
+        adapter.saveSession(root, session);
+        ChatSession reloaded = adapter.loadSession(root, scenario);
+
+        assertEquals("English", reloaded.scenario().language().englishName());
+        assertEquals("French", reloaded.authoredLanguage().englishName());
     }
 }

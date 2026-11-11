@@ -13,22 +13,29 @@ import java.util.stream.Collectors;
 /**
  * The few settings of a run that cannot be deduced from its turns : the act in force right now
  * (it can change without any turn, via the manual "previous act" button) and the activity levels the
- * player forced by clicking a character (see ForcedActivity). Text format of state.txt, one
+ * player forced by clicking a character (see ForcedActivity) and the language the player picked (absent = "Auto"). Text format of state.txt, one
  * "key=value" per line :
  * <pre>
  * act=2
  * forced=elena:active@1.2;marcus:absent@
+ * language=French
  * </pre>
  * Each forced entry is "id:level@anchor", the anchor being the heading it hangs from (empty = the
  * root). A missing or blank key parses to null — the caller falls back to its default (nothing
  * forced). present / interjecting are the keys of the files written before the activity levels : they
  * are still read (see ChatFileStorageAdapter) but never written again.
  */
-record RunState(Integer act, Set<String> present, Set<String> interjecting, Map<String, ForcedActivity> forced) {
+record RunState(Integer act, Set<String> present, Set<String> interjecting, Map<String, ForcedActivity> forced,
+                String language) {
+
+    RunState(Integer act, Set<String> present, Set<String> interjecting, Map<String, ForcedActivity> forced) {
+        this(act, present, interjecting, forced, null);
+    }
 
     String format() {
         StringBuilder sb = new StringBuilder();
         if (act != null) sb.append("act=").append(act).append('\n');
+        if (language != null && !language.isBlank()) sb.append("language=").append(language).append('\n');
         if (forced != null && !forced.isEmpty()) {
             sb.append("forced=").append(forced.entrySet().stream()
                 .map(e -> e.getKey() + ":" + e.getValue().level().keyword() + "@" + e.getValue().anchor())
@@ -42,6 +49,7 @@ record RunState(Integer act, Set<String> present, Set<String> interjecting, Map<
         Set<String> present = null;
         Set<String> interjecting = null;
         Map<String, ForcedActivity> forced = null;
+        String language = null;
         for (String line : content.split("\n")) {
             int eq = line.indexOf('=');
             if (eq < 0) continue;
@@ -53,10 +61,11 @@ record RunState(Integer act, Set<String> present, Set<String> interjecting, Map<
                 case "present"      -> present = ids(value);
                 case "interjecting" -> interjecting = ids(value);
                 case "forced"       -> forced = forcedEntries(value);
+                case "language"     -> language = value;
                 default             -> { }
             }
         }
-        return new RunState(act, present, interjecting, forced);
+        return new RunState(act, present, interjecting, forced, language);
     }
 
     private static Map<String, ForcedActivity> forcedEntries(String value) {

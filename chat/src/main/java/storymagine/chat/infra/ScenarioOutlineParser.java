@@ -6,15 +6,20 @@ import storymagine.chat.coeur.domaine.scenario.ActNumber;
 import storymagine.chat.coeur.domaine.scenario.CharacterDelta;
 import storymagine.chat.coeur.domaine.scenario.CharacterDeltaMarker;
 import storymagine.chat.coeur.domaine.scenario.LegacyCommandSyntax;
+import storymagine.chat.coeur.domaine.scenario.NpcOnlyMarker;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
+import storymagine.chat.coeur.domaine.scenario.SceneStyleMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
+import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
+import storymagine.chat.coeur.domaine.scenario.StartingRoster;
 import storymagine.chat.coeur.domaine.scenario.StoryDirective;
 import storymagine.chat.coeur.domaine.scenario.StoryDirectiveMarker;
 import storymagine.chat.coeur.domaine.scenario.Teaser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,10 +39,22 @@ final class ScenarioOutlineParser {
 
     private ScenarioOutlineParser() {}
 
-    /** premiseOpening : who speaks first when the story begins ("{npc-starts}" in the premise, already cut out of premise). */
-    record Outline(String premise, List<ScenarioAct> acts, NpcOpening premiseOpening) {}
+    /**
+     * premiseOpening : who speaks first when the story begins ("{npc-starts}" in the premise, already cut out of premise).
+     * premiseStyle : the styles of the "{style name}" lines of the premise (cut out too), to add to style.txt for the whole story.
+     */
+    record Outline(String premise, List<ScenarioAct> acts, NpcOpening premiseOpening, StartingRoster startingRoster,
+                   ScenarioStyle premiseStyle) {}
 
+    /** For a scenario text with no "{style name}" : a name here has no styles/ directory to be read from. */
     static Outline parse(String rawInput) {
+        return parse(rawInput, name -> {
+            throw new IllegalArgumentException("{style " + name + "} : styles/" + name + ".txt est introuvable.");
+        });
+    }
+
+    /** styleReader gives the style of a "{style name}" (the adapter reads styles/name.txt) or throws when it cannot. */
+    static Outline parse(String rawInput, Function<String, ScenarioStyle> styleReader) {
         // Normalise CRLF/CR -> LF avant tout decoupage sur "\n" : sans ca, chaque ligne garde un
         // '\r' final invisible, et HEADING.matches() echoue TOUJOURS dessus — '.' n'inclut pas '\r'
         // par defaut en Java, donc "(.*)$" ne peut jamais l'absorber. Resultat observe en vrai : un
@@ -47,10 +64,15 @@ final class ScenarioOutlineParser {
         String raw = rawInput.replace("\r\n", "\n").replace("\r", "\n");
         LegacyCommandSyntax.requireNone(raw);
         List<Heading> headings = splitHeadings(raw);
+        List<String> onlyTexts = new ArrayList<>();
         if (headings.isEmpty()) {
-            NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(raw);
+            SceneStyleMarker.Extracted style = SceneStyleMarker.extract(raw);
+            NpcOnlyMarker.Extracted only = NpcOnlyMarker.extract(style.text());
+            onlyTexts.addAll(only.namesTexts());
+            NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(only.text());
             requireNoDelta(premise.text());
-            return new Outline(premise.text().strip(), List.of(), premise.opening());
+            return new Outline(premise.text().strip(), List.of(), premise.opening(), rosterOf(onlyTexts),
+                styleOf(style.names(), styleReader));
         }
 
         Heading first = headings.get(0);
@@ -63,13 +85,26 @@ final class ScenarioOutlineParser {
             premiseText = textBefore(raw, first).strip();
             actHeadings = headings;
         }
-        NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(premiseText);
+        SceneStyleMarker.Extracted premiseStyle = SceneStyleMarker.extract(premiseText);
+        NpcOnlyMarker.Extracted premiseOnly = NpcOnlyMarker.extract(premiseStyle.text());
+        onlyTexts.addAll(premiseOnly.namesTexts());
+        NpcOpeningMarker.Extracted premise = NpcOpeningMarker.extract(premiseOnly.text());
         requireNoDelta(premise.text());
 
-        List<Node> roots = buildTree(actHeadings);
+        List<Node> roots = buildTree(actHeadings, onlyTexts);
         List<ScenarioAct> leaves = new ArrayList<>();
-        for (Node root : roots) flatten(root, new ArrayList<>(), leaves, new ArrayList<>());
-        return new Outline(premise.text().strip(), leaves, premise.opening());
+        for (Node root : roots) flatten(root, new ArrayList<>(), leaves, new ArrayList<>(), styleReader);
+        return new Outline(premise.text().strip(), leaves, premise.opening(), rosterOf(onlyTexts),
+            styleOf(premiseStyle.names(), styleReader));
+    }
+
+    /** At most one "{npc-only}" in the whole scenario : none means everybody is there at the start. */
+    private static StartingRoster rosterOf(List<String> onlyTexts) {
+        if (onlyTexts.size() > 1) {
+            throw new IllegalArgumentException("{npc-only} est ecrit " + onlyTexts.size() + " fois : une seule fois, "
+                + "avant le premier [NEXT ACT] (pour faire arriver un personnage plus tard, utilisez {npc-arrives}).");
+        }
+        return onlyTexts.isEmpty() ? StartingRoster.EVERYBODY : new StartingRoster(onlyTexts.get(0));
     }
 
     /** A "{npc-delta}" in the premise would have nothing to apply to and would reach every character as text. */
@@ -82,7 +117,7 @@ final class ScenarioOutlineParser {
         }
         if (!ActivityDirectiveMarker.extract(premise).directives().isEmpty()) {
             throw new IllegalArgumentException("{npc-active ...}, {npc-present ...}, {npc-passive ...}, {npc-absent ...}, "
-                + "{npc-reset} et {npc-mode ...} ne peuvent etre ecrits que dans un acte, pas dans la premisse.");
+                + "{npc-reset}, {npc-mode ...}, {npc-arrives ...} et {npc-leaves ...} ne peuvent etre ecrits que dans un acte, pas dans la premisse.");
         }
     }
 
@@ -129,6 +164,7 @@ final class ScenarioOutlineParser {
         ActNumber  number;
         String     title;
         String     body;        // "{npc-starts}" line already cut out
+        List<String> styleNames = new ArrayList<>(); // the "{style name}" lines written under this heading, in order, no repeat
         NpcOpening opening = NpcOpening.NONE;
         List<CharacterDelta> deltas = new ArrayList<>();
         List<ActivityDirective> activity = new ArrayList<>();
@@ -136,14 +172,17 @@ final class ScenarioOutlineParser {
         List<Node> children = new ArrayList<>();
     }
 
-    private static List<Node> buildTree(List<Heading> headings) {
+    private static List<Node> buildTree(List<Heading> headings, List<String> onlyTexts) {
         List<Node> roots = new ArrayList<>();
         List<Node> stack = new ArrayList<>(); // stack.get(i) = open node at depth i+1
         int        rootSiblingIndex = 0;
         for (Heading h : headings) {
             Node node = new Node();
             node.title = h.title;
-            NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(h.body.strip());
+            SceneStyleMarker.Extracted style = SceneStyleMarker.extract(h.body.strip());
+            node.styleNames = style.names().stream().distinct().toList();
+            NpcOnlyMarker.Extracted only = NpcOnlyMarker.extract(style.text());
+            NpcOpeningMarker.Extracted body = NpcOpeningMarker.extract(only.text());
             CharacterDeltaMarker.Extracted withoutDeltas = CharacterDeltaMarker.extract(body.text());
             StoryDirectiveMarker.Extracted withoutStories = StoryDirectiveMarker.extract(withoutDeltas.text());
             ActivityDirectiveMarker.Extracted withoutActivity = ActivityDirectiveMarker.extract(withoutStories.text());
@@ -165,6 +204,14 @@ final class ScenarioOutlineParser {
                 node.number = parent.number.child(parent.children.size() + 1);
                 parent.children.add(node);
             }
+            if (!only.namesTexts().isEmpty()) {
+                if (!node.number.segments().stream().allMatch(i -> i == 1)) {
+                    throw new IllegalArgumentException("{npc-only} dans l'acte " + node.number.display() + " : il doit preceder le "
+                        + "premier [NEXT ACT] (en tete du scenario ou dans la premiere scene) ; pour faire arriver un "
+                        + "personnage plus tard, utilisez {npc-arrives}.");
+                }
+                onlyTexts.addAll(only.namesTexts());
+            }
             stack.add(node);
         }
         return roots;
@@ -174,7 +221,8 @@ final class ScenarioOutlineParser {
     // Flatten to leaves, resolving inherited text and diffing beats against the previous leaf
     // -------------------------------------------------------------------------
 
-    private static void flatten(Node node, List<Node> path, List<ScenarioAct> leaves, List<Node> previousPath) {
+    private static void flatten(Node node, List<Node> path, List<ScenarioAct> leaves, List<Node> previousPath,
+                                Function<String, ScenarioStyle> styleReader) {
         path.add(node);
         if (node.children.isEmpty()) {
             String resolvedText = path.stream().map(n -> n.body).filter(b -> !b.isBlank())
@@ -190,13 +238,29 @@ final class ScenarioOutlineParser {
                 if (opening.isNone()) opening = entered.opening; // le premier marqueur, de la racine a la feuille, decide
             }
             List<List<ActivityDirective>> activityPath = path.stream().map(n -> n.activity).toList();
-            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas, activityPath, stories));
+            leaves.add(new ScenarioAct(node.number, node.title, resolvedText, beats, opening, deltas, activityPath, stories,
+                sceneStyleOf(path, styleReader)));
             previousPath.clear();
             previousPath.addAll(path);
         } else {
-            for (Node child : node.children) flatten(child, path, leaves, previousPath);
+            for (Node child : node.children) flatten(child, path, leaves, previousPath, styleReader);
         }
         path.remove(path.size() - 1);
+    }
+
+    /** The styles of the nearest heading, from the leaf up to the root, that wrote a "{style name}" (added in order) ; NONE if none did. */
+    private static ScenarioStyle sceneStyleOf(List<Node> path, Function<String, ScenarioStyle> styleReader) {
+        for (int i = path.size() - 1; i >= 0; i--) {
+            if (!path.get(i).styleNames.isEmpty()) return styleOf(path.get(i).styleNames, styleReader);
+        }
+        return ScenarioStyle.NONE;
+    }
+
+    /** The styles of these names, one after the other (the first line of a later one comes after the last line of the one before). */
+    private static ScenarioStyle styleOf(List<String> names, Function<String, ScenarioStyle> styleReader) {
+        ScenarioStyle combined = ScenarioStyle.NONE;
+        for (String name : names.stream().distinct().toList()) combined = combined.then(styleReader.apply(name));
+        return combined;
     }
 
     /** Nodes on `path` that were not on `previousPath` at the same position — i.e. newly entered ancestors. */

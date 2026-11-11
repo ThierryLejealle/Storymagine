@@ -19,7 +19,7 @@ record ScenarioHeader(String playerName, ScenarioLanguage language, String rest,
     static ScenarioHeader parse(String raw) {
         String[] lines = raw.split("\n", -1);
         String player = null;
-        ScenarioLanguage language = ScenarioLanguage.UNSPECIFIED;
+        ScenarioLanguage language = ScenarioLanguage.ENGLISH; // no "Langue :" line : English
         int i = 0;
         for (; i < lines.length; i++) {
             String line = lines[i].strip();

@@ -34,6 +34,16 @@ class ChatPromptBuilderTest {
         ScenarioAct.leaf(ActNumber.of(3), "", "Act three: the truth comes out.")));
 
     @Test
+    void systemStatesWhoTheSpeakerIs() {
+        Npc elena = new Npc("elena", "Elena", "Elena's sheet.", "");
+        Npc marcus = new Npc("marcus", "Marcus", "Marcus's sheet.", "");
+        ChatScenario two = new ChatScenario("test", new Cast(List.of(elena, marcus)), "A stormy night.", List.of());
+        ChatPrompt prompt = ChatPromptBuilder.build(two, new Scene(marcus, List.of(elena), List.of(), false), 0, "", List.of());
+        assertTrue(prompt.system().contains("YOUR CHARACTER — you are Marcus:\nMarcus's sheet."));
+        assertFalse(prompt.system().contains("you are Elena"));
+    }
+
+    @Test
     void systemCarriesCharacterAndScenario() {
         ChatPrompt prompt = ChatPromptBuilder.build(scenario, sceneFor(scenario), 0, "", List.of());
         assertTrue(prompt.system().contains("A grumpy innkeeper."));

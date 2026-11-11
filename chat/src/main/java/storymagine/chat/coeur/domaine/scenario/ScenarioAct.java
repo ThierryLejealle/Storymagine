@@ -26,16 +26,25 @@ import java.util.List;
  * the activity in force here is computed from it (see ChatScenario.activityAt). stories are the
  * "{npc-story ...}" commands (see StoryDirective) written in this leaf or in an ancestor entered for the
  * first time by this transition, like deltas : the tags in force at act N come from the stories of acts
- * 1..N in order (see StoryResolver).
+ * 1..N in order (see StoryResolver). sceneStyle is the extra style advice of the nearest heading on the way
+ * from the root to this leaf that wrote a "{style name}" (NONE if none did) : it is added after style.txt
+ * while this leaf is current (see ChatScenario.styleAt).
  */
 public record ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
                           List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath,
-                          List<StoryDirective> stories) {
+                          List<StoryDirective> stories, ScenarioStyle sceneStyle) {
 
     public ScenarioAct {
+        sceneStyle = sceneStyle == null ? ScenarioStyle.NONE : sceneStyle;
         deltas = deltas == null ? List.of() : List.copyOf(deltas);
         activityPath = activityPath == null ? List.of() : activityPath.stream().map(List::copyOf).toList();
         stories = stories == null ? List.of() : List.copyOf(stories);
+    }
+
+    public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,
+                       List<CharacterDelta> deltas, List<List<ActivityDirective>> activityPath,
+                       List<StoryDirective> stories) {
+        this(number, title, text, beats, opening, deltas, activityPath, stories, ScenarioStyle.NONE);
     }
 
     public ScenarioAct(ActNumber number, String title, String text, List<String> beats, NpcOpening opening,

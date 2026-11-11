@@ -5,6 +5,7 @@ import storymagine.chat.coeur.domaine.activity.NpcMode;
 import storymagine.chat.coeur.domaine.activity.CastActivity;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Static roleplay setup read from chatscenarios/{name}/ : the Cast of every Npc the LLM can play,
@@ -25,16 +26,25 @@ import java.util.List;
  * exist in the cast : an author's typo fails loudly here instead of silently picking someone else.
  * language is the language the Npcs write in, from an optional "Langue : ..." header line next to
  * "Joueur : ..." ; null means UNSPECIFIED. style is the optional advice of style.txt, shared by every
- * Npc (see ScenarioStyle) ; null means NONE.
+ * Npc (see ScenarioStyle) ; null means NONE. startingRoster is who is in the story at the start (see
+ * StartingRoster) ; null means everybody.
  */
 public record ChatScenario(String name, Cast cast, String premise, List<ScenarioAct> acts, String playerName,
-                           NpcOpening storyOpening, ScenarioLanguage language, ScenarioStyle style) {
+                           NpcOpening storyOpening, ScenarioLanguage language, ScenarioStyle style,
+                           StartingRoster startingRoster) {
 
     public ChatScenario {
         if (playerName == null || playerName.isBlank()) playerName = "Alex";
         if (storyOpening == null) storyOpening = NpcOpening.NONE;
         if (language == null) language = ScenarioLanguage.UNSPECIFIED;
         if (style == null) style = ScenarioStyle.NONE;
+        if (startingRoster == null) startingRoster = StartingRoster.EVERYBODY;
+        Set<String> outsideAtStart;
+        try {
+            outsideAtStart = startingRoster.outsideIds(cast);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("{npc-only " + startingRoster.namesText() + "} : " + e.getMessage(), e);
+        }
         requireKnownNpc(cast, storyOpening, "l'ouverture du scenario");
         for (ScenarioAct act : acts) {
             requireKnownNpc(cast, act.opening(), "l'acte " + act.number());
@@ -45,7 +55,28 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
                 }
             }
             for (StoryDirective story : act.stories()) requireKnownTag(cast, story, act);
-            requireValidActivity(cast, act);
+            requireValidActivity(cast, act, outsideAtStart);
+            requireOpeningInStory(cast, act, outsideAtStart);
+        }
+        if (acts.isEmpty() || storyOpening.isNamed()) {
+            for (Npc opener : ActivityResolver.openingNpcs(cast, storyOpening)) {
+                if (outsideAtStart.contains(opener.id())) {
+                    throw new IllegalArgumentException("{npc-starts " + storyOpening.namesText() + "} : " + opener.label()
+                        + " n'est pas dans l'histoire au depart ({npc-only}).");
+                }
+            }
+        }
+    }
+
+    /** An Npc who opens an act must be in the story when the act begins. */
+    private static void requireOpeningInStory(Cast cast, ScenarioAct act, Set<String> outsideAtStart) {
+        if (!act.opening().isNamed()) return;
+        CastActivity activity = ActivityResolver.resolve(cast, act.activityPath(), outsideAtStart);
+        for (Npc opener : ActivityResolver.openingNpcs(cast, act.opening())) { // unknown names already refused by requireKnownNpc
+            if (activity.levelOf(opener.id()).isOutside()) {
+                throw new IllegalArgumentException("{npc-starts " + act.opening().namesText() + "} dans l'acte " + act.number()
+                    + " : " + opener.label() + " n'est pas dans l'histoire a ce stade ({npc-arrives} d'abord).");
+            }
         }
     }
 
@@ -62,10 +93,10 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
     }
 
     /** An activity command that names nobody known, names someone twice or leaves nobody in the scene fails loudly here. */
-    private static void requireValidActivity(Cast cast, ScenarioAct act) {
+    private static void requireValidActivity(Cast cast, ScenarioAct act, Set<String> outsideAtStart) {
         try {
-            if (ActivityResolver.resolve(cast, act.activityPath()).inSceneIds().isEmpty() && !cast.npcs().isEmpty()) {
-                throw new IllegalArgumentException("plus aucun personnage present dans la scene (tous sont absents).");
+            if (ActivityResolver.resolve(cast, act.activityPath(), outsideAtStart).inSceneIds().isEmpty() && !cast.npcs().isEmpty()) {
+                throw new IllegalArgumentException("plus aucun personnage present dans la scene (tous sont absents ou hors de l'histoire).");
             }
             for (NpcMode mode : NpcMode.values()) ActivityResolver.modeIds(cast, act.activityPath(), mode);
         } catch (IllegalArgumentException e) {
@@ -88,8 +119,14 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
      * commands on the path of headings leading to that act — never stored, like sheetAt.
      */
     public CastActivity activityAt(int act) {
-        if (act < 1 || act > acts.size()) return CastActivity.defaults(cast);
-        return ActivityResolver.resolve(cast, acts.get(act - 1).activityPath());
+        Set<String> outsideAtStart = startingRoster.outsideIds(cast);
+        if (act < 1 || act > acts.size()) return CastActivity.defaults(cast, outsideAtStart);
+        return ActivityResolver.resolve(cast, acts.get(act - 1).activityPath(), outsideAtStart);
+    }
+
+    public ChatScenario(String name, Cast cast, String premise, List<ScenarioAct> acts, String playerName,
+                        NpcOpening storyOpening, ScenarioLanguage language, ScenarioStyle style) {
+        this(name, cast, premise, acts, playerName, storyOpening, language, style, StartingRoster.EVERYBODY);
     }
 
     public ChatScenario(String name, Cast cast, String premise, List<ScenarioAct> acts, String playerName,
@@ -110,9 +147,24 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
         this(name, cast, premise, acts, null, NpcOpening.NONE, ScenarioLanguage.UNSPECIFIED);
     }
 
+    /**
+     * The style advice in force at act `act` : style.txt, then the style of the scene (see ScenarioAct.sceneStyle)
+     * added after it, so the scene's lines come last and win when they contradict the global ones. Chance
+     * markers are still in it : they are drawn at every answer (see ScenarioStyle.drawn).
+     */
+    public ScenarioStyle styleAt(int act) {
+        if (act < 1 || act > acts.size()) return style;
+        return style.then(acts.get(act - 1).sceneStyle());
+    }
+
+    /** The same scenario with another language (the one the player picked for the game, see ChatSession.chooseLanguage). */
+    public ChatScenario withLanguage(ScenarioLanguage newLanguage) {
+        return new ChatScenario(name, cast, premise, acts, playerName, storyOpening, newLanguage, style, startingRoster);
+    }
+
     /** The same scenario with another style (the one drawn for a given answer, see ScenarioStyle.drawn). */
     public ChatScenario withStyle(ScenarioStyle newStyle) {
-        return new ChatScenario(name, cast, premise, acts, playerName, storyOpening, language, newStyle);
+        return new ChatScenario(name, cast, premise, acts, playerName, storyOpening, language, newStyle, startingRoster);
     }
 
     /**
@@ -146,9 +198,10 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
     }
 
     private static void requireKnownNpc(Cast cast, NpcOpening opening, String where) {
-        if (opening.isNamed() && cast.findByName(opening.npcName()).isEmpty()) {
-            throw new IllegalArgumentException("{npc-starts " + opening.npcName() + "} dans " + where
-                + " : aucun personnage de ce nom dans characters/.");
+        try {
+            ActivityResolver.openingNpcs(cast, opening);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("{npc-starts " + opening.namesText() + "} dans " + where + " : " + e.getMessage() + ".", e);
         }
     }
 }

@@ -1,5 +1,6 @@
 package storymagine.chat.coeur.domaine.session;
 
+import storymagine.chat.coeur.domaine.activity.ActivityResolver;
 import storymagine.chat.coeur.domaine.activity.CastActivity;
 import storymagine.chat.coeur.domaine.activity.NpcActivity;
 import storymagine.chat.coeur.domaine.scenario.Cast;
@@ -75,18 +76,19 @@ public final class SpeakerSelector {
     }
 
     /**
-     * The Npc who opens a story or act (see NpcOpening) : the one the author named, if present,
-     * otherwise one present Npc picked at random (a named Npc muted by the player is not dragged
-     * back into the scene). Unlike select(), mentions, continuation and activity levels play
-     * no role : the author's marker is the only input. presentIds must not be empty.
+     * The Npcs who open a story or act (see NpcOpening), in the order the author wrote them : the
+     * named ones that are present (the first opens, the others follow), otherwise one present Npc
+     * picked at random (a named Npc muted by the player is not dragged back into the scene). Unlike
+     * select(), mentions, continuation and activity levels play no role : the author's marker is the
+     * only input. presentIds must not be empty.
      */
-    public static Npc openingSpeaker(Cast cast, Set<String> presentIds, NpcOpening opening, Random random) {
+    public static List<Npc> openingSpeakers(Cast cast, Set<String> presentIds, NpcOpening opening, Random random) {
+        List<Npc> named = ActivityResolver.openingNpcs(cast, opening).stream()
+            .filter(n -> presentIds.contains(n.id()))
+            .toList();
+        if (!named.isEmpty()) return named;
         List<Npc> present = inScene(cast, presentIds);
-        if (opening.isNamed()) {
-            Optional<Npc> named = cast.findByName(opening.npcName()).filter(n -> presentIds.contains(n.id()));
-            if (named.isPresent()) return named.get();
-        }
-        return present.get(random.nextInt(present.size()));
+        return List.of(present.get(random.nextInt(present.size())));
     }
 
     /**

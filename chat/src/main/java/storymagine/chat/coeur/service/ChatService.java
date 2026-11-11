@@ -5,6 +5,7 @@ import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutp
 import storymagine.chat.coeur.domaine.agent.replyorigin.ReplyOriginAnalystOutput;
 import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.session.SavePoint;
 import storymagine.chat.coeur.domaine.session.TurnNumber;
@@ -172,6 +173,12 @@ public interface ChatService {
      * unknown Npc.
      */
     boolean cycleNpcActivity(Path chatScenariosRoot, ChatSession session, String npcId);
+
+    /**
+     * Switches the language of the game from the next reply on (null = "Auto", the scenario's own) and
+     * persists the choice with the run. The turns already written stay in the former language.
+     */
+    void changeLanguage(Path chatScenariosRoot, ChatSession session, ScenarioLanguage language);
 
     /**
      * Re-reads scenario.txt and every character .txt from disk into session, in place — for picking

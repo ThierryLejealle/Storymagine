@@ -34,10 +34,13 @@ import java.util.List;
  * ("{npc-do}", or "{npc-starts Name}" of a character in DO mode) : the page sends an empty "DO:" by
  * itself, exactly as if the player had clicked DO ; false for a normal opening ("{npc-starts}") : the
  * page asks the server to open the scene, with no player message at all.
+ * languageChoice is the language the player picked ("English", "French", or "auto" for the scenario's own) and
+ * authoredLanguage the one the scenario declares, shown next to "Auto" in the language selector.
  */
 public record ChatHistoryView(String scenarioName, List<ChatTurn> turns, List<ChatTurn> newTurns,
                                int removedTurnCount, boolean compacted, int promptTokens, int contextWindow,
                                int currentAct, int totalActs, boolean actAdvanced, String actTitle,
                                GenerationSettings generationSettings, List<NpcView> cast, int lastTurnNumber,
-                               boolean npcOpeningPending, boolean npcOpeningWithPen) {
+                               boolean npcOpeningPending, boolean npcOpeningWithPen,
+                               String languageChoice, String authoredLanguage) {
 }

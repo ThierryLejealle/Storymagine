@@ -3,6 +3,7 @@ package storymagine.chat.coeur.domaine.scenario;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NpcOpeningMarkerTest {
@@ -20,7 +21,7 @@ class NpcOpeningMarkerTest {
         NpcOpening opening = NpcOpeningMarker.extract("{npc-starts Elena Voss }").opening();
 
         assertTrue(opening.isNamed());
-        assertEquals("Elena Voss", opening.npcName());
+        assertEquals("Elena Voss", opening.namesText());
     }
 
     @Test
@@ -48,7 +49,7 @@ class NpcOpeningMarkerTest {
     void theFirstMarkerDecidesAndEveryMarkerLineIsRemoved() {
         NpcOpeningMarker.Extracted e = NpcOpeningMarker.extract("{npc-starts Marcus}\ntexte\n{npc-starts Elena}\n");
 
-        assertEquals("Marcus", e.opening().npcName());
+        assertEquals("Marcus", e.opening().namesText());
         assertEquals("texte\n", e.text());
     }
 
@@ -65,9 +66,19 @@ class NpcOpeningMarkerTest {
         assertEquals(NpcOpening.ANY_DO, NpcOpeningMarker.extract("{npc-do}").opening());
         NpcOpening named = NpcOpeningMarker.extract("{NPC-DO Elena Voss}").opening();
         assertTrue(named.isNamed() && named.doPen());
-        assertEquals("Elena Voss", named.npcName());
+        assertEquals("Elena Voss", named.namesText());
         assertEquals(NpcOpening.namedDo("Elena"), NpcOpeningMarker.extract("{npc-do Elena}\n{npc-starts Marcus}\n").opening());
         assertEquals("texte\n", NpcOpeningMarker.extract("{npc-do}\ntexte\n").text());
+    }
+
+    @Test
+    void severalNamesAreKeptAsWrittenForStartsAndDo() {
+        NpcOpening starts = NpcOpeningMarker.extract("{npc-starts Elena Voss, Marcus}\n").opening();
+        assertEquals("Elena Voss, Marcus", starts.namesText());
+        assertFalse(starts.doPen());
+        NpcOpening pen = NpcOpeningMarker.extract("{npc-do Elena, Marcus}\n").opening();
+        assertEquals("Elena, Marcus", pen.namesText());
+        assertTrue(pen.doPen());
     }
 
     @Test

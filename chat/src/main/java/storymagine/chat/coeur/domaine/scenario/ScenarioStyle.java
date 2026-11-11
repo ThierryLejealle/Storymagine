@@ -35,6 +35,12 @@ public record ScenarioStyle(String text) {
         return !text.isEmpty();
     }
 
+    /** This style followed by `other` (its lines come last, so they win when they contradict) ; an empty side is ignored. */
+    public ScenarioStyle then(ScenarioStyle other) {
+        if (!other.isPresent()) return this;
+        return isPresent() ? new ScenarioStyle(text + "\n" + other.text) : other;
+    }
+
     /**
      * The style for one answer : each line with a chance marker is drawn on its own (random gives
      * values in [0, 1)) and either kept without its marker or dropped altogether. Lines without a

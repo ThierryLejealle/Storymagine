@@ -470,4 +470,20 @@ class ChatSessionTest {
 
         assertEquals(Map.of("marcus", new ForcedActivity(NpcActivity.ABSENT, "")), forced);
     }
+
+    @Test
+    void theLanguagePickedByThePlayerWinsOverTheScenarioAndSurvivesAReload() {
+        ChatScenario authored = scenario("premise", List.of()).withLanguage(storymagine.chat.coeur.domaine.scenario.ScenarioLanguage.FRENCH);
+        ChatSession session = ChatSession.fresh(authored);
+
+        session.chooseLanguage(storymagine.chat.coeur.domaine.scenario.ScenarioLanguage.ENGLISH);
+        assertEquals("English", session.scenario().language().englishName());
+
+        session.reloadScenario(authored); // the file on disk still says French
+        assertEquals("English", session.scenario().language().englishName());
+
+        session.chooseLanguage(null); // Auto : back to what the scenario declares
+        assertEquals("French", session.scenario().language().englishName());
+        assertEquals("French", session.authoredLanguage().englishName());
+    }
 }

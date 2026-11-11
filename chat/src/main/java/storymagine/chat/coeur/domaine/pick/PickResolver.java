@@ -1,6 +1,7 @@
 package storymagine.chat.coeur.domaine.pick;
 
 import storymagine.chat.coeur.domaine.scenario.Cast;
+import storymagine.chat.coeur.domaine.scenario.ChanceLines;
 import storymagine.chat.coeur.ports.RandomnessPort;
 
 import java.util.ArrayList;
@@ -21,7 +22,8 @@ import java.util.stream.IntStream;
  * command hands out counts as "already drawn" for a later "unique" on the same library, which fails
  * when nothing is left. Several paragraphs are joined by a blank line. A drawn paragraph is inserted
  * as is : a command inside it is not resolved. The "{repeat}" blocks are unfolded first (see
- * RepeatExpander), so a "{pick}" written in a block is drawn once per copy. The "{cast}" commands run
+ * RepeatExpander), so a "{pick}" written in a block is drawn once per copy. Before all that, a line with a
+ * {N%} chance marker is kept (marker removed) with N% of chances and dropped otherwise (see ChanceLines). The "{cast}" commands run
  * last (see CastResolver). Pure : same library and same draws, same result.
  */
 public final class PickResolver {
@@ -46,7 +48,7 @@ public final class PickResolver {
     }
 
     public static boolean containsTag(String text) {
-        return COMMAND.matcher(text).find() || RepeatExpander.containsTag(text) || CastCommand.appearsIn(text);
+        return COMMAND.matcher(text).find() || ChanceLines.appearsIn(text) || RepeatExpander.containsTag(text) || CastCommand.appearsIn(text);
     }
 
     /**
@@ -62,7 +64,9 @@ public final class PickResolver {
      * own item, the picks written in it and its casts, so they can be shown copy by copy.
      */
     public PickResolution resolve(List<String> texts) {
-        RepeatExpansion unfolded = new RepeatExpander(library, randomness, cast).expand(texts);
+        // First : the lines with a {N%} chance marker are kept or dropped, so a command written on a dropped line draws nothing.
+        List<String> chanced = texts.stream().map(text -> ChanceLines.draw(text, randomness::nextInt)).toList();
+        RepeatExpansion unfolded = new RepeatExpander(library, randomness, cast).expand(chanced);
         Map<PickTag, Set<Integer>> drawn = new HashMap<>();
         List<Positioned> picks = new ArrayList<>();
         List<String> resolved = new ArrayList<>();

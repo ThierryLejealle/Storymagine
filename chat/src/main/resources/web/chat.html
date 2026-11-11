@@ -287,6 +287,13 @@ body.style-script .turn .bubble em{opacity:1;color:#4b5563}
     <label>💬 Chance d'interjection
       <input type="number" id="interjectionChanceInput" min="0" max="1" step="0.05" placeholder="1.00" title="Chance totale que des PNJ non visés réagissent brièvement, partagée entre eux (un PNJ présent compte double d'un passif) : plus ils sont nombreux, plus chacun réagit rarement">
     </label>
+    <label>🌐 Langue
+      <select id="languageInput" title="Langue des réponses à partir du prochain tour (l'historique déjà écrit reste dans l'ancienne langue). Auto : la langue prévue par le scénario">
+        <option value="auto">Auto</option>
+        <option value="English">English</option>
+        <option value="French">Français</option>
+      </select>
+    </label>
     <label class="checkbox-label">
       <input type="checkbox" id="showThinkingInput"> 🧠 Afficher la réflexion
     </label>
@@ -349,6 +356,7 @@ const minPInput = document.getElementById('minPInput');
 const repeatPenaltyInput = document.getElementById('repeatPenaltyInput');
 const interjectionChanceInput = document.getElementById('interjectionChanceInput');
 const showThinkingInput = document.getElementById('showThinkingInput');
+const languageInput = document.getElementById('languageInput');
 const settingsApplyBtn = document.getElementById('settingsApplyBtn');
 const settingsResetBtn = document.getElementById('settingsResetBtn');
 const styleModeSelect = document.getElementById('styleModeSelect');
@@ -455,6 +463,10 @@ function resetSettings() {
   statusEl.textContent = 'Réglages remis aux défauts.';
 }
 
+languageInput.addEventListener('change', async () => {
+  const res = await fetch('/language?value=' + encodeURIComponent(languageInput.value), { method: 'POST' });
+  updateChrome(await res.json());
+});
 settingsApplyBtn.addEventListener('click', applySettings);
 settingsResetBtn.addEventListener('click', resetSettings);
 
@@ -950,6 +962,8 @@ function closeNpcPicker() {
 // les mises a jour incrementales d'un echange.
 function updateChrome(history) {
   nameEl.textContent = history.scenarioName;
+  languageInput.value = history.languageChoice || 'auto';
+  languageInput.options[0].textContent = 'Auto (' + history.authoredLanguage + ')';
   actTitleEl.textContent = history.currentAct
     ? 'Acte ' + history.currentAct + actSuffix(history.actTitle)
     : '';

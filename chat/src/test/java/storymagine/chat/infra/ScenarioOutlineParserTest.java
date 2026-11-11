@@ -132,4 +132,90 @@ class ScenarioOutlineParserTest {
 
         assertTrue(outline.acts().get(0).text().contains("Quand écrire [NEXT ACT]"));
     }
+
+    // ── {npc-only} : the starting roster, before the first [NEXT ACT] ──────
+
+    @Test
+    void npcOnlyInThePremiseSetsTheStartingRosterAndIsCutOutOfTheText() {
+        var outline = ScenarioOutlineParser.parse("""
+            #SCENARIO
+            The premise.
+            {npc-only Elena, Marc}
+
+            # One
+            Body.""");
+
+        assertEquals("Elena, Marc", outline.startingRoster().namesText());
+        assertEquals("The premise.", outline.premise());
+    }
+
+    @Test
+    void npcOnlyInTheFirstSceneCountsToo() {
+        var outline = ScenarioOutlineParser.parse("""
+            Premise.
+
+            # One
+            {npc-only Elena}
+            Body one.
+
+            ## One point one
+            Deeper.
+
+            # Two
+            Body two.""");
+
+        assertEquals("Elena", outline.startingRoster().namesText());
+        assertEquals("Body one.", outline.acts().get(0).text().lines().findFirst().orElse(""));
+    }
+
+    @Test
+    void noNpcOnlyMeansEverybodyIsThere() {
+        assertTrue(ScenarioOutlineParser.parse("Premise.\n\n# One\nBody.").startingRoster().isEverybody());
+    }
+
+    @Test
+    void npcOnlyAfterTheFirstSceneIsAnErrorNotASilentClassicMode() {
+        var error = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+            ScenarioOutlineParser.parse("""
+                Premise.
+
+                # One
+                Body one.
+
+                # Two
+                {npc-only Elena}
+                Body two."""));
+
+        assertTrue(error.getMessage().contains("premier [NEXT ACT]"), error.getMessage());
+        assertTrue(error.getMessage().contains("{npc-arrives}"), error.getMessage());
+    }
+
+    @Test
+    void twoNpcOnlyAreAnError() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+            ScenarioOutlineParser.parse("""
+                Premise.
+                {npc-only Elena}
+
+                # One
+                {npc-only Marc}
+                Body."""));
+    }
+
+    @Test
+    void anArrivesUnderAnActIsKeptInTheActivityPathOfItsActs() {
+        var outline = ScenarioOutlineParser.parse("""
+            Premise.
+
+            # One
+            Body one.
+
+            # Two
+            {npc-arrives goblin Grik, Snak}
+            Body two.""");
+
+        var path = outline.acts().get(1).activityPath();
+        assertEquals("goblin Grik, Snak", path.get(path.size() - 1).get(0).namesText());
+        assertEquals("Body two.", outline.acts().get(1).text());
+    }
 }

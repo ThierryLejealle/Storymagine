@@ -3,8 +3,12 @@ package storymagine.chat.infra;
 import storymagine.chat.coeur.domaine.pick.PickDraws;
 import storymagine.chat.coeur.domaine.pick.PickResolution;
 import storymagine.chat.coeur.domaine.pick.PickResolver;
+import storymagine.chat.coeur.domaine.activity.ActivityDirective;
+import storymagine.chat.coeur.domaine.activity.ActivityDirectiveMarker;
 import storymagine.chat.coeur.domaine.scenario.Cast;
+import storymagine.chat.coeur.domaine.scenario.CastInstantiator;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcSheetParser;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
@@ -60,6 +64,7 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     private static final String SCENARIO_FILE   = "scenario.txt";
     private static final String CHARACTERS_DIR  = "characters";
+    private static final String STYLES_DIR      = "styles";
     private static final String TXT_EXTENSION   = ".txt";
     private static final String ZIP_EXTENSION   = ".zip";
 
@@ -123,9 +128,25 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         String raw = readText(textDir.resolve(SCENARIO_FILE));
         ScenarioHeader header = ScenarioHeader.parse(raw);
         String combined = appendContinuationFiles(textDir, header.rest());
-        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(combined);
+        ScenarioOutlineParser.Outline outline = ScenarioOutlineParser.parse(combined, styleName -> readSceneStyle(scenarioDir, styleName));
         return new ChatScenario(name, cast, outline.premise(), outline.acts(), header.playerName(),
-            outline.premiseOpening(), header.language(), readStyle(scenarioDir));
+            outline.premiseOpening(), header.language(), readStyle(scenarioDir).then(outline.premiseStyle()), outline.startingRoster());
+    }
+
+    /**
+     * styles/name.txt, the extra style of the scenes that write "{style name}" : read like style.txt, from the
+     * author's directory at every load. A missing file is an error naming the command, never a silent no-style.
+     */
+    private static ScenarioStyle readSceneStyle(Path scenarioDir, String styleName) {
+        String where = STYLES_DIR + "/" + styleName + TXT_EXTENSION;
+        Path file = scenarioDir.resolve(STYLES_DIR).resolve(styleName + TXT_EXTENSION);
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("{style " + styleName + "} : le fichier " + where + " est introuvable.");
+        }
+        String text = readText(file);
+        ScenarioReport report = ScenarioValidator.checkStyleText(text, where);
+        if (report.hasErrors()) throw new ScenarioValidationException(report);
+        return ScenarioStyle.of(text);
     }
 
     /**
@@ -172,7 +193,9 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
             for (int i = 0; i < sources.size(); i++) {
                 writeAtomically(temp.resolve(sources.get(i).getFileName()), resolved.get(i));
             }
-            return ScenarioValidator.checkScenario(buildScenario(name, cast, temp, dir));
+            List<ScenarioIssue> issues = new ArrayList<>(ScenarioValidator.checkScenario(buildScenario(name, cast, temp, dir)).issues());
+            issues.addAll(ignoredSheetWarnings(dir));
+            return new ScenarioReport(issues);
         } catch (IOException e) {
             throw new UncheckedIOException("Validation impossible : " + name, e);
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -268,17 +291,63 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
      * a note dropped into characters/ instead of turning it into a nameless Npc.
      */
     private static Cast loadCast(Path scenarioDir) {
+        List<Npc> sheets = loadSheets(scenarioDir);
+        if (sheets.isEmpty()) return new Cast(List.of());
+        return CastInstantiator.assemble(sheets, arrivalTextsOf(scenarioDir));
+    }
+
+    /**
+     * What the author wrote after "{npc-arrives" in the scenario files as they are on disk : the texts
+     * that tell which sheets are templates and which characters they create (see CastInstantiator).
+     */
+    private static List<String> arrivalTextsOf(Path scenarioDir) {
+        List<String> texts = new ArrayList<>();
+        for (Path file : scenarioTextFiles(scenarioDir)) {
+            if (!Files.isRegularFile(file)) continue;
+            try {
+                for (ActivityDirective directive : ActivityDirectiveMarker.extract(
+                        readText(file).replace("\r\n", "\n").replace("\r", "\n")).directives()) {
+                    if (directive.isArrives()) texts.add(directive.namesText());
+                }
+            } catch (IllegalArgumentException e) {
+                // a badly written command is reported, with its file and line, by the validation that follows
+            }
+        }
+        return texts;
+    }
+
+    private static List<Npc> loadSheets(Path scenarioDir) {
         Path dir = scenarioDir.resolve(CHARACTERS_DIR);
-        if (!Files.isDirectory(dir)) return new Cast(List.of());
+        if (!Files.isDirectory(dir)) return List.of();
         try (var entries = Files.list(dir)) {
-            List<Npc> npcs = entries
+            return entries
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
                 .filter(ChatFileStorageAdapter::hasNameHeading)
                 .sorted(Comparator.comparing(f -> f.getFileName().toString()))
                 .map(ChatFileStorageAdapter::parseNpcFile)
                 .toList();
-            return new Cast(npcs);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * One warning per ".txt" file of characters/ that is not read because its first line is not a
+     * "# Name" heading (see loadSheets) : without it the author would just see the character missing.
+     */
+    private static List<ScenarioIssue> ignoredSheetWarnings(Path scenarioDir) {
+        Path dir = scenarioDir.resolve(CHARACTERS_DIR);
+        if (!Files.isDirectory(dir)) return List.of();
+        try (var entries = Files.list(dir)) {
+            return entries
+                .filter(Files::isRegularFile)
+                .filter(f -> f.getFileName().toString().endsWith(TXT_EXTENSION))
+                .filter(f -> !hasNameHeading(f))
+                .sorted(Comparator.comparing(f -> f.getFileName().toString()))
+                .map(f -> ScenarioIssue.warning(CHARACTERS_DIR + "/" + f.getFileName(),
+                    "fichier ignore : sa premiere ligne doit etre \"# Nom\" pour que ce soit un personnage"))
+                .toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -314,7 +383,10 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
 
     @Override
     public ChatSession loadSession(Path chatScenariosRoot, ChatScenario scenario) {
-        return readCurrentRun(chatScenariosRoot, scenario);
+        ChatSession session = readCurrentRun(chatScenariosRoot, scenario);
+        RunState state = readState(RunLayout.stateFile(chatScenariosRoot, scenario.name()));
+        if (state.language() != null) session.chooseLanguage(ScenarioLanguage.parse(state.language()));
+        return session;
     }
 
     @Override
@@ -430,7 +502,8 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
                 TurnFileCodec.format(numbered));
         }
         writeAtomically(RunLayout.stateFile(chatScenariosRoot, name),
-            new RunState(session.currentAct(), null, null, session.forcedActivities()).format());
+            new RunState(session.currentAct(), null, null, session.forcedActivities(),
+                session.chosenLanguage() == null ? null : session.chosenLanguage().englishName()).format());
     }
 
     @Override

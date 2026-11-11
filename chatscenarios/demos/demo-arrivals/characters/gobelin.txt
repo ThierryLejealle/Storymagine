@@ -1,0 +1,5 @@
+# Gobelin
+%NPC%, un gobelin maigre au regard fuyant. Parle d'une voix rauque, par phrases courtes, et ricane quand il se croit en force.
+
+# SECRET
+%NPC% a peur des humains armés et cherche surtout à repartir avec quelque chose.

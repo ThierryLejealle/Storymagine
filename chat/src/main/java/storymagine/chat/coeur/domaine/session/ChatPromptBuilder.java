@@ -217,7 +217,10 @@ public final class ChatPromptBuilder {
         StringBuilder system = new StringBuilder();
         system.append(SYSTEM_INTRO.replace(LANGUAGE_PLACEHOLDER,
             scenario.language().phrase("the same language as the character and scenario below"))).append("\n\n");
-        system.append("YOUR CHARACTER:\n").append(scene.speaker().fullSheet()).append("\n\n");
+        // The name is stated outright : the sheet may or may not start with "# Name", and the scene
+        // text (third person, shared by every Npc) names other characters too.
+        system.append("YOUR CHARACTER — you are ").append(scene.speaker().label()).append(":\n")
+              .append(scene.speaker().fullSheet()).append("\n\n");
         if (!scene.otherPresent().isEmpty()) {
             system.append("ALSO PRESENT IN THE SCENE — what you knew about them from the start (never\n")
                   .append("anything from a private note that isn't yours; the story below may have taught\n")

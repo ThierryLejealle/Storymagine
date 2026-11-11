@@ -8,12 +8,17 @@ import java.util.Map;
  * The language every Npc must write its replies in, read from an optional "Langue : ..." header
  * line of scenario.txt (see ChatFileStorageAdapter). englishName is how a prompt names it ("French"),
  * so the instruction itself stays in the prompt's own language. UNSPECIFIED (no header line) leaves
- * the language to the model, as before. Accepted spellings : ISO code, English name or French name
+ * the language to the model (only built by hand, e.g. in tests : a scenario read from disk with no header line is
+ * ENGLISH). Accepted spellings : ISO code, English name or French name
  * of the six common languages, any case, accents ignored ; any other text is used verbatim.
  */
 public record ScenarioLanguage(String englishName) {
 
     public static final ScenarioLanguage UNSPECIFIED = new ScenarioLanguage("");
+
+    /** The two languages the player can switch to during a game, and the default of a scenario with no "Langue :" line. */
+    public static final ScenarioLanguage ENGLISH = new ScenarioLanguage("English");
+    public static final ScenarioLanguage FRENCH  = new ScenarioLanguage("French");
 
     private static final Map<String, String> KNOWN = Map.ofEntries(
         Map.entry("fr", "French"),     Map.entry("french", "French"),     Map.entry("francais", "French"),

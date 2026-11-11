@@ -9,10 +9,13 @@ package storymagine.chat.coeur.domaine.activity;
  * Two more kinds belong to the modes (see NpcMode and ActivityResolver.modeIds) : {npc-mode do on Elena}
  * and {npc-mode do off *} switch a mode on or off for the named characters (or all of them with the
  * star). They never touch an activity level, and mode says which mode (null for the other kinds).
+ * {npc-arrives ...} and {npc-leaves ...} bring characters into the story or take them out of it (see
+ * NpcActivity.OUTSIDE) : for ARRIVES namesText is either names, or "template Name1, Name2" to create
+ * characters from a sheet used as a template (see ArrivalSpec).
  */
 public record ActivityDirective(Kind kind, NpcActivity level, String namesText, NpcMode mode) {
 
-    public enum Kind { LEVEL, RESET, MODE_ON, MODE_OFF }
+    public enum Kind { LEVEL, RESET, MODE_ON, MODE_OFF, ARRIVES, LEAVES }
 
     public ActivityDirective {
         namesText = namesText == null ? "" : namesText.strip();
@@ -33,6 +36,18 @@ public record ActivityDirective(Kind kind, NpcActivity level, String namesText, 
     public static ActivityDirective modeOff(NpcMode mode, String namesText) {
         return new ActivityDirective(Kind.MODE_OFF, NpcActivity.PRESENT, namesText, mode);
     }
+
+    public static ActivityDirective arrives(String namesText) {
+        return new ActivityDirective(Kind.ARRIVES, NpcActivity.PRESENT, namesText, null);
+    }
+
+    public static ActivityDirective leaves(String namesText) {
+        return new ActivityDirective(Kind.LEAVES, NpcActivity.OUTSIDE, namesText, null);
+    }
+
+    public boolean isArrives() { return kind == Kind.ARRIVES; }
+
+    public boolean isLeaves() { return kind == Kind.LEAVES; }
 
     public boolean isReset() { return kind == Kind.RESET; }
 

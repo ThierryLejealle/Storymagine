@@ -26,6 +26,13 @@ class RunStateTest {
     }
 
     @Test
+    void thePlayerPickedLanguageRoundTripsAndAutoWritesNothing() {
+        assertEquals("French", RunState.parse(new RunState(2, null, null, Map.of(), "French").format()).language());
+        assertNull(RunState.parse(new RunState(2, null, null, Map.of(), null).format()).language());
+        assertEquals("act=2\n", new RunState(2, null, null, Map.of(), null).format());
+    }
+
+    @Test
     void nothingForcedWritesNoForcedKey() {
         String text = new RunState(2, null, null, Map.of()).format();
 

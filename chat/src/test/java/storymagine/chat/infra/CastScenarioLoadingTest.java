@@ -63,7 +63,7 @@ class CastScenarioLoadingTest {
                 String beat = act.beats().get(0);
                 Matcher names = Pattern.compile("Chef : (\\w+)\\. Commis : (\\w+)\\.").matcher(beat);
                 assertTrue(names.find(), beat);
-                assertEquals(names.group(1), act.opening().npcName(), "graine " + seed + " : " + beat);
+                assertEquals(names.group(1), act.opening().namesText(), "graine " + seed + " : " + beat);
                 assertFalse(names.group(1).equals(names.group(2)), "graine " + seed + " : " + beat);
             }
             deleteRun(root);

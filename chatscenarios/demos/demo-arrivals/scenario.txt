@@ -1,0 +1,39 @@
+Joueur : Alex
+Langue : français
+
+#SCENARIO
+Monde : Une route de campagne qui mène à un marché, en fin de matinée.
+Prémisse : Alex et Elena marchent vers le marché du village.
+Ton : Léger, avec un peu de tension à l'embuscade.
+{npc-only Elena}
+
+# La route
+[Alex et Elena marchent côte à côte sur la route poussiéreuse. Le marché n'est plus très loin.]
+Point de départ : Elena bavarde avec Alex en marchant.
+Ce qui doit se passer : Elena parle du marché et de ce qu'elle voudrait y acheter.
+Quand écrire [NEXT ACT] : Dès qu'Alex et Elena arrivent aux premiers étals.
+
+# Le marché
+{npc-arrives Orlo}
+{npc-present Orlo}
+[Alex et Elena arrivent au marché. Orlo, un marchand d'épices, leur fait signe depuis son étal.]
+Point de départ : Orlo vante ses épices. Elena regarde les étals.
+Ce qui doit se passer : Alex peut marchander avec Orlo.
+Quand écrire [NEXT ACT] : Dès qu'Alex a acheté quelque chose à Orlo ou qu'il reprend la route.
+
+# L'embuscade
+{npc-leaves Orlo}
+{npc-arrives gobelin Grik, Snak}
+{npc-active Grik}
+{npc-delta public Grik : hostile, barre la route et exige la bourse d'Alex}
+{npc-delta public Snak : hostile, laisse Grik parler et hésite à frapper}
+[Sur le chemin du retour, deux gobelins sortent d'un fossé et bloquent la route devant Alex et Elena.]
+Point de départ : Grik menace Alex. Snak se tient derrière lui, nerveux.
+Ce qui doit se passer : Alex et Elena négocient, paient ou font fuir les gobelins.
+Quand écrire [NEXT ACT] : Dès que les gobelins ont pris la bourse ou ont fui.
+
+# Fin de route
+{npc-leaves Grik, Snak}
+[La route est de nouveau calme. Alex et Elena reprennent leur chemin.]
+Point de départ : Elena commente ce qui vient de se passer.
+Ce qui doit se passer : Elena et Alex concluent leur promenade.

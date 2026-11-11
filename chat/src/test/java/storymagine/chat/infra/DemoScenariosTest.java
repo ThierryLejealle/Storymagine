@@ -38,6 +38,8 @@ class DemoScenariosTest {
         Map.entry("demo-npc-story",       new int[]{3, 1}),
         Map.entry("demo-secret",          new int[]{1, 1}),
         Map.entry("demo-activite",        new int[]{2, 3}),
+        Map.entry("demo-arrivals",        new int[]{4, 4}),   // Elena, Orlo et les deux gobelins crees depuis le modele (le modele n'en est pas un)
+        Map.entry("demo-scene-style",     new int[]{2, 2}),  // un style par scene
         Map.entry("demo-style",           new int[]{1, 1}));
 
     private final ChatFileStorageAdapter adapter = new ChatFileStorageAdapter(new java.util.Random(1)::nextInt);

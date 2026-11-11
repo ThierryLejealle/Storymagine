@@ -69,6 +69,8 @@ Privilégier les .bat pour lancer des traitements CLI
 Les .bat doivent être STUPIDES : la CLI codée en java dans /cli dans chaque module
 
 Le guide de rédaction de scénarios de chat (`chatscenarios/guide-redaction-chat.md`, et son raccourci `.claude/skills/chat-scenario-writing/SKILL.md`) doit être maintenu à jour : à chaque nouvelle fonctionnalité du module chat qui touche l'auteur d'un scénario, et à chaque limite ou piège découvert (comportement d'un petit LLM, bug de format, piège d'écriture), ajouter ou corriger la section concernée du guide (notamment §7 Conseils d'écriture) dans la même évolution.
+Le skill de construction de scénario pour petit LLM (`chat/scenario-builder/`, en anglais, et son raccourci `.claude/skills/chat-scenario-builder/SKILL.md`) suit la même règle, et c'est le mini guide synthétique pour les IA (le guide ci-dessus est orienté humain) : à chaque nouvelle commande, changement de format, limite ou piège d'écriture découvert, mettre à jour `ref-commands.md`, `ref-format.md`, `ref-writing-tips.md`, `skeleton.md` et la phase concernée dans la même évolution.
+En résumé, toute évolution qui touche l'auteur d'un scénario met à jour ensemble : le guide humain (`chatscenarios/guide-redaction-chat.md`), le skill `chat-scenario-writing`, le dossier `chat/scenario-builder/` et le skill `chat-scenario-builder`. Ne jamais en laisser un en retard.
 
 # Test
 L'hexagonal doit permettre de tester le coeur correctement.

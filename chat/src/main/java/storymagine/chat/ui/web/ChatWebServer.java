@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import storymagine.chat.coeur.domaine.agent.nextactreadiness.NextActReadinessAnalystOutput;
 import storymagine.chat.coeur.domaine.agent.npcmindstate.NpcMindStateAnalystOutput;
 import storymagine.chat.coeur.domaine.activity.NpcMode;
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import storymagine.chat.coeur.domaine.session.ChatSession;
 import storymagine.chat.coeur.domaine.validation.ScenarioValidationException;
 import storymagine.chat.coeur.domaine.session.ChatTurn;
@@ -97,6 +98,7 @@ public class ChatWebServer {
         server.createContext("/rollback", this::handleRollback);
         server.createContext("/settings", this::handleSettings);
         server.createContext("/cycle-activity", this::handleCycleActivity);
+        server.createContext("/language", this::handleLanguage);
         server.createContext("/reload-scenario", this::handleReloadScenario);
         server.createContext("/restart", this::handleRestart);
         server.createContext("/stop",     this::handleStop);
@@ -353,6 +355,19 @@ public class ChatWebServer {
         writeJson(ex, 200, currentView(List.of(), 0, false, false));
     }
 
+    /** Language selector : value=English, French, or auto (the scenario's own) — see ChatService.changeLanguage. */
+    private void handleLanguage(HttpExchange ex) throws IOException {
+        if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
+        String value = nullToEmpty(parseFormBody(nullToEmpty(ex.getRequestURI().getQuery())).get("value"));
+        ScenarioLanguage language = switch (value) {
+            case "English" -> ScenarioLanguage.ENGLISH;
+            case "French"  -> ScenarioLanguage.FRENCH;
+            default        -> null;
+        };
+        service.changeLanguage(chatScenariosRoot, session, language);
+        writeJson(ex, 200, currentView(List.of(), 0, false, false));
+    }
+
     /** Refresh button — re-reads scenario.txt and every character .txt from disk, keeps the conversation so far. */
     private void handleReloadScenario(HttpExchange ex) throws IOException {
         if (!"POST".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(405, -1); return; }
@@ -583,13 +598,16 @@ public class ChatWebServer {
         return new ChatHistoryView(session.scenario().name(), session.turns(), newTurns, removedTurnCount, compacted,
             lastPromptTokens, contextWindow, session.currentAct(), session.scenario().acts().size(), actAdvanced,
             currentActTitle(), session.generationSettings(), castView(), session.lastTurnNumber().value(),
-            !session.pendingNpcOpening().isNone(), session.pendingOpeningUsesPen());
+            !session.pendingNpcOpening().isNone(), session.pendingOpeningUsesPen(),
+            session.chosenLanguage() == null ? "auto" : session.chosenLanguage().englishName(),
+            session.authoredLanguage().englishName());
     }
 
     private List<NpcView> castView() {
         var activity = session.activity();
         var scenarioActivity = session.scenarioActivity();
         return session.scenario().cast().npcs().stream()
+            .filter(npc -> !activity.levelOf(npc.id()).isOutside()) // not in the story yet (or gone) : no vignette
             .map(npc -> new NpcView(npc.id(), npc.label(),
                 activity.levelOf(npc.id()).keyword(),
                 activity.stateOf(npc.id()).source().name().toLowerCase(java.util.Locale.ROOT),

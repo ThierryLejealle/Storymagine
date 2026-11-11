@@ -22,6 +22,7 @@ import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarrator;
 import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarratorInput;
 import storymagine.chat.coeur.domaine.agent.roleplaynarrator.RoleplayNarratorOutput;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
+import storymagine.chat.coeur.domaine.scenario.ScenarioLanguage;
 import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
@@ -371,7 +372,7 @@ public class ChatServiceImpl implements ChatService {
             Scene scene = sceneFor(session, round.npc(), round.interjecting());
             RoleplayNarratorOutput reply;
             try {
-                ScenarioStyle styleForThisReply = session.scenario().style().drawn(random::nextDouble);
+                ScenarioStyle styleForThisReply = session.scenario().styleAt(session.currentAct()).drawn(random::nextDouble);
                 session.rememberStyleReceived(new StyleReceived(round.npc().label(), styleForThisReply.text()));
                 ChatScenario forThisReply = session.scenario().withStyle(styleForThisReply);
                 reply = roleplayNarrator.call(new RoleplayNarratorInput(
@@ -461,9 +462,10 @@ public class ChatServiceImpl implements ChatService {
 
     private List<RoundSpeaker> resolveSpeakers(ChatSession session, String playerMessage, NpcOpening opening) {
         if (!opening.isNone()) {
-            // Ouverture voulue par l'auteur : ce PNJ seul, sans interjection (voir NpcOpening).
-            return List.of(new RoundSpeaker(
-                SpeakerSelector.openingSpeaker(session.scenario().cast(), session.presentNpcIds(), opening, random), false));
+            // Ouverture voulue par l'auteur : ces PNJ seuls, dans l'ordre ecrit, sans interjection (voir NpcOpening).
+            return SpeakerSelector.openingSpeakers(session.scenario().cast(), session.presentNpcIds(), opening, random).stream()
+                .map(npc -> new RoundSpeaker(npc, false))
+                .toList();
         }
         CastActivity activity = session.activity();
         List<Npc> primary = SpeakerSelector.select(session.scenario().cast(), activity, playerMessage,
@@ -515,8 +517,9 @@ public class ChatServiceImpl implements ChatService {
         List<Npc> otherPresent = session.scenario().cast().npcs().stream()
             .filter(n -> present.contains(n.id()) && !n.id().equals(speaker.id()))
             .toList();
+        var outside = session.outsideNpcIds();
         List<Npc> absentTeammates = session.scenario().cast().npcs().stream()
-            .filter(n -> !present.contains(n.id()))
+            .filter(n -> !present.contains(n.id()) && !outside.contains(n.id()))
             .toList();
         return new Scene(speaker, otherPresent, absentTeammates, interjecting);
     }
@@ -529,8 +532,9 @@ public class ChatServiceImpl implements ChatService {
         if (present.isEmpty()) {
             throw new IllegalStateException("Aucun personnage present dans ce scenario.");
         }
+        var outside = session.outsideNpcIds();
         List<Npc> absentTeammates = session.scenario().cast().npcs().stream()
-            .filter(n -> !session.presentNpcIds().contains(n.id()))
+            .filter(n -> !session.presentNpcIds().contains(n.id()) && !outside.contains(n.id()))
             .toList();
         return new Scene(present.get(0), present.subList(1, present.size()), absentTeammates, false);
     }
@@ -643,6 +647,12 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public void changeLanguage(Path chatScenariosRoot, ChatSession session, ScenarioLanguage language) {
+        session.chooseLanguage(language);
+        storage.saveSession(chatScenariosRoot, session);
+    }
+
+    @Override
     public void reloadScenario(Path chatScenariosRoot, ChatSession session) {
         ChatScenario fresh = storage.loadScenario(chatScenariosRoot, session.scenario().name());
         session.reloadScenario(fresh);
@@ -697,7 +707,7 @@ public class ChatServiceImpl implements ChatService {
         int currentAct = session.currentAct();
         boolean actActive = currentAct > 0 && currentAct <= scenario.acts().size();
         return new ScenarioPromptView(scenario.premise(), currentAct, scenario.acts().size(),
-            actActive ? scenario.acts().get(currentAct - 1).text() : "", scenario.style().text(),
+            actActive ? scenario.acts().get(currentAct - 1).text() : "", scenario.styleAt(currentAct).text(),
             session.lastStyleReceived().orElse(null), warningsForDebugView(scenario));
     }
 

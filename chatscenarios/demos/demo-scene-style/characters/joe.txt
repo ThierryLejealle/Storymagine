@@ -1,0 +1,3 @@
+# Joe
+
+Joe est un chasseur de primes taciturne. Il répond par phrases courtes et surveille la porte.

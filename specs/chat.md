@@ -30,7 +30,7 @@ chatscenarios/{nom}/
 ```
 
 - **Cast** : tout `.txt` de `characters/` dont la première ligne est `# Nom` est un PNJ ; un `.txt`
-  sans cette ligne est ignoré silencieusement. Seul `characters/` est lu : un `.txt` à la racine du
+  sans cette ligne est ignoré (la validation le signale par un avertissement). Seul `characters/` est lu : un `.txt` à la racine du
   scénario n'est jamais un PNJ, et il n'y a plus de liste de fichiers réservés. Un scénario à un
   seul PNJ est simplement un Cast d'un élément — aucun cas particulier. Le nom de fichier (sans
   `.txt`) est l'identifiant interne du PNJ.
@@ -51,7 +51,9 @@ chatscenarios/{nom}/
 
 1. En-tête optionnel, lignes consécutives en tête de fichier : `Joueur : Prénom` (défaut `Alex`) — nom
    du joueur dans la transcription ; `Langue : français` (ou `fr`, `en`…) — langue de tous les appels du module (réponses des
-   PNJ, résumé, analyses, testeur ; `ScenarioLanguage`, absente = non précisée). Sans cette ligne, la langue est non précisée.
+   PNJ, résumé, analyses, testeur ; `ScenarioLanguage`). Sans cette ligne, la langue est l'anglais. Le joueur peut la changer en cours de partie (sélecteur
+   Auto / English / Français du panneau ⚙ ; `ChatSession.chooseLanguage`, enregistrée dans `state.txt` sous `language=`,
+   « Auto » = la langue du scénario ; effet à la réponse suivante).
 2. Prémisse : `#SCENARIO` optionnel + `Monde :` / `Prémisse :` / `Ton :`. Envoyée à chaque tour à
    chaque PNJ, jamais montrée telle quelle au joueur. **3e personne obligatoire.**
 3. Actes : plan Markdown (`#`, `##`…). **Seules les feuilles sont des actes jouables** (un titre
@@ -88,7 +90,11 @@ ne reçoivent que la fiche publique des autres (le secret ne fuit jamais).
 
 # Ouverture par un PNJ — `{npc-starts}` et `{npc-do}`
 
-Une ligne seule `{npc-starts}`, `{npc-starts Nom}`, `{npc-do}` ou `{npc-do Nom}`, dans l'en-tête du scénario
+Une ligne seule `{npc-starts}`, `{npc-starts Nom}`, `{npc-starts Nom, Nom}`, `{npc-do}`, `{npc-do Nom}` ou `{npc-do Nom, Nom}`
+(plusieurs noms : le premier ouvre, les suivants parlent à la suite dans la même ronde, dans l'ordre écrit ; liste lue par
+`ActivityResolver.openingNpcs` = `resolveNames`, un PNJ peut être nommé plusieurs fois ; `SpeakerSelector.openingSpeakers` saute les absents,
+et tire un PNJ présent si aucun nommé ne l'est ; la plume vaut pour toute la ronde : `doPen`, ou le premier nom en mode DO),
+dans l'en-tête du scénario
 (ouverture de l'histoire, valeur `ChatScenario.storyOpening`) ou dans un acte (`ScenarioAct.opening`, ouverture
 de cet acte). `starts` = ouverture normale, `do` = ouverture avec la plume du narrateur (`NpcOpening.doPen`).
 Concepts : `NpcOpening` (aucune / un PNJ au hasard / un PNJ nommé, plus l'indicateur de plume), `NpcOpeningMarker`
@@ -249,6 +255,32 @@ cliquant la vignette (`POST /cycle-activity`) : `ForcedActivity`, accroché au t
 disparaît quand l'histoire en sort, persisté dans `state.txt`. Pastille : point blanc explicite, gris
 implicite, rouge forcé. Détail : `chatscenarios/guide-redaction-chat.md` §2.11 et §4.
 
+**Entrée et sortie de l'histoire (cinquième niveau `OUTSIDE`)** : un PNJ peut ne pas exister dans l'histoire.
+Contrairement à `absent` (vignette visible, fiche publique chez les autres), un PNJ `OUTSIDE` n'a ni vignette
+(`castView` le filtre), ni fiche chez les autres (`absentTeammates` l'exclut), ne parle jamais et n'est pas dans le
+cycle du clic (`cycleActivity` renvoie `false`, un niveau forcé ne le ramène jamais). Trois commandes :
+- `{npc-only noms}` (`NpcOnlyMarker`, `StartingRoster`) : en tête ou dans la première scène (avant le premier
+  `[NEXT ACT]`, c'est-à-dire sur le chemin de titres de l'acte 1), une seule fois ; seuls les PNJ nommés sont là au
+  départ. Sans elle, tous le sont (mode classique, rétro-compatible). Mal placée ou en double : erreur de chargement
+  (jamais un retour silencieux au mode classique). `ChatScenario.activityAt` part de ce roster.
+- `{npc-arrives noms}` et `{npc-leaves noms}` (`ActivityDirective` `ARRIVES`/`LEAVES`, résolues par
+  `ActivityResolver` le long du chemin de titres comme les niveaux, donc sans rien persister : `previousAct` et le
+  retour en arrière restent cohérents). Une arrivée met le PNJ au niveau `present` implicite ; les commandes larges
+  (`*`, sans nom, `{npc-reset}`) ne touchent jamais un PNJ `OUTSIDE` ; un niveau nommé pour un PNJ pas encore arrivé,
+  ou `{npc-starts}` sur lui, est une erreur.
+- Modèles : `{npc-arrives modèle Nom1, Nom2}`. `CastInstantiator` (pur) lit les textes d'arrivée, retire du `Cast`
+  les fiches utilisées avec un nom (`Cast.isTemplate`, `ArrivalSpec`) et crée un `Npc` par nom (id issu du nom, ligne
+  `# Titre` remplacée, `%NPC%` remplacé dans fiche, secret et tags). `ChatFileStorageAdapter.loadCast` lit les
+  arrivées dans les fichiers du scénario tels qu'ils sont sur disque, avant tout tirage `{pick}`.
+Limites assumées : historique commun (l'arrivant connaît tout), arrivée liée à un acte et non à un événement, pas
+de secret propre à un figurant, pas de `/lib/` pour les modèles, aucun contrôle du joueur (ni ajout ni retrait).
+Guide §2.13, démo `demo-arrivals`.
+
+**Construire un scénario avec une IA à petit contexte** : `chat/scenario-builder/` (livrable en anglais, utilisable
+par n'importe quelle IA) découpe le travail en cinq phases (brief, plan, fiches, un fichier par étape, finition).
+La seule mémoire entre phases est `plan.md` (`.md` à la racine du scénario, jamais `.txt`). Le format qu'il enseigne
+est vérifié par `ScenarioBuilderFormatTest`. À tenir à jour avec le guide (voir CLAUDE.md du projet).
+
 **Popup de survol d'une vignette** : statut (niveau et origine), puis la partie publique de la fiche à l'acte
 courant (`NpcView.publicSheet` = `ChatScenario.sheetAt(...).publicInfo()`, tags et deltas publics appliqués,
 lignes de titre `#` retirées par `ChatWebServer.withoutHeadings`). Le `# SECRET` n'est jamais envoyé à la page.
@@ -264,8 +296,8 @@ Tous les appels (tour de roleplay, résumé, analyses) passent par `ModelCallPor
 user), implémenté par `OllamaAdapter` ou `LlamaServerAdapter` — choix au démarrage, câblage dans
 `ChatModule`. Le mode brut (`RawCompletionPort`) a été abandonné pour le roleplay : il retire le
 template de chat appris par le modèle et provoque des dérives. La réflexion (thinking) est
-toujours demandée ; son affichage est une option du joueur. La langue de réponse suit celle des
-fiches et du scénario (aucune langue imposée par le code). Une réponse vide est retentée une
+toujours demandée ; son affichage est une option du joueur. La langue de réponse est celle du scénario (anglais par défaut)
+ou celle choisie par le joueur en cours de partie. Une réponse vide est retentée une
 fois. Le bouton Stop interrompt réellement la génération côté serveur.
 
 # Agents (un `.md` chacun dans son package)
@@ -588,3 +620,21 @@ Usage et limites côté auteur : `chatscenarios/guide-redaction-chat.md` §4.3 b
 - **Service** : `ChatService.analyzeLastReplyOrigin` (lecture seule, `IllegalStateException` s'il n'y a
   rien à analyser ou si l'agent n'est pas branché) → `POST /analyze-reply-origin` → pop-up d'analyse.
 - Aucun appel au LLM dans les tests : un faux port répond.
+
+# Style par scène et lignes au hasard dans le scénario
+
+Syntaxe et conseils : `chatscenarios/guide-redaction-chat.md` §2.10 bis, démo `demo-scene-style`.
+
+- **`{style nom}`** : `SceneStyleMarker` extrait les lignes (chacune seule sur sa ligne ; plusieurs possibles sous un
+  même titre, leurs styles s'ajoutent dans l'ordre écrit, un nom répété compte une fois). `ScenarioOutlineParser` garde
+  pour chaque feuille le style du titre le plus proche sur son chemin (`ScenarioAct.sceneStyle`, `ScenarioStyle.then`).
+  Dans la prémisse, les `{style}` s'ajoutent à `style.txt` pour toute l'histoire (`Outline.premiseStyle`, combiné par
+  l'adaptateur : `ChatScenario.style` = `style.txt` puis style de la prémisse) ; l'adaptateur lit `styles/nom.txt` à chaque chargement
+  (`readSceneStyle`, fichier absent = erreur nommant le fichier, mêmes contrôles que `style.txt` via
+  `ScenarioValidator.checkStyleText(texte, où)`). `ChatScenario.styleAt(acte)` = `style.txt`, puis le style de la prémisse, puis le style de scène ;
+  c'est lui que `ChatServiceImpl` tire à chaque réponse (`drawn`) et que 🐞 affiche. Avertissement au-delà de
+  1 500 caractères pour le cumul.
+- **`{N%}` dans `scenario*.txt`** : `ChanceLines.draw` (appelé en premier par `PickResolver.resolve`, donc avant
+  `repeat` et `pick`) garde la ligne sans son marqueur ou la supprime ; tirage unique au début de la partie, figé avec
+  les fichiers `resolved/` comme un pick (`PickResolver.containsTag` voit le marqueur). Marqueurs contrôlés par
+  `ScenarioValidator.checkChanceMarkers` (1 à 100, un par ligne, avec un texte).
