@@ -19,7 +19,7 @@ chaque champ est une consigne entre parenthèses à remplacer.
 ```
 chatscenarios/mon-scenario/
   scenario.txt       obligatoire
-  scenario-1.txt     optionnel, suite des actes (scénario long)
+  scenario-1.txt     optionnel, suite des actes (scénario long) ; numéro décimal : 1, 1.1, 2, 3.1.2…
   characters/
     elena.txt        un fichier par PNJ, nom simple sans espace ni accent
   picks/
@@ -81,8 +81,9 @@ Ton : ...
 # Le colis suspect
 [Mila, élève de troisième année, vient de recevoir un colis dans la Grande Salle.]
 [À côté d'elle, Odile observe le paquet d'un air intrigué : il vibre et sent le soufre.]
-Point de départ : ...
-Ce qui doit se passer : ...
+Point de départ : la situation telle qu'elle est à l'ouverture de la scène.
+Odile : ce qu'elle fait ou tente dans CETTE scène (ex. ouvre le colis à contrecœur).
+{private Odile} Odile cache qu'elle connaît l'expéditeur.  (seulement si les autres PNJ ne doivent pas le savoir)
 Quand écrire [NEXT ACT] : Dès que la créature s'est échappée de la table.
 
 # La poursuite dans les couloirs
@@ -92,22 +93,40 @@ Quand écrire [NEXT ACT] : Dès que la créature s'est échappée de la table.
 Règles non négociables :
 1. **3e personne partout** (prémisse et `[...]`) : « Alex arrive à Ambaya », jamais « Tu es Alex ».
    Ces textes sont recopiés dans le prompt de chaque PNJ.
-2. **Seules les feuilles sont des actes.** Actes séquentiels = titres du même niveau (`#` / `#`).
-   N'imbriquer (`#` / `##`) que pour un vrai chapitre contenant plusieurs scènes.
+2. **Scène jouée et conteneur.** Une **scène jouée** est le titre le plus profond d'une branche : elle porte
+   le `[NEXT ACT]` et seule elle est jouée (c'est l'« acte » du moteur). Un **conteneur** est un titre qui a
+   des sous-titres : il n'est jamais joué seul, son texte s'ajoute à toutes les scènes jouées en dessous.
+   Scènes séquentielles = titres du même niveau (`#` / `#`) ; n'imbriquer (`#` / `##`) que pour un vrai
+   chapitre contenant plusieurs scènes.
 3. **Un `[...]`** = crochet ouvrant en début de ligne, fermant en fin de ligne. Il est affiché au
    joueur à l'entrée de l'acte et lu par les PNJ.
 4. **Le premier acte** doit dire au joueur qui il est, où il est, qui est présent (nommé) et le
    but général. Une ligne purement atmosphérique laisse le joueur perdu.
 5. **Sans acte**, un seul bloc `[...]` est affiché : pour plusieurs scènes, faire de vrais actes.
 6. `Joueur : X` en première ligne (défaut `Alex`).
-7. `scenario-N.txt` : numéros consécutifs, chaque fichier commence par un titre `# ...` de premier
-   niveau.
-8. **Pas de synthèse de la suite avant les parties où elle se joue.** Sous un titre qui a des sous-parties
-   (`#` puis `##`, `##` puis `###`…), ne pas écrire « ce qui va se passer = … » : le texte du parent est
-   relu à chaque tour de chaque sous-partie par tous les PNJ, et le modèle ne comprend pas qu'il n'a pas le
-   droit d'utiliser ce qu'il a sous les yeux : il anticipe et saute des étapes. Un vrai plan des
-   personnages s'écrit comme un plan (« les personnages mettent en place le plan : … ») ; qu'un petit
-   modèle comprenne qu'il peut échouer reste à vérifier. Guide §7.1.
+7. `scenario-N.txt` : lus dans l'ordre de leur numéro **décimal** (`1`, `1.1`, `1.1.1`, `2`, `3.1.2`…), trous
+   permis, `1` et `1.1` peuvent coexister. **Recommandé : numéroter en hiérarchie** pour couper un fichier ou
+   en insérer un sans rien renommer (`scenario-2.1.txt` entre 2 et 3, `scenario-2.1.1.txt` entre 2.1 et 3).
+   Chaque fichier commence par un titre `# ...` de premier niveau ; le numéro ne donne que l'ordre (les
+   numéros d'actes viennent des titres).
+8. **Ne pas fuiter : rien du futur dans une scène.** Un PNJ agit sur tout ce qu'il lit, tout de suite. S'il
+   lit ce qui doit arriver plus tard, il le provoque (parfois en sortant de son rôle) et le modèle ne
+   comprend pas qu'il n'a pas le droit de s'en servir.
+   - **Scène jouée** : seulement la situation actuelle (`Point de départ`) et, pour chaque PNJ, ce qu'il fait
+     ou tente dans CETTE scène, comme une consigne à un acteur (« Franck veut gagner et va tricher en tirant
+     le fil d'Alex »). Jamais un événement d'une scène suivante, jamais un résultat. Une ou deux actions par
+     PNJ, trois moments au plus ; au-delà, couper la scène en deux.
+   - **Conteneur** : seulement ce qui est vrai pour toutes ses scènes (lieu, époque, qui est là). Jamais un
+     résumé de ce qui « doit » s'y passer.
+   - **Prémisse** : le monde, le ton, la situation de départ. Jamais la trame.
+   - **Pas de ligne « Ce qui doit se passer »** (ni « le but de la séquence ») : elle pousse les PNJ à
+     brûler les étapes. La fin d'une scène, c'est le fait du `[NEXT ACT]`, et rien d'autre.
+   - **Le mobile, pas le plan.** Le désir ou la loyauté ultime d'un PNJ peut aller dans son `# SECRET`, écrit
+     comme un état (« travaille pour ceux qui veulent Sam, a besoin que Sam lui fasse confiance »), jamais
+     comme des actions à exécuter (« il suivra Sam puis l'enlèvera ce soir »). On peut le compléter en cours
+     d'histoire avec `{npc-delta secret}` dans la scène où il devient utile.
+   - Ce qu'un autre PNJ ne doit pas savoir dans la scène : `{private Nom}` (voir plus bas), pas le texte
+     partagé. Guide §7.1.
 
 ## 5. Le mécanisme `[NEXT ACT]`
 
@@ -148,6 +167,7 @@ Les commandes `{…}` `npc-…` et `cast` tiennent sur une ligne seule. Détail 
 | | `{repeat N}` … `{end-repeat}` | Gabarit répété N fois, sans fichier |
 | Casting | `{cast NOM [unique] [reuse-possible] [(a, b)]}` | Choisit un personnage, `%NOM%` ensuite |
 | | `{repeat order\|random [N] cast NOM}` … `{end-repeat}` | Une copie par personnage |
+| Consigne privée | `{private noms} texte` ou `{private noms}` … `{end-private}` | Texte lu par ces PNJ seulement, pour cette scène |
 | Fiche | `{npc-delta public\|secret nom : texte}` | Ajoute un texte (une ou plusieurs lignes) à la fiche (jamais de retrait) |
 | | `{npc-story on\|off nom tag}` | Active/désactive une section `## tag` |
 | Présence | `{npc-active\|present\|passive\|absent noms}`, `{npc-reset}` | Niveau d'activité par titre |
@@ -157,6 +177,46 @@ Les commandes `{…}` `npc-…` et `cast` tiennent sur une ligne seule. Détail 
 | | `{npc-leaves noms}` | Fait sortir des PNJ de l'histoire (≠ `absent` : plus de vignette ni de fiche chez les autres) |
 | Ouverture | `{npc-starts [Nom]}`, `{npc-do [Nom]}` | Un PNJ parle en premier (le second avec la plume) |
 | Joueur / progression | `[texte]`, `Quand écrire [NEXT ACT] : …` | Ligne affichée au joueur ; condition de l'acte suivant |
+
+### Une consigne que seul un PNJ lit : `{private Nom}`
+
+Le texte d'une scène est lu par **tous** les PNJ présents. Pour qu'une consigne ou un fait n'atteigne que
+certains PNJ (Franck triche, Alex ne le sait pas), l'écrire avec `{private Nom}` :
+```
+{private Franck} Franck veut gagner et va tricher en tirant le fil d'Alex.
+
+{private Alex, Mina}
+Ils se doutent que le colis est piégé.
+Ils n'en parlent pas devant Franck.
+{end-private}
+```
+- Avec du texte après la commande, elle ne couvre que cette ligne. Seule sur sa ligne, elle ouvre un bloc
+  fermé par `{end-private}` (pas d'imbrication, à fermer avant le titre suivant).
+- Valable pour cette scène seulement. Les autres PNJ découvrent ce que le PNJ a fait quand c'est arrivé
+  dans la conversation (puis dans le résumé).
+- Noms comme `{npc-starts}` (séparés par des virgules ; nom inconnu = scénario refusé). Pas de
+  `[NEXT ACT]` ni de ligne `[affichée au joueur]` à l'intérieur (refusé au chargement).
+- Les agents d'analyse (🔍, état d'esprit) voient tout ; le débogage 🐞 affiche le texte brut avec les
+  commandes.
+
+### Quel mécanisme pour quel besoin
+
+Un mécanisme seulement si la scène en a besoin : la plupart n'ont qu'un texte, une ligne par PNJ et un
+`[NEXT ACT]`.
+
+| Besoin | Mécanisme | Durée |
+|---|---|---|
+| Ce que tous savent ou voient, ce que chaque PNJ doit faire | Texte de la scène | Cette scène |
+| Une consigne ou un fait que seuls certains PNJ lisent | `{private Nom}` | Cette scène |
+| Ce qu'un PNJ veut au fond depuis le début | `# SECRET` de la fiche, comme un état | Toute l'histoire |
+| Un changement définitif (bras blessé, serment) | `{npc-delta}` | Jusqu'à la fin, sans retrait |
+| Un trait ou sentiment par paliers, ou temporaire | `{npc-story on/off}` | Jusqu'au prochain on/off |
+| Qui est là, qui parle | `{npc-arrives}`, `{npc-leaves}`, `{npc-active}`… | Selon la commande |
+| Ambiance, variété | `{style}`, `{N%}` | Cette scène et en dessous |
+
+Un sentiment qui grandit par paliers (n'aime pas → déteste → estime) : une section `## tag` par palier,
+et à chaque palier `{npc-story on Nom palier-suivant}` **et** `{npc-story off Nom palier-précédent}`.
+Ne jamais empiler les paliers : le PNJ les lirait tous à la fois.
 
 ### Faire parler un PNJ en premier : `{npc-starts}` ou `{npc-do}`
 
@@ -289,8 +349,26 @@ de partie ; la même vérification a lieu à chaque chargement.
 
 Charger le scénario par le code (script jetable ou `ScenarioTesterCli`) et contrôler : nombre
 d'actes obtenu = nombre voulu, nombre de PNJ, tours NARRATOR d'ouverture clairs (voir §5 de
-`chatscenarios/guide-redaction-chat.md`). Ne pas se fier à la relecture seule : le piège des feuilles ne se voit
-pas à l'œil.
+`chatscenarios/guide-redaction-chat.md`). Ne pas se fier à la relecture seule : le piège des scènes jouées et des
+conteneurs (un titre qui a des sous-titres n'est pas jouable) ne se voit pas à l'œil.
+
+### Vérification des fuites (avant de rendre un scénario)
+
+La validation ne voit pas les fuites : à faire par relecture, scène jouée par scène jouée. Pour chacune,
+lister ce que ses PNJ lisent (prémisse, conteneurs au-dessus, texte de la scène, fiches ; une ligne
+`{private Nom}` n'est lue que par ce PNJ), puis :
+1. Chercher dans cette liste ce qui n'arrive que dans les scènes **suivantes** (leur `[NEXT ACT]`, ce que leurs
+   PNJ y font, les changements, les révélations) : rien ne doit y figurer, même suggéré (« finira par »,
+   « ensuite », « plus tard »).
+2. Prémisse et conteneurs : aucune phrase sur ce qui se passe en dessous, aucun résumé de la trame.
+3. Fiches et `# SECRET` : des états (désir, loyauté, ce qu'on cache), pas une suite d'actions ni un futur.
+4. Chaque ligne de PNJ d'une scène : une tentative dans CETTE scène, à partir de maintenant, pas un
+   résultat ni un événement pour plus tard.
+5. Chaque ligne partagée : un autre PNJ agirait-il autrement en la lisant ? Alors `{private Nom}`.
+6. Aucune ligne « Ce qui doit se passer », « ce qui arrive ensuite », « le but de la séquence ».
+
+En jeu, le bouton 🐞 montre le texte réellement envoyé aux PNJ : si un PNJ fait allusion à quelque chose qui
+n'est pas encore arrivé, ou presse l'histoire vers sa fin, une fuite reste : trouver la ligne et l'enlever.
 
 ## 7. Modèle de départ
 

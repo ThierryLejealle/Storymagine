@@ -46,7 +46,9 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
             throw new IllegalArgumentException("{npc-only " + startingRoster.namesText() + "} : " + e.getMessage(), e);
         }
         requireKnownNpc(cast, storyOpening, "l'ouverture du scenario");
+        requireValidPrivateLines(cast, premise, "la premisse");
         for (ScenarioAct act : acts) {
+            requireValidPrivateLines(cast, act.text(), "l'acte " + act.number());
             requireKnownNpc(cast, act.opening(), "l'acte " + act.number());
             for (CharacterDelta delta : act.deltas()) {
                 if (cast.findByName(delta.npcName()).isEmpty()) {
@@ -195,6 +197,15 @@ public record ChatScenario(String name, Cast cast, String premise, List<Scenario
             }
         }
         return result;
+    }
+
+    /** The "{private Name}" lines of a text are well formed and name characters of the cast (see PrivateLines). */
+    private static void requireValidPrivateLines(Cast cast, String text, String where) {
+        try {
+            PrivateLines.validate(text, cast);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Dans " + where + " : " + e.getMessage(), e);
+        }
     }
 
     private static void requireKnownNpc(Cast cast, NpcOpening opening, String where) {

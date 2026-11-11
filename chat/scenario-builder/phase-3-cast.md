@@ -16,6 +16,10 @@ Write what anybody could notice or know about the NPC:
 ## Step 2: then append the secret (30 to 60 words)
 Add the line `# SECRET` on its own line, then what only this NPC knows and hides. Add it to the same file.
 Keep one file per NPC and never copy text from one file into another.
+The secret may hold the NPC's ultimate motive, as a state: what it wants, owes or hides ("works for people
+who want Sam, needs Sam to trust him"). Never as steps or events to carry out ("he will follow Sam, then
+kidnap him"): the NPC would do them in the first scene. The motive can be completed later with
+`{npc-delta secret}` in the step where it becomes useful.
 
 ## Step 3: apply the test to every sentence
 1. Is it true and known to the NPC from the first turn, whatever the player does? If not, it belongs in a step

@@ -7,7 +7,11 @@ import java.util.List;
 /**
  * One node of a ChatScenario's act tree, already resolved to a leaf — only leaves are ever
  * "current" (see ChatFileStorageAdapter / ScenarioOutlineParser for how the single-file, nested
- * outline is flattened). number is the dotted outline position (1, 1.1, 1.1.1...) deduced from
+ * outline is flattened). In the authors' vocabulary a leaf is a "played scene" (the deepest heading
+ * of a branch, the only kind ever played) and a heading with sub-headings is a "container" (never
+ * played alone, its body is inherited by the played scenes below it). A played scene's text holds only
+ * the situation now and what each NPC does in that scene, never what comes later (anti-leak rule) ;
+ * "{private Name}" lines in it are filtered per NPC when the prompt is built (see PrivateLines). number is the dotted outline position (1, 1.1, 1.1.1...) deduced from
  * the document, never typed by the author. title is this leaf's own heading text — display-only,
  * never sent to the LLM. text is the RESOLVED prompt content : this leaf's own body prefixed by
  * every ancestor's own body (root-to-leaf order) — that's how a parent's content is inherited by

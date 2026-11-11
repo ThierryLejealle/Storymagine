@@ -22,7 +22,9 @@ points to it, and that no clue gives it away before the step that needs it.
 One row per step, as many as the brief says. A step is a real stage of the story, not a single scene. Fill:
 - **Place** and **Who is there**: if some NPCs only join later, note it ({npc-arrives}/{npc-leaves}).
 - **Starting point**: one concrete fact that opens the step.
-- **What must happen**: what the step achieves.
+- **What each NPC does in this step**: for each NPC present, what it does or tries during THIS step, in one
+  short phrase ("Nell asks who the letter is for"). Not the outcome of the step and nothing from later
+  steps: the plan is for you, but these phrases become the lines the NPCs read.
 - **NEXT ACT fact**: ONE observable fact that ends the step ("the door is open", "Ione has named the
   thief"). Not a feeling, not two facts.
 - **Character changes**: what changes about an NPC during this step ({npc-delta}, or a `## tag` to switch on).

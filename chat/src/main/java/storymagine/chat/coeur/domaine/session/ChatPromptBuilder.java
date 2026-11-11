@@ -4,6 +4,7 @@ import storymagine.chat.coeur.domaine.scenario.Cast;
 import storymagine.chat.coeur.domaine.scenario.ChatScenario;
 import storymagine.chat.coeur.domaine.scenario.NextActMarker;
 import storymagine.chat.coeur.domaine.scenario.Npc;
+import storymagine.chat.coeur.domaine.scenario.PrivateLines;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 
 import java.util.List;
@@ -196,6 +197,11 @@ public final class ChatPromptBuilder {
         - If the current act's [NEXT ACT] condition is met, write "[NEXT ACT]" at the end of your
           reply.""";
 
+    /** A scenario text as this speaker reads it : the "{private Name}" texts of the other characters are left out. */
+    private static String readBy(Npc speaker, ChatScenario scenario, String text) {
+        return PrivateLines.visibleTo(text, scenario.cast(), speaker);
+    }
+
     /**
      * currentAct is 1-based ; 0 means the scenario has no acts (or none is active), in which case
      * no CURRENT ACT section is added — existing act-less scenarios are unaffected. scene.speaker()
@@ -245,13 +251,13 @@ public final class ChatPromptBuilder {
               .append("arrives, you are calm and unsuspecting right up until the letter actually arrives. You are\n")
               .append("free to invent new details and improvise in the present moment — just never reach ahead of\n")
               .append("it):\n")
-              .append(scenario.premise()).append("\n\n");
+              .append(readBy(scene.speaker(), scenario, scenario.premise())).append("\n\n");
         List<ScenarioAct> acts = scenario.acts();
         boolean remindNextActConditionInFormatting = false;
         if (currentAct > 0 && currentAct <= acts.size()) {
             ScenarioAct act = acts.get(currentAct - 1);
             system.append("CURRENT SCENE — same anti-spoiler rule as above applies here too:\n")
-                  .append(act.text()).append("\n\n");
+                  .append(readBy(scene.speaker(), scenario, act.text())).append("\n\n");
             if (currentAct < acts.size()) {
                 boolean actSpecifiesCondition = NextActMarker.isPresentIn(act.text());
                 system.append(actSpecifiesCondition ? NEXT_ACT_RULE_CONDITIONAL : NEXT_ACT_RULE_DEFAULT)

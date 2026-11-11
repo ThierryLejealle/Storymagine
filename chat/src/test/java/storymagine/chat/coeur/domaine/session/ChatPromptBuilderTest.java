@@ -44,6 +44,28 @@ class ChatPromptBuilderTest {
     }
 
     @Test
+    void aPrivateLineOfTheSceneReachesOnlyTheCharacterItNames() {
+        Npc franck = new Npc("franck", "Franck", "Franck's sheet.", "");
+        Npc alex = new Npc("alex", "Alex", "Alex's sheet.", "");
+        ChatScenario two = new ChatScenario("test", new Cast(List.of(franck, alex)), "A quiet evening.", List.of(
+            ScenarioAct.leaf(ActNumber.of(1), "", """
+                They take out their consoles.
+                {private Franck} Franck wants to win and will cheat.
+                {private Alex}
+                Alex just wants to have fun.
+                {end-private}""")));
+
+        String toFranck = ChatPromptBuilder.build(two, new Scene(franck, List.of(alex), List.of(), false), 1, "", List.of()).system();
+        String toAlex = ChatPromptBuilder.build(two, new Scene(alex, List.of(franck), List.of(), false), 1, "", List.of()).system();
+
+        assertTrue(toFranck.contains("They take out their consoles.\nFranck wants to win and will cheat."), toFranck);
+        assertFalse(toFranck.contains("Alex just wants"));
+        assertTrue(toAlex.contains("Alex just wants to have fun."));
+        assertFalse(toAlex.contains("will cheat"));
+        assertFalse(toAlex.contains("{private") || toAlex.contains("{end-private"));
+    }
+
+    @Test
     void systemCarriesCharacterAndScenario() {
         ChatPrompt prompt = ChatPromptBuilder.build(scenario, sceneFor(scenario), 0, "", List.of());
         assertTrue(prompt.system().contains("A grumpy innkeeper."));

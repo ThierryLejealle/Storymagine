@@ -45,6 +45,18 @@ class ScenarioValidatorTest {
     }
 
     @Test
+    void privateTextsAreAcceptedAndTheirProblemsNameTheFile() {
+        assertTrue(check("Monde.\n# Un\n{private Elena} Elle sait.\n{private Marcus}\nIl sait.\n{end-private}\n").issues().isEmpty());
+
+        ScenarioReport unknown = check("Monde.\n# Un\n{private Zorg} Il sait.\n");
+        ScenarioReport unclosed = check("Monde.\n# Un\n{private Elena}\nElle sait.\n# Deux\n");
+
+        assertEquals("scenario.txt", unknown.errors().get(0).where());
+        assertTrue(unknown.errors().get(0).message().contains("Zorg"), unknown.errors().toString());
+        assertEquals(1, unclosed.errors().size(), unclosed.errors().toString());
+    }
+
+    @Test
     void aRepeatBlockWithItsZonesIsNotReportedAsUnknownCommands() {
         ScenarioReport report = check("Monde.\n{repeat order lieu}\n# Etape {n}\nLieu : {item}\n{end-repeat}\n");
 

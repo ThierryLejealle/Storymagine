@@ -12,8 +12,11 @@ anchor, re-read before every file. If the model loses the thread, work phase by 
 1. `phase-1-brief.md` : questions (only what the spec does not answer) -> brief
 2. `phase-2-plan.md` : cast table and steps table, user approves
 3. `phase-3-cast.md` : one character sheet at a time
-4. `phase-4-steps.md` : one scenario file per step, playable after each
-5. `phase-5-finish.md` : style, validation, test play
+4. `phase-4-steps.md` : one scenario file per step, playable after each, with a leak check after each file
+5. `phase-5-finish.md` : style, validation, final leak check, test play
+
+The rule that matters most: an NPC acts on everything it reads, so a scene never holds anything that happens
+later (see `ref-writing-tips.md`, "Nothing from the future" and "Leak check").
 
 For editing a few lines of an existing scenario, use the `chat-scenario-writing` skill instead.
 When a chat feature changes what a scenario author writes, update this playbook too (`ref-commands.md`,

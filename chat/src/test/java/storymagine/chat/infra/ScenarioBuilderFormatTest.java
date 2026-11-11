@@ -42,7 +42,8 @@ class ScenarioBuilderFormatTest {
             ## The quay
             [Sam steps off the ferry onto the quay, where Nell is mending a net.]
             Starting point: Nell notices the stranger and the letter in Sam's hand.
-            What must happen: Nell asks who the letter is for.
+            Nell: asks who the letter is for.
+            {private Nell} Nell hides that she wrote the letter herself.
             {20%} A gull screams somewhere above the nets.
             When to write [NEXT ACT]: Sam has said the name written on the letter.
             """);
@@ -55,7 +56,8 @@ class ScenarioBuilderFormatTest {
             ## The gate
             [Sam and Nell reach the market gate, where Pip waves them over and Hobb folds his arms.]
             Starting point: Hobb will not let anyone in without a reason.
-            What must happen: Sam finds a way through the gate.
+            Hobb: asks Sam why they want to enter.
+            Pip: tries to help Sam find a reason.
             """);
         write(dir.resolve("characters/nell.txt"), """
             # Nell

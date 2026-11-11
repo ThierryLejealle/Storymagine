@@ -18,6 +18,7 @@ import storymagine.chat.coeur.domaine.scenario.Npc;
 import storymagine.chat.coeur.domaine.scenario.NpcOnlyMarker;
 import storymagine.chat.coeur.domaine.scenario.NpcOpening;
 import storymagine.chat.coeur.domaine.scenario.NpcOpeningMarker;
+import storymagine.chat.coeur.domaine.scenario.PrivateLines;
 import storymagine.chat.coeur.domaine.scenario.ScenarioAct;
 import storymagine.chat.coeur.domaine.scenario.SceneStyleMarker;
 import storymagine.chat.coeur.domaine.scenario.ScenarioStyle;
@@ -52,9 +53,12 @@ public final class ScenarioValidator {
     private static final Set<String> ACTIVITY_COMMANDS = Set.of("npc-active", "npc-present", "npc-passive", "npc-absent", "npc-reset", "npc-mode",
         "npc-arrives", "npc-leaves");
     private static final Set<String> COMMANDS = Set.of("pick", "cast", "style", "npc-starts", "npc-delta", "npc-story", "npc-active", "npc-present",
-        "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-arrives", "npc-leaves", "npc-only", "npc-do", "repeat", "end-repeat", "n", "item");
+        "npc-passive", "npc-absent", "npc-reset", "npc-mode", "npc-arrives", "npc-leaves", "npc-only", "npc-do", "repeat", "end-repeat", "n", "item",
+        "private", "end-private");
     /** Checked as a whole by RepeatExpander (blocks, zones, piece counts), not line by line. */
     private static final Set<String> REPEAT_COMMANDS = Set.of("repeat", "end-repeat", "n", "item");
+    /** Checked as a whole by PrivateLines (position, names, blocks closed), file by file : see checkPrivateLines. */
+    private static final Set<String> PRIVATE_COMMANDS = Set.of("private", "end-private");
     /** A line that opens an "{npc-delta" : the command may then run over several lines, see checkDeltaBlock. */
     private static final Pattern DELTA_START = Pattern.compile("^\\s*\\{\\s*npc-delta", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMMAND_START =Pattern.compile("\\{\\s*([A-Za-z][A-Za-z-]*)");
@@ -86,6 +90,7 @@ public final class ScenarioValidator {
         }
         for (ScenarioSource source : sources) checkChanceMarkers(source.fileName(), source.text(), issues);
         checkRepeatBlocks(sources, library, cast, issues);
+        checkPrivateLines(sources, cast, issues);
         checkVariables(sources, issues);
         if (issues.isEmpty()) checkUniqueDoesNotRunOut(sources, library, cast, issues);
         return new ScenarioReport(issues);
@@ -97,6 +102,17 @@ public final class ScenarioValidator {
             try {
                 new RepeatExpander(library, bound -> 0, cast).expand(List.of(source.text()));
             } catch (IllegalArgumentException | IllegalStateException e) {
+                issues.add(ScenarioIssue.error(source.fileName(), e.getMessage()));
+            }
+        }
+    }
+
+    /** Each file on its own, to name the file : "{private}" well placed, names known, blocks closed, nothing forbidden inside. */
+    private static void checkPrivateLines(List<ScenarioSource> sources, Cast cast, List<ScenarioIssue> issues) {
+        for (ScenarioSource source : sources) {
+            try {
+                PrivateLines.validate(source.text().replace("\r\n", "\n").replace("\r", "\n"), cast);
+            } catch (IllegalArgumentException e) {
                 issues.add(ScenarioIssue.error(source.fileName(), e.getMessage()));
             }
         }
@@ -121,8 +137,8 @@ public final class ScenarioValidator {
             }
             if (!COMMANDS.contains(name)) {
                 issues.add(ScenarioIssue.error(where, "commande inconnue {" + name + " ...} (commandes : pick, repeat, cast, style, npc-starts, npc-do, "
-                    + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode, npc-arrives, npc-leaves, npc-only)"));
-            } else if (REPEAT_COMMANDS.contains(name)) {
+                    + "npc-delta, npc-story, npc-active, npc-present, npc-passive, npc-absent, npc-reset, npc-mode, npc-arrives, npc-leaves, npc-only, private)"));
+            } else if (REPEAT_COMMANDS.contains(name) || PRIVATE_COMMANDS.contains(name)) {
                 continue;
             } else if (name.equals("style")) {
                 try {

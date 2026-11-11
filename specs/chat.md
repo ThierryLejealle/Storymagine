@@ -38,9 +38,14 @@ chatscenarios/{nom}/
   l'appli.
 - **Scénario listé** : `scenario.txt` présent et au moins un PNJ valide dans `characters/`. Un scénario
   encore à l'ancien format est listé aussi, pour que le choisir affiche le message « format non pris en charge ».
-- **Scénario en plusieurs fichiers** : `scenario-1.txt`, `scenario-2.txt`… sont concaténés après
-  `scenario.txt`, numéros consécutifs (arrêt au premier manquant). Chacun doit commencer par un
-  titre `# ...` de premier niveau, sinon le chargement échoue explicitement.
+- **Scénario en plusieurs fichiers** : les fichiers `scenario-NUMÉRO.txt` sont concaténés après
+  `scenario.txt` dans l'ordre de leur numéro (`ScenarioFiles`). Le numéro est décimal comme une
+  numérotation de plan : `1`, `1.1`, `1.1.1`, `2`, `3.1.2`… ; un numéro passe avant ses enfants
+  (`1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2`) et les segments se comparent comme des nombres. Les trous sont
+  permis et `1` peut coexister avec `1.1` : couper un fichier ou en insérer un ne demande aucun
+  renommage. Deux fichiers de même numéro (`scenario-1.txt` et `scenario-01.txt`) : erreur explicite.
+  Le numéro ne donne que l'ordre ; les numéros d'actes viennent des titres. Chaque fichier doit
+  commencer par un titre `# ...` de premier niveau, sinon le chargement échoue explicitement.
 - **Ancien format** : si un fichier de session de l'ancienne structure est détecté à la racine du
   scénario (`history.md`, `summary.md`, `act.txt`, `present.txt`, `interject.txt`, `full-history.md`,
   ou un dossier `saves/`, `archive/`, `logs/`, `tests/`), ou un PNJ à la racine au lieu de
@@ -56,16 +61,41 @@ chatscenarios/{nom}/
    « Auto » = la langue du scénario ; effet à la réponse suivante).
 2. Prémisse : `#SCENARIO` optionnel + `Monde :` / `Prémisse :` / `Ton :`. Envoyée à chaque tour à
    chaque PNJ, jamais montrée telle quelle au joueur. **3e personne obligatoire.**
-3. Actes : plan Markdown (`#`, `##`…). **Seules les feuilles sont des actes jouables** (un titre
-   avec sous-titre est un chapitre : son texte est hérité par ses enfants). Deux actes séquentiels
-   indépendants = deux titres du même niveau.
-4. Dans chaque acte :
+3. Actes : plan Markdown (`#`, `##`…). Vocabulaire commun : une **scène jouée** est le titre le plus
+   profond d'une branche (c'est l'« acte » du moteur, `ScenarioAct`) ; seule elle est jouable. Un
+   **conteneur** est un titre avec sous-titre : jamais joué seul, son texte est hérité par les scènes
+   jouées en dessous. Deux actes séquentiels indépendants = deux titres du même niveau.
+4. Dans chaque scène jouée :
    - lignes `[...]` (crochet ouvrant en début de ligne, fermant en fin de ligne) : narration
      affichée au joueur quand l'acte devient courant, et aussi lue par les PNJ. 3e personne.
-   - texte de consigne lu par le LLM seulement : `Point de départ`, `Ce qui doit se passer`,
-     `Quand écrire [NEXT ACT]` (libellés = convention, non parsés).
+   - texte de consigne lu par le LLM seulement, en trois temps : `Point de départ` (la situation
+     actuelle), une consigne par PNJ (ce qu'il fait ou tente dans CETTE scène), `Quand écrire
+     [NEXT ACT]` (libellés = convention, non parsés).
+5. **Règle de non-fuite.** Un PNJ agit sur tout ce qu'il lit : le texte d'une scène jouée ne contient
+   que la situation actuelle et les consignes de cette scène ; un conteneur que ce qui est vrai pour
+   toutes ses scènes ; la prémisse que le monde, le ton et la situation de départ. Rien d'une scène
+   suivante, aucune ligne « Ce qui doit se passer ». Le mobile d'un PNJ va dans son `# SECRET` comme un
+   état, jamais comme un plan ; on le complète par `{npc-delta secret}` en cours d'histoire.
 
 Scénario sans acte : un seul bloc `[...]` est affiché à l'ouverture (les suivants sont ignorés).
+
+# Consigne privée — `{private noms}`
+
+Le texte d'une scène est lu par tous ses PNJ. `{private noms} texte` (une ligne) ou `{private noms}` seul
+suivi de lignes et de `{end-private}` (un bloc) réserve un texte aux PNJ nommés pour cette scène. Concept
+métier : *consigne privée* (`PrivateLines`, domaine scénario).
+- Les commandes restent dans `ScenarioAct.text()` ; le filtre est appliqué au moment de construire le
+  prompt d'un PNJ (`ChatPromptBuilder` : prémisse et texte de l'acte, `PrivateLines.visibleTo`). Les
+  agents d'analyse (🔍, état d'esprit, testeur) et la vue de débogage 🐞 voient le texte brut.
+- Noms comme `{npc-starts}` (`ActivityResolver.resolveNames` : virgules, plusieurs mots, id/nom/mot).
+  Un nom contenant `%` (variable de `{cast}`) n'est pas contrôlé au chargement des sources.
+- Refus au chargement (`PrivateLines.validate`, appelé par `ChatScenario` et par
+  `ScenarioValidator.checkPrivateLines`, une erreur par fichier avec le numéro de ligne) : nom inconnu,
+  commande ailleurs qu'en début de ligne, `{private}` sans nom, bloc non fermé ou fermé après le titre
+  suivant, `{end-private}` sans ouverture, imbrication, `[NEXT ACT]` ou ligne `[affichée au joueur]` à
+  l'intérieur.
+- Différence avec `{npc-delta}` (cumulatif, définitif) et `{npc-story on|off}` (paliers remplaçables) :
+  la consigne privée ne vit que dans la scène qui l'écrit.
 
 # Format d'un fichier personnage
 

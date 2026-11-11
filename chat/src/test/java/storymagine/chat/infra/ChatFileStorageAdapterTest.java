@@ -193,16 +193,46 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
-    void loadScenarioStopsAtTheFirstMissingContinuationNumber(@TempDir Path root) throws IOException {
+    void aGapInTheContinuationNumbersLosesNoFile(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn", "sheet", "premise");
         appendActs(root, "inn", "First act.");
-        // scenario-1.txt manquant : scenario-2.txt ne doit jamais etre pris en compte.
-        Files.writeString(root.resolve("inn/scenario-2.txt"), "# Orphan\nOrphan act.", StandardCharsets.UTF_8);
+        // scenario-1.txt manquant : scenario-2.txt est lu quand meme (plus de perte silencieuse).
+        Files.writeString(root.resolve("inn/scenario-2.txt"), "# Later\nLater act.", StandardCharsets.UTF_8);
 
         ChatScenario scenario = adapter.loadScenario(root, "inn");
 
-        assertEquals(1, scenario.acts().size());
-        assertEquals("First act.", scenario.acts().get(0).text());
+        assertEquals(2, scenario.acts().size());
+        assertEquals("Later act.", scenario.acts().get(1).text());
+    }
+
+    @Test
+    void dottedPartNumbersAreReadInOutlineOrderWhateverTheGapsAndTheNamesSortedAsText(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "A.");
+        // Ecrits dans le desordre ; 1.10 apres 1.2 (ordre numerique, pas alphabetique) ; 1 cote a cote avec 1.1 et 1.1.1.
+        String[][] parts = {{"3.1.2", "G"}, {"2", "E"}, {"1.10", "D"}, {"1", "B"}, {"1.2", "C"}, {"1.1.1", "X"},
+            {"1.1", "Y"}, {"3.1.1", "F"}, {"4", "H"}};
+        for (String[] part : parts) {
+            Files.writeString(root.resolve("inn/scenario-" + part[0] + ".txt"), "# T" + part[1] + "\n" + part[1] + ".", StandardCharsets.UTF_8);
+        }
+
+        List<String> texts = adapter.loadScenario(root, "inn").acts().stream().map(act -> act.text()).toList();
+
+        // 1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2 < 3.1.1 < 3.1.2 < 4
+        assertEquals(List.of("A.", "B.", "Y.", "X.", "C.", "D.", "E.", "F.", "G.", "H."), texts);
+    }
+
+    @Test
+    void twoPartFilesWithTheSameNumberAreRefusedAndReportedByTheValidation(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "premise");
+        appendActs(root, "inn", "First act.");
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "# One\nOne.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario-01.txt"), "# Uno\nUno.", StandardCharsets.UTF_8);
+
+        assertThrows(IllegalArgumentException.class, () -> adapter.loadScenario(root, "inn"));
+        var report = adapter.validateScenario(root, "inn");
+        assertTrue(report.hasErrors());
+        assertTrue(report.toString().contains("meme numero"), report.toString());
     }
 
     @Test

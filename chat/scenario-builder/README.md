@@ -21,7 +21,7 @@ before every new file instead of trusting its memory of the conversation.
 | 1 | phase-1-brief.md | the brief, written in `plan.md` |
 | 2 | phase-2-plan.md | the cast table and the steps table in `plan.md`; the user approves brief and plan together |
 | 3 | phase-3-cast.md | `characters/<id>.txt`, one NPC at a time |
-| 4 | phase-4-steps.md | `scenario.txt`, then `scenario-1.txt`, `scenario-2.txt`... one step at a time |
+| 4 | phase-4-steps.md | `scenario.txt`, then `scenario-1.txt`, `scenario-2.txt`... (decimal numbers allowed: `scenario-2.1.txt`) one step at a time |
 | 5 | phase-5-finish.md | `style.txt`, validation, a test play |
 
 References: `ref-format.md` (the files), `ref-commands.md` (the commands), `ref-writing-tips.md` (what makes a

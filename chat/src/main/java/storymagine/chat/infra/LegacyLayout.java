@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Knows what a scenario directory looked like BEFORE the characters/ + run/ structure : session
@@ -26,7 +25,6 @@ final class LegacyLayout {
     private static final String SCENARIO_FILE = "scenario.txt";
     /** The optional style advice, a root file that may well start with a "# Title" without being a character sheet. */
     static final String STYLE_FILE = "style.txt";
-    private static final Pattern SCENARIO_CONTINUATION = Pattern.compile("scenario-(\\d+)\\.txt");
 
     private LegacyLayout() {}
 
@@ -49,7 +47,7 @@ final class LegacyLayout {
                 .filter(f -> f.getFileName().toString().endsWith(".txt"))
                 .filter(f -> !f.getFileName().toString().equals(SCENARIO_FILE))
                 .filter(f -> !f.getFileName().toString().equals(STYLE_FILE))
-                .filter(f -> !SCENARIO_CONTINUATION.matcher(f.getFileName().toString()).matches())
+                .filter(f -> !ScenarioFiles.isPart(f.getFileName().toString()))
                 .filter(LegacyLayout::startsWithNameHeading)
                 .sorted()
                 .toList();

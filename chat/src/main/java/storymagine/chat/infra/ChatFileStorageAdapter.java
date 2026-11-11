@@ -49,9 +49,9 @@ import java.util.stream.IntStream;
  * chatScenariosRoot/{name}/scenario.txt (an optional "Joueur : X" first line — see
  * ChatScenario.playerName, stripped before the rest is parsed — then the premise, optionally
  * preceded by a "#SCENARIO" heading, followed by a nested Markdown outline of acts — see
- * ScenarioOutlineParser), optionally continued by scenario-1.txt, scenario-2.txt, ... (consecutive,
- * stopping at the first missing number, each appended verbatim after scenario.txt's own text — see
- * loadContinuationFiles), plus one ".txt" file per Cast member in characters/ (first line a
+ * ScenarioOutlineParser), optionally continued by scenario-1.txt, scenario-1.1.txt, scenario-2.txt, ...
+ * (dotted numbers, any gaps, in numeric order — see ScenarioFiles ; each appended verbatim after
+ * scenario.txt's own text — see appendContinuationFiles), plus one ".txt" file per Cast member in characters/ (first line a
  * "# Name" heading — see loadCast). Everything the app generates while playing lives under
  * {name}/run/ and is never part of the scenario : run/current/turns/ (one file per turn, one per
  * compaction — see RunLayout, TurnFileCodec), run/current/state.txt (see RunState), run/saves/ and
@@ -68,8 +68,6 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
     private static final String TXT_EXTENSION   = ".txt";
     private static final String ZIP_EXTENSION   = ".zip";
 
-    /** scenario-1.txt, scenario-2.txt, ... — see loadContinuationFiles. */
-    private static final Pattern SCENARIO_CONTINUATION_FILE = Pattern.compile("scenario-(\\d+)\\.txt");
     /** First line of a continuation file must open a NEW top-level "#" heading, never "##" or deeper
      *  — see ScenarioOutlineParser.HEADING ; a continuation is only ever appended between two acts,
      *  never mid-act, so its own first heading must be one ScenarioOutlineParser treats as a fresh
@@ -181,7 +179,12 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         } catch (IllegalArgumentException e) {
             return new ReportOfOneError(name, e.getMessage()).report();
         }
-        List<Path> sources = scenarioTextFiles(dir);
+        List<Path> sources;
+        try {
+            sources = scenarioTextFiles(dir);
+        } catch (IllegalArgumentException e) {
+            return new ReportOfOneError(name, e.getMessage()).report();
+        }
         List<String> texts = sources.stream().map(ChatFileStorageAdapter::readText).toList();
         ScenarioReport sourceReport = ScenarioValidator.checkSources(sourcesOf(sources, texts), cast, new PickFileLibrary(dir));
         if (sourceReport.hasErrors()) return sourceReport;
@@ -252,28 +255,23 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
         return Files.isRegularFile(file) ? PickDrawsFile.parse(readText(file)) : PickDraws.NONE;
     }
 
-    /** scenario.txt, then scenario-1.txt, scenario-2.txt, ... — consecutive numbers, stopping at the first missing one. */
+    /** scenario.txt, then every scenario-NUMBER.txt in the order of their dotted numbers (see ScenarioFiles). */
     private static List<Path> scenarioTextFiles(Path dir) {
-        List<Path> files = new ArrayList<>(List.of(dir.resolve(SCENARIO_FILE)));
-        for (int n = 1; Files.isRegularFile(dir.resolve("scenario-" + n + TXT_EXTENSION)); n++) {
-            files.add(dir.resolve("scenario-" + n + TXT_EXTENSION));
-        }
-        return files;
+        return ScenarioFiles.textFiles(dir);
     }
 
     /**
-     * Appends scenario-1.txt, scenario-2.txt, ... after rest (scenario.txt's own text, Joueur line
-     * already stripped) — consecutive numbers only, stopping at the first missing one. Each file's
-     * content is required to open on a fresh top-level "#" heading (see TOP_LEVEL_HEADING) : that's
-     * what lets a plain string concatenation be handed to ScenarioOutlineParser unchanged, instead
-     * of risking a continuation's first lines silently getting folded into the previous file's last
-     * heading as body text.
+     * Appends the part files (scenario-1.txt, scenario-1.1.txt, scenario-2.txt... in the order of their
+     * dotted numbers, see ScenarioFiles) after rest (scenario.txt's own text, Joueur line already
+     * stripped). Each file's content is required to open on a fresh top-level "#" heading (see
+     * TOP_LEVEL_HEADING) : that's what lets a plain string concatenation be handed to
+     * ScenarioOutlineParser unchanged, instead of risking a continuation's first lines silently getting
+     * folded into the previous file's last heading as body text.
      */
     private static String appendContinuationFiles(Path dir, String rest) {
         StringBuilder combined = new StringBuilder(rest);
-        for (int n = 1; ; n++) {
-            Path file = dir.resolve("scenario-" + n + TXT_EXTENSION);
-            if (!Files.isRegularFile(file)) break;
+        List<Path> files = ScenarioFiles.textFiles(dir);
+        for (Path file : files.subList(1, files.size())) {
             String continuation = readText(file);
             if (!TOP_LEVEL_HEADING.matcher(firstLine(continuation)).matches()) {
                 throw new IllegalStateException(
@@ -302,7 +300,13 @@ public class ChatFileStorageAdapter implements ChatStoragePort {
      */
     private static List<String> arrivalTextsOf(Path scenarioDir) {
         List<String> texts = new ArrayList<>();
-        for (Path file : scenarioTextFiles(scenarioDir)) {
+        List<Path> files;
+        try {
+            files = scenarioTextFiles(scenarioDir);
+        } catch (IllegalArgumentException e) {
+            return texts; // two files with the same number : reported, with both names, by the validation that follows
+        }
+        for (Path file : files) {
             if (!Files.isRegularFile(file)) continue;
             try {
                 for (ActivityDirective directive : ActivityDirectiveMarker.extract(

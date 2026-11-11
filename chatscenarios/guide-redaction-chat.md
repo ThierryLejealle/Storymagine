@@ -18,7 +18,7 @@ l'appli n'écrit que dans `run/` (§6).
 ```
 chatscenarios/mon-scenario/
   scenario.txt        obligatoire — ligne Joueur, prémisse, actes
-  scenario-1.txt      optionnel — suite des actes (numéros consécutifs)
+  scenario-1.txt      optionnel — suite des actes (numéro décimal : 1, 1.1, 2, 3.1.2…)
   style.txt           optionnel — conseil de style commun à tous les personnages (§2.10)
   styles/             optionnel — styles de scène appelés par {style nom} (§2.10 bis)
     auberge.txt
@@ -32,7 +32,8 @@ chatscenarios/mon-scenario/
 
 | Élément | Règle |
 |---|---|
-| `scenario-N.txt` | Concaténés après `scenario.txt`, numéros consécutifs, arrêt au premier manquant. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
+| `scenario-N.txt` | Concaténés après `scenario.txt` **dans l'ordre de leur numéro**, un numéro décimal comme dans un plan : `1`, `1.1`, `1.1.1`, `2`, `3.1.2`… (`scenario-1.txt`, `scenario-1.1.txt`…). Les trous sont permis, `1` et `1.1` peuvent coexister, et un numéro passe avant ses enfants (`1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2`). Deux fichiers de même numéro (`1` et `01`) : erreur. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
+| Numéro de fichier | Il ne donne que **l'ordre de lecture** ; les numéros d'actes (1, 1.1…) viennent des titres (§2.3). Pour couper une partie trop grosse ou insérer une suite, utiliser la hiérarchie : une suite de `scenario-3.txt` s'appelle `scenario-3.1.txt` (entre 3 et 4), une suite de celle-ci `scenario-3.1.1.txt`, sans renommer les autres. Recommandé pour garder des fichiers petits. |
 | `characters/*.txt` | Un fichier = un personnage si sa **première ligne** est `# Nom`. Sinon le fichier est ignoré (le jeu ne le charge pas) ; `validation-scenarios.bat` le signale par un avertissement. Seul `characters/` est lu. |
 | Id d'un personnage | Nom du fichier sans `.txt` : simple, sans espace ni accent (`marcus.txt`, pas `Marcus Dupont.txt`). |
 | Nombre de PNJ | Un seul fichier suffit : le scénario est alors mono-personnage. |
@@ -67,7 +68,7 @@ Ton : chaleureux, un peu mystérieux.
 [Mila pousse la porte de l'auberge du Cerf Blanc, trempée par l'orage. Derrière le comptoir, Elena, l'aubergiste, lève les yeux.]
 [Mila cherche un lit pour la nuit et un repas chaud.]
 Point de départ : Mila vient d'entrer, la salle est presque vide.
-Ce qui doit se passer : Elena l'accueille et la conversation s'engage.
+Elena : accueille Mila et engage la conversation.
 ```
 
 `chatscenarios/auberge/characters/elena.txt`
@@ -114,8 +115,10 @@ ne sont pas des commandes entre accolades mais font partie de la même boîte à
 | | `{npc-leaves noms}` | Fait sortir des personnages de l'histoire | Idem | 2.13 |
 | Ouverture | `{npc-starts [Nom[, Nom...]]}` | Un personnage ouvre la scène en parlant le premier, sans message du joueur ; avec plusieurs noms, les suivants enchaînent dans la même ronde | En-tête (ouvre l'histoire) ou acte (ouvre l'acte) | 4.5 |
 | | `{npc-do [Nom[, Nom...]]}` | Idem, mais avec la plume du narrateur (bulle `DO:` vide), pour tous les noms | Idem | 4.5 |
+| Consigne privée | `{private noms} texte` | Le texte de cette ligne n'est lu que par ces personnages ; les autres PNJ de la scène ne le voient jamais | Texte d'une scène ; cette scène seulement | 2.5 bis |
+| | `{private noms}` … `{end-private}` | Idem pour un bloc de lignes (pas d'imbrication, à fermer avant le titre suivant) | Idem | 2.5 bis |
 | Ce que voit le joueur | `[texte]` | Ligne affichée au joueur à l'entrée de l'acte, aussi envoyée aux PNJ | Corps d'un acte | 2.4 |
-| Progression | `Quand écrire [NEXT ACT] : condition` | Condition de passage à l'acte suivant, évaluée par l'analyse 🔍 | Dans la feuille (pas dans un parent) | 4.5 |
+| Progression | `Quand écrire [NEXT ACT] : condition` | Condition de passage à l'acte suivant, évaluée par l'analyse 🔍 | Dans la scène jouée (pas dans un conteneur) | 4.5 |
 
 Pour les noms de personnage, les commandes acceptent l'id de fichier, le nom complet ou **un seul mot** du nom
 (`Elena` pour `Elena Voss`). Un nom inconnu empêche le chargement.
@@ -173,16 +176,19 @@ sont recopiés dans le prompt de chaque PNJ. « Alex est un jeune mage… », ja
 
 ### 2.3 Structure des actes
 
-Les actes s'écrivent en titres Markdown imbriqués (`#`, `##`, `###`…). **Seules les feuilles (titre sans
-sous-titre) sont des actes jouables.** Un titre qui a un enfant n'est jamais l'acte courant : son corps
-est hérité par ses descendants.
+Les actes s'écrivent en titres Markdown imbriqués (`#`, `##`, `###`…). Vocabulaire commun :
+- une **scène jouée** est le titre le plus profond d'une branche (sans sous-titre) : elle porte le
+  `[NEXT ACT]` (sauf la toute dernière) et **seule elle est jouable**. C'est l'« acte » du moteur ;
+- un **conteneur** est un titre qui a des sous-titres : il n'est jamais l'acte courant, son corps est
+  hérité (relu à chaque tour) par toutes les scènes jouées en dessous. On n'y met que ce qui est vrai pour
+  **toutes** ces scènes (lieu, époque, qui est là), jamais ce qui doit s'y passer (§7.1).
 
 ```
-# Chapitre A          <- pas jouable (a des enfants)
-## Scène A.1          <- acte 1.1
-## Scène A.2          <- acte 1.2
-# Chapitre B          <- pas jouable
-## Scène B.1          <- acte 2.1
+# Chapitre A          <- conteneur (a des enfants)
+## Scène A.1          <- scène jouée, acte 1.1
+## Scène A.2          <- scène jouée, acte 1.2
+# Chapitre B          <- conteneur
+## Scène B.1          <- scène jouée, acte 2.1
 ```
 
 Deux actes séquentiels indépendants s'écrivent au même niveau (`#` / `#`). `# Acte 1` suivi d'un seul
@@ -191,12 +197,12 @@ regroupement : un chapitre contenant plusieurs scènes.
 
 | Sujet | Règle |
 |---|---|
-| Texte d'une feuille | Corps de chaque ancêtre (racine → feuille) puis corps de la feuille, séparés par une ligne vide. C'est le `CURRENT SCENE` du PNJ (§2.7). |
+| Texte d'une scène jouée | Corps de chaque conteneur ancêtre (racine → scène) puis corps de la scène, séparés par une ligne vide. C'est le `CURRENT SCENE` du PNJ (§2.7), débarrassé des `{private}` qui ne le concernent pas (§2.5 bis). |
 | Texte commun | Le corps d'un parent est partagé par toutes ses scènes enfants et renvoyé au modèle à chaque tour de chacune. |
 | Titres | Jamais envoyés au modèle ; utilisés par l'interface et le testeur de scénario. |
 | `[...]` d'un parent | Affichés une seule fois, à la première entrée dans le chapitre. Restent dans le texte envoyé au modèle. |
-| `Quand écrire [NEXT ACT]` dans un parent | Hérité par toutes les feuilles du chapitre. À écrire dans la feuille. |
-| `{npc-starts}`, `{npc-do}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la feuille, décide (§4.5). |
+| `Quand écrire [NEXT ACT]` dans un conteneur | Hérité par toutes les scènes jouées du chapitre. À écrire dans la scène jouée. |
+| `{npc-starts}`, `{npc-do}` | Pris en compte à la première entrée dans le titre qui le porte ; la première commande rencontrée, de la racine à la scène jouée, décide (§4.5). |
 | `{npc-mode do on\|off …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les sous-actes (§2.12). |
 | `{npc-delta …}` | Appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants (§2.8). |
 | `{npc-story on\|off …}` | Comme `{npc-delta}` : appliqué dès l'entrée dans le titre qui le porte, puis pour tous les actes suivants, **même hors de ce titre**, jusqu'à ce qu'un autre `on` ou `off` le change (§2.8 bis). |
@@ -204,7 +210,7 @@ regroupement : un chapitre contenant plusieurs scènes.
 | Saut de niveau | `#` puis `###` : traité comme `##`. |
 | Ligne commençant par `#` | Toujours un titre, même `#mot` : elle coupe le corps de l'acte. |
 | Parent sans corps | Valide (regroupement et numéro). |
-| Plusieurs fichiers | Chaque `scenario-N.txt` commence par un `#` de premier niveau : un chapitre et ses `##` tiennent dans un seul fichier. |
+| Plusieurs fichiers | Chaque `scenario-N.txt` commence par un `#` de premier niveau : un chapitre et ses `##` tiennent dans un seul fichier. On coupe donc au niveau `#` ; une scène insérée dans un chapitre s'écrit dans le fichier du chapitre (ses numéros d'actes se recalculent seuls). |
 | Fins de ligne | CRLF et CR sont normalisés en LF. |
 
 Exemple : texte commun au chapitre, une condition par scène.
@@ -251,25 +257,81 @@ courant. Aucun appel au modèle n'est fait pour l'afficher.
 
 ### 2.5 Texte d'accompagnement de l'acte
 
-Jamais affiché au joueur ; lu par les PNJ.
+Jamais affiché au joueur ; lu par les PNJ. Une scène jouée se rédige en trois temps : **poser la scène**
+(l'état courant), **donner sa consigne à chaque PNJ** (comme à un acteur), **dire comment on en sort**.
 
 ```
-Point de départ : ...
-Ce qui doit se passer : ...
-Quand écrire [NEXT ACT] : ...
+Point de départ : Alex et Franck sortent leurs consoles pour jouer à Mario.
+Franck : veut vraiment gagner et va tricher en tirant sur le fil d'Alex.
+Alex : veut juste s'amuser.
+Quand écrire [NEXT ACT] : Dès qu'Alex a remarqué la triche.
 ```
 
 | Libellé | Rôle |
 |---|---|
-| `Point de départ` | Situe la scène. |
-| `Ce qui doit se passer` | Ce que la scène doit accomplir avant d'avancer. |
+| `Point de départ` | La situation telle qu'elle est à l'ouverture de la scène. |
+| `Nom : …` (une ligne par PNJ) | Ce que ce PNJ fait ou tente dans **cette** scène, à partir de maintenant : une consigne d'acteur, pas un résultat. Une ou deux actions, trois moments au plus ; au-delà, couper la scène en deux. |
 | `Quand écrire [NEXT ACT]` | Condition de transition. À omettre sur le dernier acte. |
 
+- Le texte de la scène est lu par **tous** les PNJ présents. Ici Alex lirait aussi que Franck va tricher.
+  Une consigne qu'un autre PNJ ne doit pas connaître s'écrit avec `{private Nom}` (§2.5 bis).
+- **Rien du futur** : aucune ligne « Ce qui doit se passer », « ce qui arrive ensuite » ni « le but de la
+  séquence ». Un PNJ qui les lit les provoque tout de suite (§7.1). La fin de la scène, c'est le fait du
+  `[NEXT ACT]` et rien d'autre.
 - Les libellés sont une convention. Seuls `#SCENARIO`, les titres et les `[...]` sont analysés.
 - Le mode strict de `[NEXT ACT]` (§4.5) s'active dès que le texte `[NEXT ACT]` figure dans le texte
   résolu de l'acte. Écrit **dans une phrase**, il est ignoré comme ligne `[...]` ; **seul sur une
   ligne entre crochets**, il serait affiché au joueur comme narration.
 - Sans condition sur un acte non final, le PNJ avance quand la scène lui semble conclue (moins précis).
+
+### 2.5 bis Une consigne que seul un PNJ lit : `{private Nom}`
+
+Le texte d'une scène est lu par tous les PNJ présents (§2.5). Pour qu'une consigne ou un fait n'atteigne
+que certains d'entre eux (Franck triche, Alex ne le sait pas), on l'écrit avec `{private Nom}`. Deux
+formes, sur le modèle de `{30%}` (une ligne) et de `{repeat}` … `{end-repeat}` (un bloc) :
+
+```
+{private Franck} Franck veut vraiment gagner et va tricher en tirant sur le fil d'Alex.
+
+{private Alex, Mina}
+Ils se doutent que le colis est piégé.
+Ils n'en parlent pas devant Franck.
+{end-private}
+```
+
+| Règle | Détail |
+|---|---|
+| Ligne | `{private noms}` suivi de texte sur la même ligne : seule cette ligne est privée. |
+| Bloc | `{private noms}` seul sur sa ligne ouvre un bloc, fermé par `{end-private}`. Pas d'imbrication ; à fermer avant le titre suivant. |
+| Noms | Comme `{npc-starts}` : id, nom complet ou un mot du nom, séparés par des virgules. Nom inconnu = scénario refusé. |
+| Portée | Cette scène seulement (le texte de la scène n'existe que pendant elle). Rien n'est à retirer ensuite. |
+| Interdit dedans | `[NEXT ACT]` (le PNJ qui termine la scène doit pouvoir le lire) et une ligne `[affichée au joueur]`. Refusé au chargement. |
+| Où | Dans le texte d'une scène jouée ou d'un conteneur (alors inhérité par les scènes en dessous). |
+
+Les autres PNJ découvrent ce que le PNJ a fait quand c'est arrivé dans la conversation, puis dans le
+résumé. Les agents d'analyse (🔍, état d'esprit) voient tout ; le bouton 🐞 affiche le texte brut, avec les
+commandes (§2.6).
+
+#### Quel mécanisme pour quel besoin
+
+Un mécanisme seulement si la scène en a besoin : la plupart n'ont qu'un texte, une ligne par PNJ et un
+`[NEXT ACT]`.
+
+| Besoin | Mécanisme | Durée |
+|---|---|---|
+| Ce que tous savent ou voient, ce que chaque PNJ doit faire | Texte de la scène (§2.5) | Cette scène |
+| Une consigne ou un fait que seuls certains PNJ lisent | `{private Nom}` | Cette scène |
+| Ce qu'un PNJ veut au fond depuis le début (son mobile) | `# SECRET` de la fiche, écrit comme un état | Toute l'histoire |
+| Un changement définitif (bras blessé, serment) | `{npc-delta}` (§2.8) | Jusqu'à la fin ; ne peut pas être retiré |
+| Un trait ou sentiment par paliers, ou temporaire | `{npc-story on/off}` (§2.8 bis) | Jusqu'au prochain `on`/`off` |
+| Qui est là, qui parle | `{npc-arrives}`, `{npc-leaves}`, `{npc-active}`… (§2.11, §2.13) | Selon la commande |
+| Ambiance, variété | `{style}`, `{N%}` (§2.10 bis) | Cette scène et en dessous |
+
+Un sentiment qui grandit par paliers (n'aime pas → déteste → estime) s'écrit avec une section `## tag` par
+palier dans la fiche, et à chaque palier `{npc-story on Nom palier-suivant}` **et**
+`{npc-story off Nom palier-précédent}`. Ne jamais empiler les paliers (le PNJ les lirait tous en même
+temps, et le modèle ne fait pas la somme : il faut lui donner l'état courant seulement). `{npc-delta}`
+est plus simple mais cumulatif : à réserver à ce qui est définitif.
 
 ### 2.6 Contenu aléatoire : `{pick type nom}`
 
@@ -297,7 +359,7 @@ qui est déjà sorti.
 Prémisse : Alex arrive dans une ville portuaire où quelque chose cloche. {pick random lieu}
 ...
 Point de départ : Alex vient de quitter la rue. En face de lui : {pick unique lieu}
-Ce qui doit se passer : Elena met Alex en garde. {pick 2 intrigue}
+Elena : met Alex en garde. {pick 2 intrigue}
 ```
 
 Ici le `unique` ne peut pas retomber sur le lieu déjà donné à la prémisse. Avec 4 `{pick unique lieu}`
@@ -361,7 +423,7 @@ fichier est celui d'un `pick` (§2.6) : paragraphes séparés par `---`.
 # Défi {n}
 [Megumin annonce le défi numéro {n} d'un grand geste.]
 Point de départ : {item2}
-Ce qui doit se passer : Megumin explique le défi. {item1}
+Megumin : explique le défi. {item1}
 Quand écrire [NEXT ACT] : {item3}
 {end-repeat}
 ```
@@ -705,7 +767,7 @@ Avec J1 à J4, `{npc-active J1}`, `{npc-passive J3}` puis `{npc-absent}` laisse 
 met J2 et J4 absents.
 
 **Héritage** : chaque PNJ a un niveau et un statut, *explicite* (nommé par une commande) ou *implicite*
-(par défaut, ou touché par une commande sans nom). On parcourt les titres de la racine à la feuille :
+(par défaut, ou touché par une commande sans nom). On parcourt les titres de la racine à la scène jouée :
 1. une commande **avec** noms fixe le niveau et le rend explicite ; un titre plus profond peut le changer ;
 2. une commande **sans** nom ne touche que les PNJ implicites, qui le restent ;
 3. dans un même titre, l'ordre d'écriture ne compte pas (les noms d'abord, le sans-nom ensuite) ;
@@ -1364,16 +1426,37 @@ Conséquences de §2.7 :
    les yeux : la seule parade fiable est de ne pas la lui montrer avant la sous-partie où elle se joue. Sous le titre parent, ne mettre que ce qui est vrai
    dans toutes les sous-parties (lieu, ton, personnages) ; l'enchaînement des événements se lit dans
    l'ordre des sous-parties, un événement chacune.
-   **Un plan de l'histoire n'est pas une synthèse.** Quand les personnages se donnent réellement un plan
-   (« on passe devant les orcs, puis… »), on peut l'écrire, mais **comme un plan** : « les personnages
-   mettent en place le plan suivant : … », jamais comme un fait à venir. Un plan peut être partagé avec le
-   joueur, il peut y en avoir plusieurs à la suite, et l'action peut différer ou échouer selon ce qui se
-   passe : la formulation doit le laisser ouvert. (Hypothèse d'écriture à vérifier selon le modèle : un
-   petit modèle peut quand même suivre le plan à la lettre.) Un plan connu d'un seul PNJ peut aussi aller
-   dans son `# SECRET` ou un `{npc-delta secret nom : …}` (§2.8), mais ce n'est pas obligatoire.
+   **Pas de plan donné à un PNJ au-delà de la scène jouée.** Un plan (suite d'étapes) est lu par un petit
+   modèle comme des ordres : il les exécute dès la première scène, quitte à forcer l'histoire. La consigne
+   d'un PNJ ne dépasse donc jamais la scène jouée : ce qu'il fait ou tente *dans cette scène* (§2.5). La
+   suite s'écrit dans les scènes suivantes, qu'il ne lit pas encore. Une scène qui contient trop d'étapes
+   se coupe en plusieurs scènes plus petites.
+   **Le mobile, oui ; le plan, non.** Le désir ultime d'un PNJ (ce qu'il veut, ce qu'il doit, ce qu'il
+   cache) peut aller dans son `# SECRET` : c'est un état présent, il colore toutes les scènes sans dire quoi
+   faire ensuite (« travaille pour ceux qui veulent Sam, a besoin que Sam lui fasse confiance »). Écrit en
+   actions (« il suivra Sam puis l'enlèvera ce soir »), c'est un plan : à reformuler. On n'a pas à tout dire
+   dès le début : `{npc-delta secret nom : …}` complète le mobile dans la scène où il devient utile
+   (« ce soir est le bon soir, la voiture attend derrière le marché »).
+   **Ne pas fuiter, y compris entre PNJ.** Le texte d'une scène est lu par tous ses PNJ : une consigne
+   qu'un autre ne doit pas connaître s'écrit avec `{private Nom}` (§2.5 bis).
 5. Les lignes `[...]` d'un acte sont connues de tous les PNJ dès l'arrivée de l'acte.
 6. Le PNJ ne voit pas l'acte suivant : une condition ne peut s'appuyer que sur le texte de l'acte
    courant.
+
+**Vérification des fuites.** La validation ne repère pas les fuites (elle ne lit pas les intentions) :
+à faire à la relecture, scène jouée par scène jouée, avant de rendre un scénario et quand on en modifie un.
+Pour chaque scène jouée, lister ce que ses PNJ lisent (prémisse, conteneurs au-dessus, texte de la scène,
+fiches ; une ligne `{private Nom}` n'est lue que par ce PNJ), puis contrôler :
+- rien de ce qui n'arrive que dans les scènes **suivantes** n'y figure (leur `[NEXT ACT]`, ce que leurs PNJ y
+  font, les changements, les révélations), même suggéré (« finira par », « ensuite », « plus tard ») ;
+- la prémisse et les conteneurs ne résument pas la trame ni ce qui se passe en dessous ;
+- les fiches et `# SECRET` décrivent des états (désir, loyauté, ce qu'on cache), pas une suite d'actions ;
+- chaque ligne de PNJ est une tentative dans **cette** scène, à partir de maintenant, pas un résultat ;
+- chaque ligne partagée peut être lue par tous sans changer leur comportement, sinon `{private Nom}` ;
+- aucune ligne « Ce qui doit se passer », « ce qui arrive ensuite » ni « le but de la séquence ».
+En jeu, le bouton 🐞 (§2.6) montre le texte réellement envoyé aux PNJ : si l'un d'eux fait allusion à quelque
+chose qui n'est pas encore arrivé, ou presse l'histoire vers sa fin, une fuite reste ; trouver la ligne et
+l'enlever.
 
 ### 7.2 Réussir ses `Quand écrire [NEXT ACT]`
 
@@ -1392,11 +1475,12 @@ Règles :
 2. Formuler « dès que… », jamais « jamais avant… » (une négation absolue fait boucler un petit modèle).
 3. Une seule condition par acte, courte, sans cascade de « et / ou ». Au plus deux faits si une sortie
    de secours est nécessaire (« Varek mort ou en fuite, ou le groupe a quitté la clairière »).
-4. `Ce qui doit se passer` doit mener à la condition, sinon l'histoire reste bloquée.
+4. Les consignes des PNJ de la scène (§2.5) doivent permettre d'atteindre la condition, sinon l'histoire
+   reste bloquée.
 5. Pas de condition vraie dès le début de l'acte.
 6. État interne d'un PNJ : formuler ce qu'il doit avoir dit ou décidé (« Dès qu'Elena a avoué le vol
    à voix haute »), pas une émotion vague.
-7. Écrire la condition dans la feuille, pas dans un parent (§2.3).
+7. Écrire la condition dans la scène jouée, pas dans un conteneur (§2.3).
 
 **Scène qui boucle alors que la condition est remplie.** Le contrôle de disponibilité (bouton d'analyse)
 est un diagnostic manuel : son verdict n'est pas renvoyé au PNJ qui joue. Pour limiter les boucles, le
@@ -1436,15 +1520,17 @@ Diagnostic en jeu : 🔍 (§4.5), ❓ origine de la dernière réponse (§4.3 bi
 1. **Tableau d'actes dans un fichier temporaire** hors du dossier du scénario (l'appli ne le lit
    jamais), supprimé à la fin. Une ligne par acte :
 
-   | N° | Lieu / adversaire | Point de départ (fait d'ancrage) | Ce qui doit se passer | Condition `[NEXT ACT]` (fait unique, nommé) | Distinct de l'acte précédent par |
+   | N° | Lieu / adversaire | Point de départ (fait d'ancrage) | Ce que fait chaque PNJ dans la scène | Condition `[NEXT ACT]` (fait unique, nommé) | Distinct de l'acte précédent par |
    |---|---|---|---|---|---|
-   | 1 | Col de Vaur / Varek | Des bandits surgissent sur le sentier | Combat, Varek cède | Varek mort ou en fuite | Embuscade, de jour |
-   | 2 | Forêt de Saule / loups | Nuit, la meute encercle le camp | Défense du camp | La meute est morte ou en fuite | Animaux, de nuit |
+   | 1 | Col de Vaur / Varek | Des bandits surgissent sur le sentier | Varek ordonne l'attaque, ses hommes tirent | Varek mort ou en fuite | Embuscade, de jour |
+   | 2 | Forêt de Saule / loups | Nuit, la meute encercle le camp | Les loups resserrent le cercle | La meute est morte ou en fuite | Animaux, de nuit |
 
    Une dernière colonne impossible à remplir = deux actes trop semblables : les fusionner ou les
    différencier.
 2. **Plusieurs fichiers** : `scenario.txt` (ligne Joueur, `#SCENARIO`, premiers actes), puis
-   `scenario-1.txt`, `scenario-2.txt`… (§1). Un acte par fichier si le contexte est très serré.
+   `scenario-1.txt`, `scenario-2.txt`… (§1). Un acte par fichier si le contexte est très serré. Pour couper
+   un fichier devenu trop gros ou en insérer un, numéroter à la décimale (`scenario-2.1.txt` entre 2 et 3) :
+   aucun renommage.
    Chaque fichier commence par un titre `# ...` de premier niveau. Actes indépendants : un acte par
    fichier. Scènes qui partagent un texte commun : un chapitre `#` et ses `##` dans le même fichier
    (§2.3).

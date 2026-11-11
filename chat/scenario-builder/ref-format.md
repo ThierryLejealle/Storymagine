@@ -6,12 +6,16 @@ Load this file only when a phase asks for it.
 ```
 <scenario-name>/            letters, digits, - and _ only
   scenario.txt              header + premise + the first step
-  scenario-1.txt            next step (scenario-2.txt, scenario-3.txt... consecutive, no gap)
+  scenario-1.txt            next step (scenario-2.txt, scenario-3.txt...)
   characters/<id>.txt       one file per NPC (id: lowercase letters, digits, dashes)
   style.txt                 optional writing advice shared by every NPC
   styles/name.txt           optional extra style for the scenes that write {style name}
   plan.md                   your planning notes. ALWAYS .md, never .txt
 ```
+File numbers are DECIMAL and only give the reading order: `1`, `1.1`, `1.1.1`, `2`, `3.1.2`... A number comes
+before its children (1, 1.1, 1.1.1, 1.2, 2), gaps are fine, and `scenario-1.txt` may live next to
+`scenario-1.1.txt`. Use the hierarchy to split a file that grows too big or to add one in the middle, without
+renaming the others (`scenario-2.1.txt` between 2 and 3). Two files with the same number are refused.
 Never create a `run/` folder: the game makes it. Never put a `.txt` file with a "# Title" first line
 at the root except the scenario files and style.txt: the game would refuse to load the scenario.
 
@@ -39,18 +43,25 @@ Tone: [the mood]
 
 ## Steps and scenes (headings)
 - `# Title` is a step. `## Title` under it is a scene of that step. `###` goes one level deeper.
-- Only the **deepest** headings (leaves) are ever played. The text of a parent heading is added to every
-  leaf under it and re-read at each turn: keep parent text short, put details in the leaf.
-- A leaf looks like this (labels are free text, keep the same three):
+- Two kinds of heading. A **played scene** is the deepest heading of a branch: it carries a `[NEXT ACT]` line
+  and is the only kind ever played. A **container** is a heading with sub-headings: it is never played alone,
+  its text is added to every played scene below it and re-read at each turn. Put in a container only what is
+  true for ALL the scenes below (the place, the era, who is around), in a sentence or two. Never what is
+  going to happen in them.
+- A played scene looks like this (labels are free text, keep the same shape):
 ```
 ## [Scene title]
 [One or two sentences the player sees when the scene opens. Third person.]
-Starting point: [where the scene stands at the beginning]
-What must happen: [what the scene must achieve before moving on]
+Starting point: [the situation right now, as it stands when the scene opens]
+[NPC name]: [what this NPC does or tries in THIS scene, starting now]
+[Other NPC name]: [same, for the other NPC]
 When to write [NEXT ACT]: [ONE observable fact that ends the scene]
 ```
-- Every leaf except the last one of the whole scenario has the `[NEXT ACT]` line.
-- The first leaf names every NPC who is present.
+- The NPC lines are the instructions to the actors, read by every NPC of the scene. Something one NPC must
+  not know goes in a `{private Name}` line (see ref-commands.md). Nothing about what happens in later
+  scenes goes in a played scene: see ref-writing-tips.md, "Nothing from the future".
+- Every played scene except the last one of the whole scenario has the `[NEXT ACT]` line.
+- The first played scene names every NPC who is present.
 - `[...]` lines and all act text are in the **third person** ("Alex enters the hall"), never "you".
 - A continuation file (scenario-1.txt...) starts with a top-level `# Title` line.
 
@@ -63,7 +74,9 @@ When to write [NEXT ACT]: [ONE observable fact that ends the scene]
 [Secret part: what only this NPC knows.]
 ```
 - The first line `# Name` is required: a file without it is not loaded as a character (the validation warns). `# SECRET` is alone on its line and optional.
-- The sheet says who the character is, not what will happen to them.
+- The sheet says who the character is, not what will happen to them. The `# SECRET` may hold what the NPC
+  wants or hides in the long run (a desire, a loyalty), written as a state, never as a list of actions or
+  events to carry out (see ref-writing-tips.md, "Motive, not plan").
 - Optional: `## tag comment` sections hold text that is added only when a `{npc-story on Name tag}` switches it
   on. A `##` section before `# SECRET` is public, after it is secret.
 

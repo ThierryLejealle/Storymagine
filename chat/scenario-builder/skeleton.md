@@ -17,16 +17,20 @@ Tone: [mood]
 # [Step 1 title]
 ## [Scene 1.1 title]
 [What the player sees: who they are, where they are, who is there. Third person.]
-Starting point: [where the scene stands]
-What must happen: [what it must achieve]
+Starting point: [the situation right now]
+[NPC name]: [what this NPC does or tries in this scene]
+[NPC name]: [what this other NPC does or tries in this scene]
+{private [NPC name]} [only if the others must not know it: what this NPC does or hides in this scene]
 When to write [NEXT ACT]: [one observable fact]
 
 ## [Scene 1.2 title]
 [What the player sees when this scene opens.]
 Starting point: [...]
-What must happen: [...]
+[NPC name]: [...]
 When to write [NEXT ACT]: [one observable fact]
 ```
+A scene (played scene) says nothing about what happens in the next ones. A heading with sub-headings
+(container) holds only what is true for all its scenes.
 
 ## scenario-1.txt (next step; same shape, starts with a top-level heading)
 ```
@@ -37,7 +41,7 @@ When to write [NEXT ACT]: [one observable fact]
 ## [Scene 2.1 title]
 [What the player sees.]
 Starting point: [...]
-What must happen: [...]
+[NPC name]: [what this NPC does or tries in this scene]
 When to write [NEXT ACT]: [one observable fact]
 ```
 The very last scene of the last file has no `When to write [NEXT ACT]` line.
@@ -49,7 +53,8 @@ The very last scene of the last file has no `When to write [NEXT ACT]` line.
 how they stand with the other NPCs at the start.]
 
 # SECRET
-[Secret part, 30 to 60 words: what only they know, what they want and hide.]
+[Secret part, 30 to 60 words: what only they know, what they want and hide, written as a state ("wants
+the ledger, hides that he owes money"), never as steps to carry out.]
 ```
 
 ## styles/[mood].txt (optional, only for variety)
@@ -86,7 +91,7 @@ how they stand with the other NPCs at the start.]
 |---|---|---|---|---|
 
 ## Steps
-| # | Place | Who is there | Starting point | What must happen | NEXT ACT fact | Character changes | Different from previous by |
+| # | Place | Who is there | Starting point | What each NPC does in this step | NEXT ACT fact | Character changes | Different from previous by |
 |---|---|---|---|---|---|---|---|
 
 ## Facts established (append 5 lines after each step file)
