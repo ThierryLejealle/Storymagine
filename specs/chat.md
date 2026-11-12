@@ -71,7 +71,16 @@ chatscenarios/{nom}/
    - texte de consigne lu par le LLM seulement, en trois temps : `Point de départ` (la situation
      actuelle), une consigne par PNJ (ce qu'il fait ou tente dans CETTE scène), `Quand écrire
      [NEXT ACT]` (libellés = convention, non parsés).
-5. **Règle de non-fuite.** Un PNJ agit sur tout ce qu'il lit : le texte d'une scène jouée ne contient
+5. **Condition possible et cohérente.** D'abord, chaque scène jouée sauf la dernière doit avoir sa condition
+   `[NEXT ACT]` (l'auteur doit y avoir pensé). La condition d'une scène doit pouvoir survenir avec les
+   PNJ présents, être cohérente avec leurs consignes — au moins une consigne mène vers elle, elle nomme le PNJ
+   qui agit vraiment — et ne pas être déjà vraie au départ. Pas de sortie alternative : l'histoire n'a qu'une
+   route. Le moteur ne le vérifie pas : c'est une étape de relecture des skills (phase 5 du playbook
+   `scenario-builder`).
+   **Transitions** : l'écart entre deux scènes jouées (temps, lieu, ambiance) se comble par une ou deux phrases
+   au début du `[...]` d'ouverture de la scène suivante, sans scène jouée supplémentaire ; elles ne disent que
+   ce que la condition précédente garantit, ou restent neutres.
+6. **Règle de non-fuite.** Un PNJ agit sur tout ce qu'il lit : le texte d'une scène jouée ne contient
    que la situation actuelle et les consignes de cette scène ; un conteneur que ce qui est vrai pour
    toutes ses scènes ; la prémisse que le monde, le ton et la situation de départ. Rien d'une scène
    suivante, aucune ligne « Ce qui doit se passer ». Le mobile d'un PNJ va dans son `# SECRET` comme un

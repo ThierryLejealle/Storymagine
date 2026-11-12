@@ -182,6 +182,21 @@ class ChatFileStorageAdapterTest {
     }
 
     @Test
+    void scenarioTxtMayHoldOnlyThePremiseAndTheScenesLiveInTheOtherFiles(@TempDir Path root) throws IOException {
+        writeScenarioFiles(root, "inn", "sheet", "A stormy night at the inn.");
+        Files.writeString(root.resolve("inn/scenario-1.txt"), "# First\nFirst scene.", StandardCharsets.UTF_8);
+        Files.writeString(root.resolve("inn/scenario-2.txt"), "# Second\nSecond scene.", StandardCharsets.UTF_8);
+
+        ChatScenario scenario = adapter.loadScenario(root, "inn");
+        var report = adapter.validateScenario(root, "inn");
+
+        assertEquals("A stormy night at the inn.", scenario.premise());
+        assertEquals(2, scenario.acts().size());
+        assertEquals("First scene.", scenario.acts().get(0).text());
+        assertFalse(report.hasErrors(), report.toString());
+    }
+
+    @Test
     void loadScenarioWithNoContinuationFilesBehavesExactlyAsBefore(@TempDir Path root) throws IOException {
         writeScenarioFiles(root, "inn", "sheet", "premise");
         appendActs(root, "inn", "Only act.");
@@ -211,15 +226,15 @@ class ChatFileStorageAdapterTest {
         appendActs(root, "inn", "A.");
         // Ecrits dans le desordre ; 1.10 apres 1.2 (ordre numerique, pas alphabetique) ; 1 cote a cote avec 1.1 et 1.1.1.
         String[][] parts = {{"3.1.2", "G"}, {"2", "E"}, {"1.10", "D"}, {"1", "B"}, {"1.2", "C"}, {"1.1.1", "X"},
-            {"1.1", "Y"}, {"3.1.1", "F"}, {"4", "H"}};
+            {"1.1", "Y"}, {"3.1.1", "F"}, {"4", "H"}, {"0.2", "V"}, {"0", "Z"}, {"0.1", "W"}};
         for (String[] part : parts) {
             Files.writeString(root.resolve("inn/scenario-" + part[0] + ".txt"), "# T" + part[1] + "\n" + part[1] + ".", StandardCharsets.UTF_8);
         }
 
         List<String> texts = adapter.loadScenario(root, "inn").acts().stream().map(act -> act.text()).toList();
 
-        // 1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2 < 3.1.1 < 3.1.2 < 4
-        assertEquals(List.of("A.", "B.", "Y.", "X.", "C.", "D.", "E.", "F.", "G.", "H."), texts);
+        // scenario.txt, then 0 < 0.1 < 0.2 (between scenario.txt and scenario-1.txt) < 1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2 < 3.1.1 < 3.1.2 < 4
+        assertEquals(List.of("A.", "Z.", "W.", "V.", "B.", "Y.", "X.", "C.", "D.", "E.", "F.", "G.", "H."), texts);
     }
 
     @Test

@@ -13,7 +13,7 @@ prompt contredit frontalement son assignation de personnage et peut casser le je
 "Alex et Sylka viennent de franchir la porte...". Ça fonctionne aussi bien pour l'affichage au
 joueur (narration à la 3e personne, cinématographique) que pour le contexte donné à chaque PNJ.
 
-Les sections "Point de départ", "Ce qui doit se passer" et "Quand écrire [NEXT ACT]" suivent déjà
+Les sections "Point de départ", les consignes par PNJ et "Quand écrire [NEXT ACT]" suivent déjà
 cette convention (elles parlent de "le joueur" ou du prénom du joueur) — les blocs `[...]` et la
 Prémisse doivent faire pareil.
 

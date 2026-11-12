@@ -24,7 +24,7 @@ Starting point: [the situation right now]
 When to write [NEXT ACT]: [one observable fact]
 
 ## [Scene 1.2 title]
-[What the player sees when this scene opens.]
+[Short transition from the previous scene if time, place or mood changed. What the player sees when this scene opens.]
 Starting point: [...]
 [NPC name]: [...]
 When to write [NEXT ACT]: [one observable fact]
@@ -95,4 +95,8 @@ the ledger, hides that he owes money"), never as steps to carry out.]
 |---|---|---|---|---|---|---|---|
 
 ## Facts established (append 5 lines after each step file)
+
+## NEXT ACT check (phase 5: one row per scene)
+| Scene | The fact that ends it | The NPC line that leads toward it (quote it) | Verdict |
+|---|---|---|---|
 ```

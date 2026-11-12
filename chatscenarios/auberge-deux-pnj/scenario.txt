@@ -21,6 +21,8 @@ boire ici presque tous les soirs.]
 
 Point de départ : le joueur entre dans l'auberge du Cerf Blanc, trempé, et découvre Elena et
 Marcus déjà installés près du feu.
+Elena : accueille le voyageur d'un regard sec, puis lui indique une place près du feu.
+Marcus : lève à peine les yeux et observe l'étranger sans rien dire.
 
 Quand écrire [NEXT ACT] : quand le joueur a échangé au moins quelques mots avec l'un des deux et
 s'est installé quelque part dans la salle.
@@ -28,5 +30,6 @@ s'est installé quelque part dans la salle.
 # Autour du feu
 [Le feu crépite. Dehors, l'orage ne faiblit pas.]
 
-Ce qui doit se passer : une conversation plus longue s'installe entre les trois — chacun peut
-apprendre un peu des deux autres, sans qu'aucun secret n'éclate encore.
+Point de départ : le voyageur est installé près du feu avec Elena et Marcus ; l'orage ne faiblit pas.
+Elena : fait la conversation, curieuse du voyageur, sans rien dire d'elle-même.
+Marcus : écoute, parle peu de son passé sauf si on insiste, et garde la conversation sur la route, le temps et l'auberge.

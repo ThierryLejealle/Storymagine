@@ -26,7 +26,8 @@ One row per step, as many as the brief says. A step is a real stage of the story
   short phrase ("Nell asks who the letter is for"). Not the outcome of the step and nothing from later
   steps: the plan is for you, but these phrases become the lines the NPCs read.
 - **NEXT ACT fact**: ONE observable fact that ends the step ("the door is open", "Ione has named the
-  thief"). Not a feeling, not two facts.
+  thief"). Not a feeling, not two facts. It must be possible with the NPC phrases of the same row, which lead
+  toward it: if Nell challenges the player, the fact is about Nell's challenge, not another NPC's.
 - **Character changes**: what changes about an NPC during this step ({npc-delta}, or a `## tag` to switch on).
 - **Different from previous by**: if you cannot fill this cell, two steps are too alike: merge or change one.
 

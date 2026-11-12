@@ -15,7 +15,9 @@ Load this file only when a phase asks for it.
 File numbers are DECIMAL and only give the reading order: `1`, `1.1`, `1.1.1`, `2`, `3.1.2`... A number comes
 before its children (1, 1.1, 1.1.1, 1.2, 2), gaps are fine, and `scenario-1.txt` may live next to
 `scenario-1.1.txt`. Use the hierarchy to split a file that grows too big or to add one in the middle, without
-renaming the others (`scenario-2.1.txt` between 2 and 3). Two files with the same number are refused.
+renaming the others (`scenario-2.1.txt` between 2 and 3). `scenario.txt` is always read first: to insert a file
+right after it, before `scenario-1.txt`, use `scenario-0.txt` (then `scenario-0.1.txt`...). Two files with the same
+number are refused.
 Never create a `run/` folder: the game makes it. Never put a `.txt` file with a "# Title" first line
 at the root except the scenario files and style.txt: the game would refuse to load the scenario.
 

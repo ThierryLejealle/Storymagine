@@ -1,6 +1,6 @@
 # Writing tips for a small model (one page)
 
-Load this file in phases 3 and 4. It is the short version of what makes a scenario work in the game. Follow
+Load this file in phases 3, 4 and 5. It is the short version of what makes a scenario work in the game. Follow
 it rather than your usual style.
 
 ## Why it matters
@@ -13,6 +13,13 @@ confused by it. So: short, concrete, nothing too early.
 - Anchor it on what the player does or says, not on an NPC's feeling ("Nell is convinced" cannot be seen).
 - Phrase it positively with "as soon as" or "once". Avoid absolute bans ("never before...", "only if not..."):
   a small model loops on them.
+- The fact must be **possible and coherent with the scene**: it can happen with the NPCs present, and the NPC
+  lines lead toward it (it may take several exchanges, but the scene must head that way). It names the NPC who
+  really acts. Wrong: Nell challenges the player, and the condition is "the player accepts Hobb's challenge"
+  (Hobb never challenged anybody). If nothing in the scene leads toward the fact, add an NPC line that does.
+- It must not be true at the start: starting point "they are in the inn", condition "they are in the inn" is a
+  flaw. The game does not branch: do not write alternative exits, the player is expected to follow the road.
+  Phase 5 checks every scene.
 - Two scenes in a row must differ in place, adversary or goal. If you cannot say how, merge them.
 
 ## Nothing from the future (the rule that matters most)
@@ -73,6 +80,18 @@ NPC alludes to something that has not happened yet, a leak remains. Find the lin
 - A newcomer knows all that was said before: have someone tell them what matters.
 - Third person everywhere ("Alex opens the door"), never "you". Never write the player's thoughts or actions.
 - A scene text of one to three sentences per label is enough. Long text makes the model repeat it.
+
+## Transitions between scenes
+The story must flow: if two friends fight in one scene and study together in the next, the player needs to
+know that they made peace in between. No need for a played scene: put a short transition at the start of the
+next scene's opening `[...]` line (the line shown to the player when the scene opens), in the same sentence
+or just before the situation:
+`[The two friends made peace after the fight. The next morning they study together in the library.]`
+- One or two short sentences, third person, plain facts: what changed since the previous scene (time that
+  passed, a new place, a mood, a made-up peace). Nothing about what comes later.
+- Say only what the previous `[NEXT ACT]` fact guarantees, or something neutral ("Later that day").
+- Never decide what the player did or felt. Describe the world and the NPCs.
+- A transition is a proposal: tell the user which ones you added so they can keep, change or remove them.
 
 ## Variety lines
 A `{N%}` line in a scene stays in the prompt at every turn of that scene: write it as a state, not as an action

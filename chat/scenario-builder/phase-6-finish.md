@@ -1,4 +1,4 @@
-# Phase 5: style, validation, test play
+# Phase 6: style, validation, test play
 
 **Load:** `plan.md`, `ref-format.md` (style.txt section) and `ref-writing-tips.md` (leak check).
 **Produce:** `style.txt` (optional), a clean validation, and a short test play.
@@ -16,8 +16,14 @@ mood), call each with `{style <mood>}` under the first heading of that place, an
 lines to scenes (see ref-commands.md, "Variety"). Otherwise skip this step.
 
 ## Step 2: validate
-- If you can run commands, run `validation-scenarios.bat <scenario folder>` from the project.
+The game has a validation tool. In the Storymagine project it is `validation-scenarios.bat <scenario folder>`,
+run from the project root.
+- If you can run commands, run it.
 - Otherwise ask the user to run it and paste the result here.
+- If nobody can run it, check by hand: every command alone on its line and written exactly as in
+  `ref-commands.md`; every NPC name used in a command is a sheet of `characters/`; each sheet starts with
+  `# Name`; every scene except the last one of the story has its `[NEXT ACT]` line; each continuation file
+  starts with a top-level `# ` heading; the file `scenario.txt` starts with `Joueur :`.
 Each message names the file and the line. Fix the errors, one by one, in the file they name, and validate
 again. Read the warnings too: "an NPC is never named", "a scene without NEXT ACT", "file ignored" (a sheet without its `# Name` first line is not loaded) are worth a fix.
 Typical errors: a command not alone on its line, an unknown NPC name, a continuation file that does not start
@@ -30,7 +36,8 @@ of `ref-writing-tips.md` once more on the sheets (`# SECRET` written as states, 
 the scenes whose neighbours changed. Fix what you find and validate again.
 
 ## Step 3: test play
-Ask the user to play the first scene with `chat.bat` and to say what they notice. Useful checks:
+Ask the user to play the first scene in the game (in the Storymagine project: `chat.bat`) and to say what they
+notice. Useful checks:
 - The first message the player sees tells them who they are and where.
 - The NPCs sound different from each other.
 - The 🔍 button says the `[NEXT ACT]` fact is not met too early, and is met when it should be.

@@ -100,13 +100,21 @@ Règles non négociables :
    chapitre contenant plusieurs scènes.
 3. **Un `[...]`** = crochet ouvrant en début de ligne, fermant en fin de ligne. Il est affiché au
    joueur à l'entrée de l'acte et lu par les PNJ.
+3 bis. **Transitions entre scènes.** Pour que le flux soit logique (deux amis se battent, la scène d'après ils
+   étudient ensemble), mettre une petite transition au début du `[...]` d'ouverture de la scène suivante : une
+   ou deux phrases à la 3e personne, des faits seulement (temps écoulé, lieu, ambiance, paix faite) : « [Les
+   deux amis ont fait la paix après la dispute. Le lendemain, ils révisent ensemble à la bibliothèque.] ».
+   Pas besoin d'une scène jouée. Ne dire que ce que le `[NEXT ACT]` précédent garantit, ou rester neutre
+   (« Plus tard dans la journée »). Ne jamais décider ce que le joueur a fait ou ressenti. C'est une
+   proposition : dire à l'utilisateur lesquelles on a ajoutées, pour qu'il les garde ou les retire.
 4. **Le premier acte** doit dire au joueur qui il est, où il est, qui est présent (nommé) et le
    but général. Une ligne purement atmosphérique laisse le joueur perdu.
 5. **Sans acte**, un seul bloc `[...]` est affiché : pour plusieurs scènes, faire de vrais actes.
 6. `Joueur : X` en première ligne (défaut `Alex`).
 7. `scenario-N.txt` : lus dans l'ordre de leur numéro **décimal** (`1`, `1.1`, `1.1.1`, `2`, `3.1.2`…), trous
    permis, `1` et `1.1` peuvent coexister. **Recommandé : numéroter en hiérarchie** pour couper un fichier ou
-   en insérer un sans rien renommer (`scenario-2.1.txt` entre 2 et 3, `scenario-2.1.1.txt` entre 2.1 et 3).
+   en insérer un sans rien renommer (`scenario-2.1.txt` entre 2 et 3, `scenario-2.1.1.txt` entre 2.1 et 3,
+   `scenario-0.txt` entre `scenario.txt` et `scenario-1.txt`).
    Chaque fichier commence par un titre `# ...` de premier niveau ; le numéro ne donne que l'ordre (les
    numéros d'actes viennent des titres).
 8. **Ne pas fuiter : rien du futur dans une scène.** Un PNJ agit sur tout ce qu'il lit, tout de suite. S'il
@@ -146,6 +154,9 @@ naturelle » : imprécis, à éviter.
   a avoué le vol à voix haute »), pas une émotion vague.
 - Une seule condition par acte, courte, sans négation absolue (« jamais avant que… » incite les
   petits modèles à boucler ; préférer « dès que… »).
+- **La condition doit être réalisable avec ce que la scène fait faire** aux PNJ et à la situation (voir
+  « Vérification des `[NEXT ACT]` » plus bas). Contre-exemple : Nell lance un défi au joueur et la condition
+  est « le joueur accepte le défi de Hobb » : Hobb n'a rien proposé, la scène ne peut pas se terminer.
 - Conditions qui s'enchaînent : chaque acte doit contenir de quoi satisfaire sa propre
   condition, sinon l'histoire reste bloquée (le joueur peut forcer avec Suivant).
 - Séquences qui se ressemblent (plusieurs combats…) : un marqueur unique par scène (adversaire,
@@ -352,6 +363,43 @@ d'actes obtenu = nombre voulu, nombre de PNJ, tours NARRATOR d'ouverture clairs 
 `chatscenarios/guide-redaction-chat.md`). Ne pas se fier à la relecture seule : le piège des scènes jouées et des
 conteneurs (un titre qui a des sous-titres n'est pas jouable) ne se voit pas à l'œil.
 
+### Vérification des `[NEXT ACT]` (avant de rendre un scénario)
+
+Le PNJ qui joue décide seul d'écrire `[NEXT ACT]` : si la condition ne peut pas survenir avec ce que la
+scène lui fait faire, l'histoire reste bloquée (ou avance pour une mauvaise raison). À faire en relisant les
+fichiers, pas le plan. Le jeu ne ramifie pas : l'histoire a une seule route et le joueur est censé la suivre.
+Pas de sortie alternative à écrire ; on rend la route claire en faisant mener les PNJ vers la condition.
+**D'abord, avant toute question de cohérence : as-tu pensé à formuler un `[NEXT ACT]` pour chaque scène
+jouable ?** Les auteurs l'oublient. Lister tous les titres des fichiers, dans l'ordre de lecture ; repérer les
+scènes jouées (sans sous-titre) et les conteneurs (avec sous-titres, qui n'en ont pas besoin) ; pour **chaque
+scène jouée sauf la toute dernière de l'histoire**, écrire « oui » ou « MANQUE » : y a-t-il, dans la scène, une
+ligne `Quand écrire [NEXT ACT]` avec UN fait ? Pour chaque « MANQUE », formuler une condition tout de suite,
+même provisoire (les contrôles suivants la jugeront). Une ligne dans un conteneur ne compte pas : la descendre
+dans les scènes jouées. La toute dernière scène n'en a aucune. Ne passer à la suite que lorsque toutes les
+scènes jouables sauf la dernière ont leur ligne. Puis, pour chaque scène, remplir un tableau :
+
+| Scène | Le fait qui la termine | La consigne de PNJ qui y mène (à citer) | Verdict |
+|---|---|---|---|
+
+Trois contrôles, tous à oui :
+1. **Possible** : avec la situation et les PNJ présents, le fait peut survenir ; chaque personne, lieu ou objet
+   de la condition figure dans la scène (point de départ, consigne de PNJ ou `[...]` d'ouverture) et chaque PNJ
+   nommé est présent.
+2. **Cohérent avec les consignes des PNJ, qui mènent vers lui.** Au moins une consigne pousse vers le fait, et
+   la condition nomme le PNJ qui agit vraiment dans la scène. Ça peut prendre plusieurs échanges, mais la scène
+   doit aller dans ce sens. Faux : Nell défie le joueur et la condition est « le joueur accepte le défi de
+   Hobb » (Hobb n'a rien proposé). Juste : « le joueur accepte le défi de Nell » (ou confier le défi à Hobb).
+   Aucune consigne ne mène au fait ? En ajouter une : c'est ainsi qu'on guide les PNJ.
+3. **Pas déjà vrai au départ.** Une condition vraie dès le premier tour est un défaut du scénario. Faux :
+   point de départ « ils sont dans l'auberge », condition « ils sont dans l'auberge ».
+
+Enfin la **continuité** : si la scène suivante ne découle pas naturellement du fait qui termine celle-ci
+(temps écoulé, lieu, ambiance : une bagarre, puis une étude paisible), la combler par une transition au début
+du `[...]` de la scène suivante (règle 3 bis). Lister à l'utilisateur les transitions ajoutées.
+Corriger en ajoutant ou en changeant une consigne quand c'est la scène qui est fausse, en changeant la condition
+quand c'est elle. Refaire la vérification des fuites sur toute scène modifiée, et montrer le tableau corrigé à
+l'utilisateur.
+
 ### Vérification des fuites (avant de rendre un scénario)
 
 La validation ne voit pas les fuites : à faire par relecture, scène jouée par scène jouée. Pour chacune,
@@ -372,5 +420,10 @@ n'est pas encore arrivé, ou presse l'histoire vers sa fin, une fuite reste : tr
 
 ## 7. Modèle de départ
 
-Copier `chatscenarios/ecole-brumeval/` (2 amis, 3 actes, conditions bien formées) ou
-`chatscenarios/auberge-deux-pnj/` (secrets croisés), puis adapter.
+Les modèles sont **dans ce dossier de skill** (ils voyagent avec lui), à copier puis adapter :
+- `models/ecole-brumeval/` : 2 amis, 3 scènes, conditions `[NEXT ACT]` bien formées, une consigne par PNJ.
+- `models/auberge-deux-pnj/` : 2 PNJ aux secrets croisés (`# SECRET` écrits comme des états).
+
+Chaque dossier contient `scenario.txt` et `characters/`. Ils respectent la règle de non-fuite (§4, règle 8) :
+une scène ne dit que la situation actuelle et ce que chaque PNJ fait dans CETTE scène. Les mêmes scénarios
+vivent aussi dans `chatscenarios/` du projet (copies jouables) : si on corrige l'un, corriger l'autre.

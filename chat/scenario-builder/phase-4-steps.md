@@ -28,7 +28,9 @@ has its `[...]` line, its `Starting point`, one line per NPC and the `[NEXT ACT]
 - Each scene ends on ONE observable fact in `When to write [NEXT ACT]`. The plan gives the fact that ends the
   step: use it for the last scene of the step. For the earlier scenes of the step, choose your own fact (it
   must differ from the step's) and add it to the step's row in the plan. The very last scene of the story has none.
-- Every scene opens with its `[...]` line (who the player is, where, who is there).
+- Every scene opens with its `[...]` line (who the player is, where, who is there). From the second scene on,
+  that line starts with a short transition from the previous scene when time, place or mood changed (see
+  `ref-writing-tips.md`, "Transitions between scenes"). It is a sentence, not a new scene.
 - Bring NPCs in and out with `{npc-arrives}` and `{npc-leaves}` at the start of the step that needs them.
   A newcomer knows everything said before: have another character tell them what they need, in the `[...]`
   line or the scene text.
@@ -38,7 +40,7 @@ has its `[...]` line, its `Starting point`, one line per NPC and the `[NEXT ACT]
 - A secret is revealed in the scene where the plan puts it. Never earlier.
 
 ## Step 3: after each file
-1. Validate (see phase 5, step 2) and fix every error the validation names. If you cannot run or ask for a
+1. Validate (see phase 6, step 2) and fix every error the validation names. If you cannot run or ask for a
    validation, say so and go on (see "If you cannot ask or run anything" in the README).
 2. Run the leak check on every scene of the file (see `ref-writing-tips.md`, "Leak check"): nothing from a
    later scene may appear in the scene, its containers, the premise or the sheets. Fix what you find.
@@ -53,3 +55,5 @@ has its `[...]` line, its `Starting point`, one line per NPC and the `[NEXT ACT]
 - Only commands from `ref-commands.md`, each alone on its line.
 - The scenario can be played after this file: it is a complete scenario so far.
 - The leak check is done and written in `plan.md`.
+- The file is not the last one in the story? Then its last scene has a `[NEXT ACT]` that its own NPC lines make
+  possible and lead toward. Phase 5 checks every scene again, once all files exist.

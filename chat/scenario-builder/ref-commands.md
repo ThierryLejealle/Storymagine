@@ -87,5 +87,7 @@ cleans his gun": it would be repeated every turn). A `{N%}` line in a style file
 use it for descriptions, not actions.
 
 ## Never in a scenario you write
-Do not write `{pick}`, `{repeat}` or `{cast}` unless the user asks for random content (advanced: the user
-reads guide-redaction-chat.md sections 2.6 to 2.6 ter). Do not invent other commands.
+Do not write `{pick}`, `{repeat}` or `{cast}` (random content drawn from files, repeated blocks, characters
+drawn at the start of a game): this playbook does not cover them. If the user asks for random content, say so,
+write the scene with fixed content instead (a `{20%}` line is the only randomness available here), and tell
+them the long human guide of the game explains these commands. Do not invent other commands.

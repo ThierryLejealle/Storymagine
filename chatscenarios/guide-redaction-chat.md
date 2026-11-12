@@ -32,7 +32,7 @@ chatscenarios/mon-scenario/
 
 | Élément | Règle |
 |---|---|
-| `scenario-N.txt` | Concaténés après `scenario.txt` **dans l'ordre de leur numéro**, un numéro décimal comme dans un plan : `1`, `1.1`, `1.1.1`, `2`, `3.1.2`… (`scenario-1.txt`, `scenario-1.1.txt`…). Les trous sont permis, `1` et `1.1` peuvent coexister, et un numéro passe avant ses enfants (`1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2`). Deux fichiers de même numéro (`1` et `01`) : erreur. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
+| `scenario-N.txt` | Concaténés après `scenario.txt` **dans l'ordre de leur numéro**, un numéro décimal comme dans un plan : `1`, `1.1`, `1.1.1`, `2`, `3.1.2`… (`scenario-1.txt`, `scenario-1.1.txt`…). Les trous sont permis, `1` et `1.1` peuvent coexister, et un numéro passe avant ses enfants (`1 < 1.1 < 1.1.1 < 1.2 < 1.10 < 2`). `scenario.txt` est toujours lu en premier ; pour insérer un fichier juste après lui, avant `scenario-1.txt`, utiliser `scenario-0.txt` (puis `scenario-0.1.txt`, `scenario-0.2.txt`…). Deux fichiers de même numéro (`1` et `01`) : erreur. Chacun commence par un titre `# ...` de premier niveau, sinon le chargement échoue avec un message explicite. |
 | Numéro de fichier | Il ne donne que **l'ordre de lecture** ; les numéros d'actes (1, 1.1…) viennent des titres (§2.3). Pour couper une partie trop grosse ou insérer une suite, utiliser la hiérarchie : une suite de `scenario-3.txt` s'appelle `scenario-3.1.txt` (entre 3 et 4), une suite de celle-ci `scenario-3.1.1.txt`, sans renommer les autres. Recommandé pour garder des fichiers petits. |
 | `characters/*.txt` | Un fichier = un personnage si sa **première ligne** est `# Nom`. Sinon le fichier est ignoré (le jeu ne le charge pas) ; `validation-scenarios.bat` le signale par un avertissement. Seul `characters/` est lu. |
 | Id d'un personnage | Nom du fichier sans `.txt` : simple, sans espace ni accent (`marcus.txt`, pas `Marcus Dupont.txt`). |
@@ -250,6 +250,12 @@ courant. Aucun appel au modèle n'est fait pour l'afficher.
   glisse dans l'historique et le résumé (§2.7, §7.1). Un acte d'introduction court, avec une condition
   `[NEXT ACT]` simple (par exemple « dès que le joueur a répondu »), limite encore ce coût.
 - Même règle de 3e personne que la prémisse (§2.2).
+- **Transitions.** Pour que le flux d'une scène à l'autre reste logique (deux amis se battent, la scène
+  d'après ils étudient ensemble), la scène suivante peut commencer son `[...]` par une ou deux phrases de
+  transition, sans ajouter de scène jouée : « [Les deux amis ont fait la paix après la dispute. Le lendemain,
+  ils révisent ensemble à la bibliothèque.] ». Des faits seulement (temps écoulé, lieu, ambiance), rien de la
+  suite, rien sur ce que fait ou ressent le joueur. Ne dire que ce que le `[NEXT ACT]` précédent garantit, ou
+  rester neutre (§7.2).
 
 ```
 [Le tonnerre gronde alors qu'Alex referme derrière lui la porte de l'auberge.]
@@ -1481,6 +1487,30 @@ Règles :
 6. État interne d'un PNJ : formuler ce qu'il doit avoir dit ou décidé (« Dès qu'Elena a avoué le vol
    à voix haute »), pas une émotion vague.
 7. Écrire la condition dans la scène jouée, pas dans un conteneur (§2.3).
+8. **La condition doit être possible et cohérente avec les consignes des PNJ, qui doivent mener vers elle.**
+   Elle peut survenir avec les PNJ présents, au moins une consigne de la scène pousse vers elle (ça peut
+   prendre plusieurs échanges, mais la scène doit aller dans ce sens) et elle nomme le PNJ qui agit vraiment
+   (§2.5). Contre-exemple : Nell défie le joueur et la condition est « le joueur accepte le défi de Hobb » :
+   Hobb n'a rien proposé. Aucune consigne ne mène à la condition ? En ajouter une : c'est ainsi qu'on guide
+   les PNJ. Le jeu ne ramifie pas : l'histoire a une seule route que le joueur est censé suivre, donc pas de
+   sortie alternative à écrire.
+
+**Vérification des `[NEXT ACT]`.** À faire en relisant les fichiers (pas le plan), avant de rendre un
+scénario et quand on en modifie un. **D'abord, avant toute question de cohérence : a-t-on pensé à formuler un
+`[NEXT ACT]` pour chaque scène jouable ?** Lister les titres, repérer les scènes jouées (sans sous-titre) et les
+conteneurs, et vérifier que **chaque scène jouée sauf la toute dernière** a **une** ligne
+`Quand écrire [NEXT ACT]` avec UN fait, dans la scène (une ligne dans un conteneur ne compte pas). Formuler
+tout de suite celles qui manquent, même provisoirement. Puis, pour chaque scène, un tableau *scène / fait qui
+la termine / consigne de PNJ qui y mène (à citer) / verdict* et trois contrôles, tous à oui :
+1. **possible** : avec la situation et les PNJ présents, tout ce que nomme la condition est dans la scène ;
+2. **cohérent, et les consignes mènent vers lui** : au moins une consigne pousse vers le fait, et la condition
+   nomme le PNJ qui agit (ton exemple Nell/Hobb ci-dessus) ;
+3. **pas déjà vrai au départ** : une condition vraie dès le premier tour est un défaut du scénario (point de
+   départ « ils sont dans l'auberge », condition « ils sont dans l'auberge »).
+Enfin la **continuité** : si la scène suivante ne découle pas naturellement du fait qui termine celle-ci
+(temps, lieu, ambiance), la combler par une transition au début du `[...]` de la scène suivante (§2.4).
+Corriger en ajoutant ou changeant une consigne (quand la scène est fausse) ou la condition, puis refaire la
+vérification des fuites sur toute scène modifiée.
 
 **Scène qui boucle alors que la condition est remplie.** Le contrôle de disponibilité (bouton d'analyse)
 est un diagnostic manuel : son verdict n'est pas renvoyé au PNJ qui joue. Pour limiter les boucles, le
